@@ -16,7 +16,7 @@ import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
 import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
 
 import { JackettService } from 'src/modules/jackett/jackett.service';
-import { LibraryService } from 'src/modules/library/library.service';
+import { LibraryDownloadService } from 'src/modules/library/library-download.service';
 
 @Processor(JobsQueue.DOWNLOAD)
 export class DownloadProcessor extends WorkerHost {
@@ -27,7 +27,7 @@ export class DownloadProcessor extends WorkerHost {
     private readonly tvSeasonDAO: TVSeasonDAO,
     private readonly tvEpisodeDAO: TVEpisodeDAO,
     private readonly jackettService: JackettService,
-    private readonly libraryService: LibraryService
+    private readonly libraryService: LibraryDownloadService
   ) {
     super();
     this.logger = logger.child({ context: 'DownloadProcessor' });

@@ -22,7 +22,9 @@ import { RedisModule } from 'src/modules/redis/redis.module';
 import { ParamsModule } from 'src/modules/params/params.module';
 
 import { LibraryResolver } from './library.resolver';
-import { LibraryService } from './library.service';
+import { LibraryQueryService } from './library-query.service';
+import { LibraryDownloadService } from './library-download.service';
+import { LibraryOrganizationService } from './library-organization.service';
 
 @Module({
   imports: [
@@ -42,7 +44,9 @@ import { LibraryService } from './library.service';
   ],
   providers: [
     LibraryResolver,
-    LibraryService,
+    LibraryQueryService,
+    LibraryDownloadService,
+    LibraryOrganizationService,
     MovieDAO,
     TVShowDAO,
     TVSeasonDAO,
@@ -50,6 +54,6 @@ import { LibraryService } from './library.service';
     TorrentDAO,
     MediaViewDAO,
   ],
-  exports: [LibraryService],
+  exports: [LibraryQueryService, LibraryDownloadService, LibraryOrganizationService],
 })
 export class LibraryModule {}

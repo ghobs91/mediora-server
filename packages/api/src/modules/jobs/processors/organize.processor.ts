@@ -31,7 +31,7 @@ import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
 import { TorrentDAO } from 'src/entities/dao/torrent.dao';
 
 import { TransmissionService } from 'src/modules/transmission/transmission.service';
-import { LibraryService } from 'src/modules/library/library.service';
+import { LibraryQueryService } from 'src/modules/library/library-query.service';
 import { ParamsService } from 'src/modules/params/params.service';
 import { FileDAO } from 'src/entities/dao/file.dao';
 
@@ -41,7 +41,7 @@ export class OrganizeProcessor extends WorkerHost {
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     private readonly dataSource: DataSource,
     private readonly transmissionService: TransmissionService,
-    private readonly libraryService: LibraryService,
+    private readonly libraryService: LibraryQueryService,
     private readonly paramsService: ParamsService
   ) {
     super();

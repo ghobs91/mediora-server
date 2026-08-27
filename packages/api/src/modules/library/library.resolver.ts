@@ -9,7 +9,9 @@ import { CacheKeys } from 'src/modules/redis/cache.dto';
 import { Movie } from 'src/entities/movie.entity';
 import { TVShow } from 'src/entities/tvshow.entity';
 
-import { LibraryService } from './library.service';
+import { LibraryQueryService } from './library-query.service';
+import { LibraryDownloadService } from './library-download.service';
+import { LibraryOrganizationService } from './library-organization.service';
 
 import {
   EnrichedMovie,
@@ -28,38 +30,40 @@ import { TVShowDAO } from 'src/entities/dao/tvshow.dao';
 @Resolver()
 export class LibraryResolver {
   public constructor(
-    private readonly libraryService: LibraryService,
+    private readonly libraryQueryService: LibraryQueryService,
+    private readonly libraryDownloadService: LibraryDownloadService,
+    private readonly libraryOrganizationService: LibraryOrganizationService,
     private readonly tvShowDAO: TVShowDAO
   ) {}
 
   @Query((_returns) => [DownloadingMedia])
   public getDownloadingMedias() {
-    return this.libraryService.getDownloading();
+    return this.libraryQueryService.getDownloading();
   }
 
   @Query((_returns) => [SearchingMedia])
   public getSearchingMedias() {
-    return this.libraryService.getSearching();
+    return this.libraryQueryService.getSearching();
   }
 
   @Query((_returns) => [EnrichedMovie])
   public getMovies() {
-    return this.libraryService.getMovies();
+    return this.libraryQueryService.getMovies();
   }
 
   @Query((_returns) => [EnrichedTVShow])
   public getTVShows() {
-    return this.libraryService.getTVShows();
+    return this.libraryQueryService.getTVShows();
   }
 
   @Query((_returns) => [EnrichedTVEpisode])
   public getMissingTVEpisodes() {
-    return this.libraryService.findMissingTVEpisodes();
+    return this.libraryQueryService.findMissingTVEpisodes();
   }
 
   @Query((_returns) => [EnrichedMovie])
   public getMissingMovies() {
-    return this.libraryService.findMissingMovies();
+    return this.libraryQueryService.findMissingMovies();
   }
 
   @Query((_returns) => [EnrichedTVEpisode])
@@ -67,7 +71,7 @@ export class LibraryResolver {
     @Args('tvShowTMDBId', { type: () => Int }) tvShowTMDBId: number,
     @Args('seasonNumber', { type: () => Int }) seasonNumber: number
   ) {
-    return this.libraryService.getTVSeasonDetails({
+    return this.libraryQueryService.getTVSeasonDetails({
       tvShowTMDBId,
       seasonNumber,
     });
@@ -81,14 +85,14 @@ export class LibraryResolver {
   )
   @Query((_returns) => LibraryCalendar)
   public getCalendar() {
-    return this.libraryService.calendar();
+    return this.libraryQueryService.calendar();
   }
 
   @Query((_returns) => LibraryFileDetails)
   public getMovieFileDetails(
     @Args('tmdbId', { type: () => Int }) tmdbId: number
   ) {
-    return this.libraryService.getMovieFileDetails(tmdbId);
+    return this.libraryQueryService.getMovieFileDetails(tmdbId);
   }
 
   @Mutation((_returns) => GraphQLCommonResponse)
@@ -97,7 +101,7 @@ export class LibraryResolver {
     @Args('jackettResult', { type: () => JackettInput })
     jackettResult: JackettInput
   ) {
-    await this.libraryService.downloadMovie(movieId, jackettResult, null);
+    await this.libraryDownloadService.downloadMovie(movieId, jackettResult, null);
     return { success: true, message: 'MOVIE_DOWNLOAD_STARTED' };
   }
 
@@ -120,7 +124,7 @@ export class LibraryResolver {
       .getOneOrFail();
 
     const [{ id: seasonId }] = seasons;
-    await this.libraryService.downloadTVSeason(seasonId, jackettResult, null);
+    await this.libraryDownloadService.downloadTVSeason(seasonId, jackettResult, null);
 
     return { success: true, message: 'TV_EPISODE_DOWNLOAD_STARTED' };
   }
@@ -131,7 +135,7 @@ export class LibraryResolver {
     @Args('jackettResult', { type: () => JackettInput })
     jackettResult: JackettInput
   ) {
-    await this.libraryService.downloadTVEpisode(episodeId, jackettResult, null);
+    await this.libraryDownloadService.downloadTVEpisode(episodeId, jackettResult, null);
     return { success: true, message: 'TV_EPISODE_DOWNLOAD_STARTED' };
   }
 
@@ -143,7 +147,7 @@ export class LibraryResolver {
     @Args('title') title: string,
     @Args('tmdbId', { type: () => Int }) tmdbId: number
   ) {
-    return this.libraryService.trackMovie({ title, tmdbId });
+    return this.libraryOrganizationService.trackMovie({ title, tmdbId });
   }
 
   @UseInterceptors(
@@ -153,7 +157,7 @@ export class LibraryResolver {
   public async removeMovie(
     @Args('tmdbId', { type: () => Int }) tmdbId: number
   ) {
-    await this.libraryService.removeMovie({ tmdbId, softDelete: false }, null);
+    await this.libraryOrganizationService.removeMovie({ tmdbId, softDelete: false }, null);
     return { success: true, message: 'MOVIE_REMOVED_FROM_LIBRARY' };
   }
 
@@ -165,7 +169,7 @@ export class LibraryResolver {
     @Args('tmdbId', { type: () => Int }) tmdbId: number,
     @Args('seasonNumbers', { type: () => [Int] }) seasonNumbers: number[]
   ) {
-    return this.libraryService.trackTVShow({ tmdbId, seasonNumbers });
+    return this.libraryOrganizationService.trackTVShow({ tmdbId, seasonNumbers });
   }
 
   @UseInterceptors(
@@ -175,7 +179,7 @@ export class LibraryResolver {
   public async removeTVShow(
     @Args('tmdbId', { type: () => Int }) tmdbId: number
   ) {
-    await this.libraryService.removeTVShow(tmdbId);
+    await this.libraryOrganizationService.removeTVShow(tmdbId);
     return { success: true, message: 'TVSHOW_REMOVED_FROM_LIBRARY' };
   }
 
@@ -184,7 +188,7 @@ export class LibraryResolver {
     @Args('deleteFiles') deleteFiles: boolean,
     @Args('resetSettings') resetSettings: boolean
   ) {
-    await this.libraryService.reset({ deleteFiles, resetSettings }, null);
+    await this.libraryOrganizationService.reset({ deleteFiles, resetSettings }, null);
     return { success: true, message: 'LIBRARY_RESET' };
   }
 
@@ -194,7 +198,7 @@ export class LibraryResolver {
     @Args('mediaType', { type: () => FileType }) mediaType: FileType,
     @Args('torrent') torrent: string
   ) {
-    await this.libraryService.downloadOwnTorrent(
+    await this.libraryDownloadService.downloadOwnTorrent(
       { mediaId, mediaType, torrent },
       null
     );
