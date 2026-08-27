@@ -62,6 +62,8 @@ The following commits are already on `master`:
 | `04dd232` | Added JWT auth, login page, protected GraphQL/jobs, and security workflow. |
 | `72cf54f` | Fixed auth test linting. |
 | `b4dafbd` | Replaced deleted Redis image tag, made Compose build local images, and updated Node runtime handling. |
+| `51a1bc9` | Upgraded the API runtime and framework integrations to Nest 11, GraphQL/Apollo, BullMQ, and TypeORM 0.3. |
+| `a8cbcf1` | Migrated API modules, DAOs, transactions, processors, and health checks to the upgraded integrations. |
 
 ### Verification baseline
 
@@ -156,9 +158,9 @@ Exit criteria:
 
 Priority: P1. Effort: L.
 
-- Split the 744-line `LibraryService` into query, download, and organization services.
+- Split the 744-line `LibraryService` into query, download, and organization services. **Completed:** `LibraryQueryService`, `LibraryDownloadService`, and `LibraryOrganizationService` now own those responsibilities while preserving the GraphQL and job APIs.
 - Add explicit state-transition helpers for media lifecycle states.
-- Add bounded concurrency to library scanning and Jackett fan-out.
+- Add bounded concurrency to library scanning and Jackett fan-out. **Completed:** scan job enqueueing is limited by `LIBRARY_SCAN_CONCURRENCY` (default 4), and indexer requests by `JACKETT_SEARCH_CONCURRENCY` (default 3), while retaining per-search timeouts.
 - Add composite indexes for frequent state/resource-type queries.
 - Replace shell execution through `child-command` with validated `spawn` argument arrays.
 - Add structured job failure persistence and retry visibility.
