@@ -4,7 +4,7 @@ import winston from 'winston';
 import jwt from 'jsonwebtoken';
 import { router as bullBoardMiddleware } from 'bull-board';
 import * as bodyParser from 'body-parser';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
 import { winstonOptions } from './utils/winston-options';

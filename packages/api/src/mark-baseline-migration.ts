@@ -28,6 +28,12 @@ export async function markBaselineMigrationIfNeeded(logger: Logger) {
         'CREATE TABLE IF NOT EXISTS migrations (id SERIAL NOT NULL, "timestamp" bigint NOT NULL, name character varying NOT NULL, CONSTRAINT "PK_migrations" PRIMARY KEY ("id"))'
       );
 
+      // typeorm 0.2 queries this table for view entities during connect,
+      // before migrations have run on a fresh database
+      await client.query(
+        'CREATE TABLE IF NOT EXISTS typeorm_metadata ("type" character varying NOT NULL, "database" character varying, "schema" character varying, "table" character varying, "name" character varying, "value" text)'
+      );
+
       const { rowCount } = await client.query('SELECT 1 FROM migrations LIMIT 1');
 
       if (schemaExists && rowCount === 0) {
