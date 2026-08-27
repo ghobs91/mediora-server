@@ -35,3 +35,4 @@ library/tvshows/*
 
 # typescript build cache
 *.tsbuildinfo
+.serena/
