@@ -42,7 +42,7 @@ export class LibraryFolderStatus {
   @Field()
   public canCreate!: boolean;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   public mode!: string | null;
 
   @Field(() => Int, { nullable: true })
@@ -54,7 +54,7 @@ export class LibraryFolderStatus {
   @Field()
   public message!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   public remedy!: string | null;
 }
 
