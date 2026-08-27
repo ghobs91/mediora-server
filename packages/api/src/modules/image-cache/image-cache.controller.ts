@@ -15,9 +15,14 @@ import {
   Res,
 } from '@nestjs/common';
 
+import { Public } from 'src/auth/public.decorator';
+
 const CACHE_ROOT = path.join(os.tmpdir(), 'bobarr-image-cache');
 const SAFE_IMAGE_PATH = /^[\w-]+(\/[\w-]+)*\.(jpg|jpeg|png|webp|svg)$/;
 
+// images are loaded through <img> tags, they can not carry
+// an authorization header
+@Public()
 @Controller('image-cache')
 export class ImageCacheController {
   @Get()

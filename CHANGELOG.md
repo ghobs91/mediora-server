@@ -4,6 +4,11 @@
 
 ### Added
 
+- authentication on the API: the GraphQL API and /jobs board now require
+  a JWT token. login on the web UI at /login with the `APP_PASSWORD`
+  password from your `.env` (default `bobarr`, please change it).
+- database schema is now managed by migrations instead of synchronize.
+  existing installs are detected and updated automatically.
 - manual search season pack (https://github.com/iam4x/bobarr/pull/172)
 
 ### Added

@@ -14,6 +14,7 @@ module.exports = {
     'src/utils/torrent-ranking.ts',
     'src/utils/recursive-camel-case.ts',
     'src/utils/promise-resolve.ts',
+    'src/auth/auth.service.ts',
   ],
   coverageThreshold: {
     global: {

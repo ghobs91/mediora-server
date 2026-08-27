@@ -1,5 +1,7 @@
 import { env } from './env';
 
+export { env };
+
 export const DB_CONFIG = {
   type: 'postgres' as const,
   host: env.POSTGRES_HOST,

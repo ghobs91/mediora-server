@@ -7,9 +7,13 @@ import {
   InMemoryCache,
   NormalizedCacheObject,
   HttpLink,
+  from,
 } from '@apollo/client';
+import { onError } from '@apollo/client/link/error';
+import { setContext } from '@apollo/client/link/context';
 
 import { apiURL } from '../utils/api-url';
+import { clearToken, getToken } from '../utils/auth';
 
 const isServer = typeof window === 'undefined';
 let apolloClient: ApolloClient<NormalizedCacheObject>;
@@ -17,10 +21,32 @@ let apolloClient: ApolloClient<NormalizedCacheObject>;
 const apolloClientCache = new InMemoryCache();
 
 function createApolloClient() {
+  const authLink = setContext((_, { headers }) => {
+    const token = getToken();
+    return {
+      headers: {
+        ...headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    };
+  });
+
+  const errorLink = onError(({ networkError }) => {
+    const status = (networkError as { statusCode?: number })?.statusCode;
+    if (status === 401 && !isServer) {
+      clearToken();
+      window.location.href = '/login';
+    }
+  });
+
+  const httpLink = new HttpLink({
+    uri: `${apiURL}/graphql`,
+  });
+
   return new ApolloClient({
     ssrMode: isServer,
     devtools: { enabled: !isServer },
-    link: new HttpLink({ uri: `${apiURL}/graphql` }),
+    link: from([authLink, errorLink, httpLink]),
     cache: apolloClientCache,
     queryDeduplication: true,
   });

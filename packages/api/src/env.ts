@@ -26,6 +26,9 @@ const envSchema = z.object({
 
   LIBRARY_MOVIES_FOLDER_NAME: z.string().default('movies'),
   LIBRARY_TV_SHOWS_FOLDER_NAME: z.string().default('tvshows'),
+
+  APP_PASSWORD: z.string().optional(),
+  JWT_SECRET: z.string().default('bobarr'),
 });
 
 export const env = envSchema.parse(process.env);
