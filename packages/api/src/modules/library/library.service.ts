@@ -50,8 +50,6 @@ export class LibraryService {
     private readonly torrentDAO: TorrentDAO
   ) {
     this.logger = logger.child({ context: 'LibraryService' });
-
-    this.getTVSeasonDetails({ tvShowTMDBId: 60625, seasonNumber: 4 });
   }
 
   public async getDownloading() {

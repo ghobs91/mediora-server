@@ -6,6 +6,6 @@ export function sanitize(str: string) {
     .replace(/-/g, ' ')
     .replace(/\(|\)/g, '')
     .replace(/\[|\]/g, '')
-    .replace(/[az]'/g, ' ')
+    .replace(/[a-z]'/g, ' ')
     .replace(/:/g, ' ');
 }

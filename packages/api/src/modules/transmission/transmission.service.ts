@@ -1,5 +1,4 @@
 import axios from 'axios';
-import getRedirects from 'lib-get-redirects';
 import { Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -77,22 +76,37 @@ export class TransmissionService {
       return this.client.addMagnet(url, {});
     }
 
-    try {
-      // we try to follow redirects from jackett before
-      // it might end up to a magnet or a .torrent file
-      await getRedirects(url);
-      return this.handleTorrentFile(url);
-    } catch (error) {
-      // redirected to a magnet uri, start it as magnet
-      if (error?.options?.uri?.startsWith('magnet')) {
-        return this.client.addMagnet(error.options.uri, {});
-      }
-      // not handled error, throw
-      throw error;
+    const finalUrl = await this.resolveRedirects(url);
+
+    // redirected to a magnet uri, start it as magnet
+    if (finalUrl.startsWith('magnet')) {
+      return this.client.addMagnet(finalUrl, {});
     }
+
+    return this.downloadTorrentFile(finalUrl);
   }
 
-  private async handleTorrentFile(url: string) {
+  private async resolveRedirects(url: string): Promise<string> {
+    let current = url;
+
+    for (let i = 0; i < 10; i += 1) {
+      const response = await axios.get(current, {
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
+        timeout: 15000,
+      });
+
+      const location = response.headers.location as string | undefined;
+      if (!location) return current;
+
+      current = new URL(location, current).toString();
+      if (current.startsWith('magnet:')) return current;
+    }
+
+    return current;
+  }
+
+  private async downloadTorrentFile(url: string) {
     const response = await axios.get(url, { responseType: 'arraybuffer' });
     const base64 = Buffer.from(response.data, 'binary').toString('base64');
     return this.client.addBase64(base64);
