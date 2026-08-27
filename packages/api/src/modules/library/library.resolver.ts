@@ -12,6 +12,8 @@ import { TVShow } from 'src/entities/tvshow.entity';
 import { LibraryQueryService } from './library-query.service';
 import { LibraryDownloadService } from './library-download.service';
 import { LibraryOrganizationService } from './library-organization.service';
+import { LibraryFoldersService } from './library-folders.service';
+import { LibraryFoldersStatus } from './library-folders.dto';
 
 import {
   EnrichedMovie,
@@ -33,6 +35,7 @@ export class LibraryResolver {
     private readonly libraryQueryService: LibraryQueryService,
     private readonly libraryDownloadService: LibraryDownloadService,
     private readonly libraryOrganizationService: LibraryOrganizationService,
+    private readonly libraryFoldersService: LibraryFoldersService,
     private readonly tvShowDAO: TVShowDAO
   ) {}
 
@@ -93,6 +96,22 @@ export class LibraryResolver {
     @Args('tmdbId', { type: () => Int }) tmdbId: number
   ) {
     return this.libraryQueryService.getMovieFileDetails(tmdbId);
+  }
+
+  @Query((_returns) => LibraryFoldersStatus)
+  public getLibraryFolders() {
+    return this.libraryFoldersService.inspect();
+  }
+
+  @Mutation((_returns) => LibraryFoldersStatus)
+  public updateLibraryFolders(
+    @Args('moviesFolderName') moviesFolderName: string,
+    @Args('tvShowsFolderName') tvShowsFolderName: string
+  ) {
+    return this.libraryFoldersService.updateFolderNames({
+      movies: moviesFolderName,
+      tvshows: tvShowsFolderName,
+    });
   }
 
   @Mutation((_returns) => GraphQLCommonResponse)

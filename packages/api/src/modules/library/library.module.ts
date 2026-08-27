@@ -25,6 +25,7 @@ import { LibraryResolver } from './library.resolver';
 import { LibraryQueryService } from './library-query.service';
 import { LibraryDownloadService } from './library-download.service';
 import { LibraryOrganizationService } from './library-organization.service';
+import { LibraryFoldersService } from './library-folders.service';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { LibraryOrganizationService } from './library-organization.service';
     LibraryQueryService,
     LibraryDownloadService,
     LibraryOrganizationService,
+    LibraryFoldersService,
     MovieDAO,
     TVShowDAO,
     TVSeasonDAO,
@@ -54,6 +56,11 @@ import { LibraryOrganizationService } from './library-organization.service';
     TorrentDAO,
     MediaViewDAO,
   ],
-  exports: [LibraryQueryService, LibraryDownloadService, LibraryOrganizationService],
+  exports: [
+    LibraryQueryService,
+    LibraryDownloadService,
+    LibraryOrganizationService,
+    LibraryFoldersService,
+  ],
 })
 export class LibraryModule {}

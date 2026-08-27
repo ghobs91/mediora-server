@@ -11,7 +11,6 @@ import { DataSource, EntityManager } from 'typeorm';
 import { Logger } from 'winston';
 
 import { Transaction, TransactionManager } from 'src/utils/transaction';
-import { LIBRARY_CONFIG } from 'src/config';
 
 import {
   JobsQueue,
@@ -34,6 +33,7 @@ import { TransmissionService } from 'src/modules/transmission/transmission.servi
 import { LibraryQueryService } from 'src/modules/library/library-query.service';
 import { ParamsService } from 'src/modules/params/params.service';
 import { FileDAO } from 'src/entities/dao/file.dao';
+import { LibraryFoldersService } from 'src/modules/library/library-folders.service';
 
 @Processor(JobsQueue.RENAME_AND_LINK)
 export class OrganizeProcessor extends WorkerHost {
@@ -42,7 +42,8 @@ export class OrganizeProcessor extends WorkerHost {
     private readonly dataSource: DataSource,
     private readonly transmissionService: TransmissionService,
     private readonly libraryService: LibraryQueryService,
-    private readonly paramsService: ParamsService
+    private readonly paramsService: ParamsService,
+    private readonly libraryFoldersService: LibraryFoldersService
   ) {
     super();
     this.logger = this.logger.child({ context: 'OrganizeProcessor' });
@@ -143,9 +144,8 @@ export class OrganizeProcessor extends WorkerHost {
       return results;
     }, []);
 
-    const newFolder = path.resolve(
-      __dirname,
-      `../../../../../../library/${LIBRARY_CONFIG.moviesFolderName}/`,
+    const newFolder = path.join(
+      await this.libraryFoldersService.getFolderPath('movies'),
       folderName
     );
 
@@ -214,9 +214,8 @@ export class OrganizeProcessor extends WorkerHost {
     });
 
     const seasonNb = formatNumber(episode.season.seasonNumber);
-    const seasonFolder = path.resolve(
-      __dirname,
-      `../../../../../../library/${LIBRARY_CONFIG.tvShowsFolderName}/`,
+    const seasonFolder = path.join(
+      await this.libraryFoldersService.getFolderPath('tvshows'),
       tvShow.title,
       `Season ${seasonNb}`
     );
@@ -301,9 +300,8 @@ export class OrganizeProcessor extends WorkerHost {
     });
 
     const seasonNb = formatNumber(season.seasonNumber);
-    const seasonFolder = path.resolve(
-      __dirname,
-      `../../../../../../library/${LIBRARY_CONFIG.tvShowsFolderName}/`,
+    const seasonFolder = path.join(
+      await this.libraryFoldersService.getFolderPath('tvshows'),
       tvShow.title,
       `Season ${seasonNb}`
     );

@@ -5,6 +5,7 @@ import { DataSource, EntityManager, Not, In, IsNull } from 'typeorm';
 
 import { ParameterKey, OrganizeLibraryStrategy } from 'src/app.dto';
 import { TransactionManager, LazyTransaction, Transaction } from 'src/utils/transaction';
+import { env } from 'src/env';
 
 import { Entertainment } from 'src/modules/tmdb/tmdb.dto';
 
@@ -39,6 +40,8 @@ export class ParamsService {
       [ParameterKey.MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE, (5e9).toString()], // max file size 5gb
       [ParameterKey.JACKETT_API_KEY, ''],
       [ParameterKey.ORGANIZE_LIBRARY_STRATEGY, OrganizeLibraryStrategy.LINK],
+      [ParameterKey.LIBRARY_MOVIES_FOLDER_NAME, env.LIBRARY_MOVIES_FOLDER_NAME],
+      [ParameterKey.LIBRARY_TV_SHOWS_FOLDER_NAME, env.LIBRARY_TV_SHOWS_FOLDER_NAME],
     ];
 
     await map(defaultParams, ([key, value]) =>
@@ -118,6 +121,11 @@ export class ParamsService {
   public async get(key: ParameterKey) {
     const param = await this.parameterDAO.findOne({ where: { key } });
     return param?.value || '';
+  }
+
+  public async update(key: ParameterKey, value: string) {
+    const param = await this.parameterDAO.findOrCreate({ key, value });
+    await this.parameterDAO.save({ id: param.id, value });
   }
 
   public async getNumber(key: ParameterKey) {

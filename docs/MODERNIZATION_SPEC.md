@@ -101,14 +101,18 @@ The wizard collects:
 4. Region.
 5. Metadata language.
 6. Completed-download organization strategy: link, copy, or move.
+7. Movie and TV folder names inside the mounted library.
 
-The wizard also explains that library mount paths and VPN configuration are Docker-level settings and cannot be safely changed from the browser.
+The wizard also explains that the host library mount path and VPN configuration
+are Docker-level settings and cannot be safely changed from the browser. The
+API checks the mount and configured folders using its actual container UID/GID,
+and reports read, traverse, write, and creation access separately.
 
 ### API contract
 
-- `GET /setup/status` is public and returns setup state plus booleans for configured TMDB, Jackett, and password values.
+- `GET /setup/status` is public and returns setup state, configured-service booleans, and live library mount/folder permission status.
 - `POST /setup/complete` is public only while setup is incomplete.
-- Setup completion validates input with zod, stores application settings in the existing `parameter` table, hashes the password with salted Node `scrypt`, writes `setup_completed=true`, and returns a JWT plus an httpOnly cookie.
+- Setup completion validates input with zod, stores application settings and library folder names in the existing `parameter` table, hashes the password with salted Node `scrypt`, writes `setup_completed=true`, and returns a JWT plus an httpOnly cookie.
 - The `SetupGuard` blocks protected GraphQL routes until setup is complete.
 - `/health`, `/auth/login`, `/image-cache`, and `/setup/*` are public.
 - `/jobs` is guarded separately because Bull Board is mounted as raw Express middleware.
@@ -116,6 +120,7 @@ The wizard also explains that library mount paths and VPN configuration are Dock
 ### Persistence and compatibility
 
 - `ParameterKey.SETUP_COMPLETED` and `ParameterKey.AUTH_PASSWORD_HASH` are internal parameter keys.
+- Library folder names are stored as `ParameterKey.LIBRARY_MOVIES_FOLDER_NAME` and `ParameterKey.LIBRARY_TV_SHOWS_FOLDER_NAME`, with `.env` values used as first-run defaults.
 - Existing installations with non-empty TMDB and Jackett keys are treated as legacy-configured and are not forced through the wizard.
 - The environment `APP_PASSWORD` remains a bootstrap fallback. A completed wizard password takes precedence through the database hash.
 - The committed `.env` remains the install script's default template. Users must change `APP_PASSWORD`, `JWT_SECRET`, database, and Redis defaults for exposed deployments.

@@ -10,6 +10,7 @@ generates:
       withMutationFn: false
       addDocBlocks: false
       reactApolloVersion: 3
+      arrayInputCoercion: false
     plugins:
       - add:
           content: '/* eslint-disable */'

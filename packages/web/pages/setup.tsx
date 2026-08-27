@@ -8,6 +8,8 @@ import {
   Check,
   KeyRound,
   Loader2,
+  Folder,
+  RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
 
@@ -43,6 +45,8 @@ interface SetupForm {
   jackettApiKey: string;
   region: string;
   language: string;
+  moviesFolderName: string;
+  tvShowsFolderName: string;
   organizeLibraryStrategy: 'link' | 'copy' | 'move';
 }
 
@@ -53,8 +57,35 @@ const initialForm: SetupForm = {
   jackettApiKey: '',
   region: 'US',
   language: 'en',
+  moviesFolderName: 'movies',
+  tvShowsFolderName: 'tvshows',
   organizeLibraryStrategy: 'link',
 };
+
+type LibraryFolderState =
+  | 'ready'
+  | 'missing'
+  | 'not_directory'
+  | 'inaccessible'
+  | 'read_only';
+
+interface LibraryFolderStatus {
+  type: string;
+  name: string;
+  path: string;
+  state: LibraryFolderState;
+  canWrite: boolean;
+  message: string;
+  remedy: string | null;
+}
+
+interface LibraryStatus {
+  mount: LibraryFolderStatus;
+  processUid: number | null;
+  processGid: number | null;
+  processRunsAsRoot: boolean;
+  folders: LibraryFolderStatus[];
+}
 
 export default function SetupPage() {
   const router = useRouter();
@@ -63,9 +94,34 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [jackettUrl, setJackettUrl] = useState('http://localhost:9117');
+  const [libraryStatus, setLibraryStatus] = useState<LibraryStatus | null>(null);
 
   useEffect(() => {
     setJackettUrl(`http://${window.location.hostname}:9117`);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${apiURL}/setup/status`, { credentials: 'include' })
+      .then((response) => response.json())
+      .then((status: { library?: LibraryStatus }) => {
+        if (cancelled || !status.library) return;
+        setLibraryStatus(status.library);
+        const [movies, tvShows] = status.library.folders;
+        setForm((current) => ({
+          ...current,
+          moviesFolderName: movies?.name || current.moviesFolderName,
+          tvShowsFolderName: tvShows?.name || current.tvShowsFolderName,
+        }));
+      })
+      .catch(() => {
+        // Setup can still explain the required Docker mount if the check fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const update = (values: Partial<SetupForm>) =>
@@ -84,6 +140,18 @@ export default function SetupPage() {
     if (step === 1) {
       if (!form.tmdbApiKey.trim()) return 'Enter your TMDB API key.';
       if (!form.jackettApiKey.trim()) return 'Enter your Jackett API key.';
+    }
+
+    if (step === 2) {
+      if (!isFolderName(form.moviesFolderName)) {
+        return 'Use a single folder name for movies, such as movies.';
+      }
+      if (!isFolderName(form.tvShowsFolderName)) {
+        return 'Use a single folder name for TV shows, such as tvshows.';
+      }
+      if (form.moviesFolderName.trim() === form.tvShowsFolderName.trim()) {
+        return 'Movies and TV shows must use different folders.';
+      }
     }
 
     return null;
@@ -121,6 +189,8 @@ export default function SetupPage() {
           jackettApiKey: form.jackettApiKey.trim(),
           region: form.region,
           language: form.language,
+          moviesFolderName: form.moviesFolderName.trim(),
+          tvShowsFolderName: form.tvShowsFolderName.trim(),
           organizeLibraryStrategy: form.organizeLibraryStrategy,
         }),
       });
@@ -312,6 +382,70 @@ export default function SetupPage() {
                         </select>
                       </Field>
                     </div>
+                    <div className="rounded-lg border border-border bg-secondary/30 p-4">
+                      <div className="flex items-start gap-3">
+                        <Folder className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                        <div>
+                          <h3 className="font-semibold">Library folders</h3>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                            Choose folder names inside Bobarr&apos;s Docker mount.
+                            The browser cannot grant a container access to an
+                            arbitrary host path.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                        <Field label="Movies folder" htmlFor="movies-folder">
+                          <Input
+                            id="movies-folder"
+                            value={form.moviesFolderName}
+                            onChange={({ target }) =>
+                              update({ moviesFolderName: target.value })
+                            }
+                          />
+                        </Field>
+                        <Field label="TV shows folder" htmlFor="tvshows-folder">
+                          <Input
+                            id="tvshows-folder"
+                            value={form.tvShowsFolderName}
+                            onChange={({ target }) =>
+                              update({ tvShowsFolderName: target.value })
+                            }
+                          />
+                        </Field>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {libraryStatus ? (
+                          <>
+                            <LibraryFolderNotice
+                              folder={libraryStatus.mount}
+                              label="Docker library mount"
+                            />
+                            {libraryStatus.folders.map((folder) => (
+                              <LibraryFolderNotice
+                                key={folder.type}
+                                folder={folder}
+                                label={
+                                  folder.type === 'movies'
+                                    ? 'Movies'
+                                    : 'TV shows'
+                                }
+                              />
+                            ))}
+                            <p className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              Permissions are checked by the API container user
+                              {libraryStatus.processUid !== null &&
+                                ` (UID ${libraryStatus.processUid}, GID ${libraryStatus.processGid})`}.
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Checking the mounted library...
+                          </p>
+                        )}
+                      </div>
+                    </div>
                     <Field label="Organize completed downloads" htmlFor="strategy">
                       <select
                         id="strategy"
@@ -336,8 +470,8 @@ export default function SetupPage() {
                     </Field>
                     <div className="rounded-lg border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
                       <strong className="text-foreground">Before searching:</strong>{' '}
-                      confirm that your Docker volume contains `library/movies` and
-                      `library/tvshows`. VPN configuration remains in
+                      the Docker library mount must be readable and writable by
+                      the configured PUID and PGID. VPN configuration remains in
                       `packages/vpn` and is selected when starting the stack.
                     </div>
                   </section>
@@ -401,6 +535,51 @@ function Field({
     <div className="flex flex-col gap-2">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function isFolderName(value: string) {
+  const name = value.trim();
+  return Boolean(
+    name &&
+      name.length <= 255 &&
+      name !== '.' &&
+      name !== '..' &&
+      !name.includes('/') &&
+      !name.includes('\\')
+  );
+}
+
+function LibraryFolderNotice({
+  folder,
+  label,
+}: {
+  folder: LibraryFolderStatus;
+  label: string;
+}) {
+  const ready = folder.state === 'ready';
+
+  return (
+    <div
+      className={`rounded-md border px-3 py-2 text-sm ${
+        ready
+          ? 'border-emerald-500/30 bg-emerald-500/10'
+          : 'border-primary/30 bg-primary/10'
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium">{label}</span>
+        <span className={ready ? 'text-emerald-300' : 'text-primary'}>
+          {ready ? 'Ready' : 'Needs attention'}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        <code>{folder.path}</code> - {folder.message}
+      </p>
+      {folder.remedy && (
+        <p className="mt-1 text-xs text-primary">{folder.remedy}</p>
+      )}
     </div>
   );
 }

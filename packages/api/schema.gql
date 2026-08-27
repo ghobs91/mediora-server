@@ -208,6 +208,40 @@ type LibraryFileDetails {
   libraryFileSize: BigInt
 }
 
+enum LibraryFolderState {
+  READY
+  MISSING
+  NOT_DIRECTORY
+  INACCESSIBLE
+  READ_ONLY
+}
+
+type LibraryFolderStatus {
+  type: String!
+  name: String!
+  path: String!
+  state: LibraryFolderState!
+  exists: Boolean!
+  isDirectory: Boolean!
+  canRead: Boolean!
+  canWrite: Boolean!
+  canTraverse: Boolean!
+  canCreate: Boolean!
+  mode: String
+  ownerUid: Int
+  ownerGid: Int
+  message: String!
+  remedy: String
+}
+
+type LibraryFoldersStatus {
+  mount: LibraryFolderStatus!
+  processUid: Int
+  processGid: Int
+  processRunsAsRoot: Boolean!
+  folders: [LibraryFolderStatus!]!
+}
+
 """
 The `BigInt` scalar type represents non-fractional signed whole numeric values. BigInt can represent values between -(2^53) + 1 and 2^53 - 1. 
 """
@@ -276,6 +310,7 @@ type Query {
   getTVSeasonDetails(seasonNumber: Int!, tvShowTMDBId: Int!): [EnrichedTVEpisode!]!
   getCalendar: LibraryCalendar!
   getMovieFileDetails(tmdbId: Int!): LibraryFileDetails!
+  getLibraryFolders: LibraryFoldersStatus!
   omdbSearch(title: String!): OMDBInfo!
 }
 
@@ -301,6 +336,7 @@ type Mutation {
   removeTVShow(tmdbId: Int!): GraphQLCommonResponse!
   resetLibrary(resetSettings: Boolean!, deleteFiles: Boolean!): GraphQLCommonResponse!
   downloadOwnTorrent(torrent: String!, mediaType: FileType!, mediaId: Int!): GraphQLCommonResponse!
+  updateLibraryFolders(moviesFolderName: String!, tvShowsFolderName: String!): LibraryFoldersStatus!
 }
 
 input QualityInput {

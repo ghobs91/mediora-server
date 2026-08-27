@@ -1,0 +1,41 @@
+query getLibraryFolders {
+  libraryFolders: getLibraryFolders {
+    mount {
+      type
+      name
+      path
+      state
+      exists
+      isDirectory
+      canRead
+      canWrite
+      canTraverse
+      canCreate
+      mode
+      ownerUid
+      ownerGid
+      message
+      remedy
+    }
+    processUid
+    processGid
+    processRunsAsRoot
+    folders {
+      type
+      name
+      path
+      state
+      exists
+      isDirectory
+      canRead
+      canWrite
+      canTraverse
+      canCreate
+      mode
+      ownerUid
+      ownerGid
+      message
+      remedy
+    }
+  }
+}

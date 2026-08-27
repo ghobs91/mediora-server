@@ -38,15 +38,15 @@ guide you through the required configuration:
 * choose an admin password
 * enter your TMDB API key
 * add your Jackett API key
-* choose your region, language, and download organization strategy
+* choose your region, language, library folder names, and download organization strategy
 
 The wizard stores application settings in the database. Keep `.env` available
-for Docker credentials, library mount names, and optional VPN configuration.
+for Docker credentials, library identity settings, and optional VPN configuration.
 
-### Link your existing library if any (from Sonarr or Raddar)
+### Link your existing library if any (from Sonarr or Radarr)
 
 * Open `docker-compose.yml` and look for `- ./library:/usr/library`
-* Update `./library` to the folder where your (`/movies` & `/tvshows`) are
+* Update `./library` to the folder where your movies and TV shows are stored
 
 As example, having:
 ```
@@ -55,6 +55,18 @@ As example, having:
 |- tvshows/
 ```
 The line should be: `- /mnt/storage:/usr/library`
+
+```
+
+The setup wizard checks the mounted folder from inside the API container. It
+can create the configured movies and TV folders when the mount is writable.
+The browser cannot grant a Docker container access to a host path that is not
+mounted.
+
+On Linux, set `PUID` and `PGID` in `.env` to the user and group that own the
+host library (`id -u` and `id -g`), then recreate the stack. Bobarr runs the
+API with that identity so scanning and organizing use the same permissions as
+the download service.
 
 
 ## How to start

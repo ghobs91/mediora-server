@@ -6,6 +6,7 @@ import { Public } from 'src/auth/public.decorator';
 
 import { SetupService } from './setup.service';
 import { SetupStateService } from './setup-state.service';
+import { LibraryFoldersService } from 'src/modules/library/library-folders.service';
 
 @Public()
 @Controller('setup')
@@ -13,12 +14,20 @@ export class SetupController {
   public constructor(
     private readonly setupService: SetupService,
     private readonly setupState: SetupStateService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly libraryFoldersService: LibraryFoldersService
   ) {}
 
   @Get('status')
-  public status() {
-    return this.setupState.getStatus();
+  public async status() {
+    const status = await this.setupState.getStatus();
+
+    return {
+      ...status,
+      ...(status.setupRequired
+        ? { library: await this.libraryFoldersService.inspect() }
+        : {}),
+    };
   }
 
   @Post('complete')

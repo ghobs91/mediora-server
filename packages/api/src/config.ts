@@ -29,8 +29,7 @@ export const JACKETT_RESPONSE_TIMEOUT = {
 
 export const JACKETT_SEARCH_CONCURRENCY = env.JACKETT_SEARCH_CONCURRENCY;
 
+export const LIBRARY_ROOT = "/usr/library";
 export const LIBRARY_CONFIG = {
-  moviesFolderName: env.LIBRARY_MOVIES_FOLDER_NAME,
-  tvShowsFolderName: env.LIBRARY_TV_SHOWS_FOLDER_NAME,
   scanConcurrency: env.LIBRARY_SCAN_CONCURRENCY,
 };

@@ -31,7 +31,7 @@ import { SetupGuard } from './modules/setup/setup.guard';
     TypeOrmModule.forRoot(DB_CONFIG),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: 'schema.gql',
+      autoSchemaFile: true,
       introspection: env.ENV !== 'production',
       playground: env.ENV !== 'production',
     }),

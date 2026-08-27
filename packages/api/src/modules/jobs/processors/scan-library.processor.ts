@@ -35,6 +35,7 @@ import { TVEpisodeDAO } from "src/entities/dao/tvepisode.dao";
 import { TVEpisode } from "src/entities/tvepisode.entity";
 import { TVSeasonDAO } from "src/entities/dao/tvseason.dao";
 import { FileDAO } from "src/entities/dao/file.dao";
+import { LibraryFoldersService } from "src/modules/library/library-folders.service";
 
 @Processor(JobsQueue.SCAN_LIBRARY)
 export class ScanLibraryProcessor extends WorkerHost {
@@ -46,6 +47,7 @@ export class ScanLibraryProcessor extends WorkerHost {
     private readonly jobsService: JobsService,
     private readonly tmdbService: TMDBService,
     private readonly tvEpisodeDAO: TVEpisodeDAO,
+    private readonly libraryFoldersService: LibraryFoldersService,
   ) {
     super();
     this.logger = logger.child({ context: "ScanLibrary" });
@@ -139,11 +141,13 @@ export class ScanLibraryProcessor extends WorkerHost {
   }
 
   public async scanMoviesFolder() {
+    const { movies: moviesFolderName } =
+      await this.libraryFoldersService.getFolderNames();
     this.logger.info("start scan movies folder", {
-      folderName: LIBRARY_CONFIG.moviesFolderName,
+      folderName: moviesFolderName,
     });
 
-    const root = `/usr/library/${LIBRARY_CONFIG.moviesFolderName}`;
+    const root = await this.libraryFoldersService.getFolderPath("movies");
     const movies = await fs
       .readdir(root)
       .then((entries) =>
@@ -167,11 +171,13 @@ export class ScanLibraryProcessor extends WorkerHost {
   }
 
   public async scanTVShowsFolder() {
+    const { tvshows: tvShowsFolderName } =
+      await this.libraryFoldersService.getFolderNames();
     this.logger.info("start scan tvshows folder", {
-      folderName: LIBRARY_CONFIG.tvShowsFolderName,
+      folderName: tvShowsFolderName,
     });
 
-    const root = `/usr/library/${LIBRARY_CONFIG.tvShowsFolderName}`;
+    const root = await this.libraryFoldersService.getFolderPath("tvshows");
     const tvshows = (await fs.readdir(root, { withFileTypes: true }))
       .filter((dirent) => dirent.isDirectory())
       .map((dirent) => dirent.name);
@@ -198,7 +204,7 @@ export class ScanLibraryProcessor extends WorkerHost {
     const movieDAO = MovieDAO.fromManager(manager!);
     const fileDAO = FileDAO.fromManager(manager!);
 
-    const root = `/usr/library/${LIBRARY_CONFIG.moviesFolderName}`;
+    const root = await this.libraryFoldersService.getFolderPath("movies");
     const movieFolder = path.join(root, movie);
     const movieFiles = (await fs.readdir(movieFolder, { withFileTypes: true }))
       .filter((dirent) => dirent.isFile() || dirent.isSymbolicLink())
@@ -363,7 +369,7 @@ export class ScanLibraryProcessor extends WorkerHost {
       });
     }
 
-    const root = `/usr/library/${LIBRARY_CONFIG.tvShowsFolderName}`;
+    const root = await this.libraryFoldersService.getFolderPath("tvshows");
     const episodes = await fs
       .readdir(path.join(root, tvshow), { withFileTypes: true })
       .then((seasons) =>
