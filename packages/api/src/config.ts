@@ -1,9 +1,9 @@
-import { env } from './env';
+import { env } from "./env";
 
 export { env };
 
 export const DB_CONFIG = {
-  type: 'postgres' as const,
+  type: "postgres" as const,
   host: env.POSTGRES_HOST,
   port: env.POSTGRES_PORT,
   username: env.POSTGRES_USER,
@@ -27,7 +27,10 @@ export const JACKETT_RESPONSE_TIMEOUT = {
   manual: env.JACKETT_MANUAL_SEARCH_TIMEOUT,
 };
 
+export const JACKETT_SEARCH_CONCURRENCY = env.JACKETT_SEARCH_CONCURRENCY;
+
 export const LIBRARY_CONFIG = {
   moviesFolderName: env.LIBRARY_MOVIES_FOLDER_NAME,
   tvShowsFolderName: env.LIBRARY_TV_SHOWS_FOLDER_NAME,
+  scanConcurrency: env.LIBRARY_SCAN_CONCURRENCY,
 };

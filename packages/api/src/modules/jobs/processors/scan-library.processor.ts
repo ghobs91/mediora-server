@@ -1,45 +1,40 @@
-import dayjs from 'dayjs';
-import leven from 'leven';
-import path from 'path';
-import { promises as fs } from 'fs';
-import { Processor, InjectQueue, WorkerHost } from '@nestjs/bullmq';
-import { Inject } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
-import { times, orderBy, flatten } from 'lodash';
-import { Job, Queue } from 'bullmq';
+import dayjs from "dayjs";
+import leven from "leven";
+import path from "path";
+import { promises as fs } from "fs";
+import { Processor, InjectQueue, WorkerHost } from "@nestjs/bullmq";
+import { Inject } from "@nestjs/common";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { Logger } from "winston";
+import { times, orderBy, flatten } from "lodash";
+import { Job, Queue } from "bullmq";
 
-import { DataSource, EntityManager, Like, IsNull } from 'typeorm';
+import { DataSource, EntityManager, Like, IsNull } from "typeorm";
 
-import { Transaction, TransactionManager } from 'src/utils/transaction';
+import { Transaction, TransactionManager } from "src/utils/transaction";
 
-import {
-  filterSeries,
-  forEach,
-  forEachSeries,
-  map,
-  mapSeries,
-} from 'p-iteration';
+import { filterSeries, forEachSeries, map, mapSeries } from "p-iteration";
 
-import { LIBRARY_CONFIG } from 'src/config';
+import { LIBRARY_CONFIG } from "src/config";
+import { mapConcurrent } from "src/utils/map-concurrent";
 
 import {
   JobsQueue,
   DownloadableMediaState,
   ScanLibraryQueueProcessors,
-} from 'src/app.dto';
+} from "src/app.dto";
 
-import { sanitize } from 'src/utils/sanitize';
+import { sanitize } from "src/utils/sanitize";
 
-import { JobsService } from 'src/modules/jobs//jobs.service';
-import { TMDBService } from 'src/modules/tmdb/tmdb.service';
+import { JobsService } from "src/modules/jobs//jobs.service";
+import { TMDBService } from "src/modules/tmdb/tmdb.service";
 
-import { MovieDAO } from 'src/entities/dao/movie.dao';
-import { TVShowDAO } from 'src/entities/dao/tvshow.dao';
-import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
-import { TVEpisode } from 'src/entities/tvepisode.entity';
-import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
-import { FileDAO } from 'src/entities/dao/file.dao';
+import { MovieDAO } from "src/entities/dao/movie.dao";
+import { TVShowDAO } from "src/entities/dao/tvshow.dao";
+import { TVEpisodeDAO } from "src/entities/dao/tvepisode.dao";
+import { TVEpisode } from "src/entities/tvepisode.entity";
+import { TVSeasonDAO } from "src/entities/dao/tvseason.dao";
+import { FileDAO } from "src/entities/dao/file.dao";
 
 @Processor(JobsQueue.SCAN_LIBRARY)
 export class ScanLibraryProcessor extends WorkerHost {
@@ -50,10 +45,10 @@ export class ScanLibraryProcessor extends WorkerHost {
     private readonly scanLibraryQueue: Queue,
     private readonly jobsService: JobsService,
     private readonly tmdbService: TMDBService,
-    private readonly tvEpisodeDAO: TVEpisodeDAO
+    private readonly tvEpisodeDAO: TVEpisodeDAO,
   ) {
     super();
-    this.logger = logger.child({ context: 'ScanLibrary' });
+    this.logger = logger.child({ context: "ScanLibrary" });
   }
 
   public async process(job: Job): Promise<any> {
@@ -71,22 +66,22 @@ export class ScanLibraryProcessor extends WorkerHost {
       case ScanLibraryQueueProcessors.PROCESS_TV_SHOW_FOLDER:
         return this.processTVShow(job as Job<{ tvshow: string }>);
       default:
-        this.logger.warn('unknown scan library job name', { name: job.name });
+        this.logger.warn("unknown scan library job name", { name: job.name });
         return undefined;
     }
   }
 
   public async findNewEpisodes() {
-    this.logger.info('start find new tvshow episodes');
+    this.logger.info("start find new tvshow episodes");
 
     const tvShowLastEpisodeTracked = await this.tvEpisodeDAO
-      .createQueryBuilder('episode')
-      .distinctOn(['episode.tvShow'])
-      .leftJoinAndSelect('episode.tvShow', 'tvShow')
-      .leftJoinAndSelect('episode.season', 'season')
-      .orderBy('episode.tvShow', 'DESC')
-      .addOrderBy('episode.seasonNumber', 'DESC')
-      .addOrderBy('episode.episodeNumber', 'DESC')
+      .createQueryBuilder("episode")
+      .distinctOn(["episode.tvShow"])
+      .leftJoinAndSelect("episode.tvShow", "tvShow")
+      .leftJoinAndSelect("episode.season", "season")
+      .orderBy("episode.tvShow", "DESC")
+      .addOrderBy("episode.seasonNumber", "DESC")
+      .addOrderBy("episode.episodeNumber", "DESC")
       .getMany();
 
     this.logger.info(`found ${tvShowLastEpisodeTracked.length} seasons`);
@@ -95,12 +90,14 @@ export class ScanLibraryProcessor extends WorkerHost {
       const tmdbResult = await this.tmdbService
         .getTVShowSeasons(episode.tvShow.tmdbId)
         .then((seasons) =>
-          seasons.find((season) => season.seasonNumber === episode.seasonNumber)
+          seasons.find(
+            (season) => season.seasonNumber === episode.seasonNumber,
+          ),
         );
 
       if (!tmdbResult) {
-        this.logger.info('did not find tmdb season', { episode });
-        throw new Error('did not find tmdb season');
+        this.logger.info("did not find tmdb season", { episode });
+        throw new Error("did not find tmdb season");
       }
 
       const newEpisodesCount = tmdbResult.episodeCount - episode.episodeNumber;
@@ -117,7 +114,7 @@ export class ScanLibraryProcessor extends WorkerHost {
             season: episode.season,
             episodeNumber: episode.episodeNumber + index + 1,
             seasonNumber: episode.seasonNumber,
-          }))
+          })),
         )) as unknown as TVEpisode[];
 
         await map(newEpisodes, ({ id }) => {
@@ -126,23 +123,23 @@ export class ScanLibraryProcessor extends WorkerHost {
       }
     });
 
-    this.logger.info('finish find new tsvhow episodes');
+    this.logger.info("finish find new tsvhow episodes");
   }
 
   public scanLibrary() {
     this.scanLibraryQueue.add(
       ScanLibraryQueueProcessors.SCAN_MOVIES_FOLDER,
-      {}
+      {},
     );
 
     this.scanLibraryQueue.add(
       ScanLibraryQueueProcessors.SCAN_TV_SHOWS_FOLDER,
-      {}
+      {},
     );
   }
 
   public async scanMoviesFolder() {
-    this.logger.info('start scan movies folder', {
+    this.logger.info("start scan movies folder", {
       folderName: LIBRARY_CONFIG.moviesFolderName,
     });
 
@@ -151,24 +148,26 @@ export class ScanLibraryProcessor extends WorkerHost {
       .readdir(root)
       .then((entries) =>
         filterSeries(entries, (entry) =>
-          fs.stat(path.join(root, entry)).then((result) => result.isDirectory())
-        )
+          fs
+            .stat(path.join(root, entry))
+            .then((result) => result.isDirectory()),
+        ),
       );
 
     this.logger.info(`found ${movies.length} movies on disk`);
 
-    await forEach(movies, (movie) =>
+    await mapConcurrent(movies, LIBRARY_CONFIG.scanConcurrency, (movie) =>
       this.scanLibraryQueue.add(
         ScanLibraryQueueProcessors.PROCESS_MOVIE_FOLDER,
-        { movie }
-      )
+        { movie },
+      ),
     );
 
-    this.logger.info('finish scan movies folder');
+    this.logger.info("finish scan movies folder");
   }
 
   public async scanTVShowsFolder() {
-    this.logger.info('start scan tvshows folder', {
+    this.logger.info("start scan tvshows folder", {
       folderName: LIBRARY_CONFIG.tvShowsFolderName,
     });
 
@@ -179,22 +178,22 @@ export class ScanLibraryProcessor extends WorkerHost {
 
     this.logger.info(`found ${tvshows.length} tvshows on disk`);
 
-    await forEach(tvshows, (tvshow) =>
+    await mapConcurrent(tvshows, LIBRARY_CONFIG.scanConcurrency, (tvshow) =>
       this.scanLibraryQueue.add(
         ScanLibraryQueueProcessors.PROCESS_TV_SHOW_FOLDER,
-        { tvshow }
-      )
+        { tvshow },
+      ),
     );
 
-    this.logger.info('finish scan tvshows folder');
+    this.logger.info("finish scan tvshows folder");
   }
 
   @Transaction()
   public async processMovieFolder(
     { data: { movie } }: Job<{ movie: string }>,
-    @TransactionManager() manager?: EntityManager
+    @TransactionManager() manager?: EntityManager,
   ) {
-    this.logger.info('processing movie', { movie });
+    this.logger.info("processing movie", { movie });
 
     const movieDAO = MovieDAO.fromManager(manager!);
     const fileDAO = FileDAO.fromManager(manager!);
@@ -208,7 +207,7 @@ export class ScanLibraryProcessor extends WorkerHost {
     const files = await mapSeries(movieFiles, async (file) => {
       const match = await fileDAO.findOne({
         where: { path: path.join(movieFolder, file) },
-        relations: ['movie'],
+        relations: ["movie"],
       });
       return { match, file: path.join(movieFolder, file) };
     });
@@ -217,10 +216,10 @@ export class ScanLibraryProcessor extends WorkerHost {
     const untrackedFiles = files.filter((file) => !file.match);
 
     if (movieInDatabase) {
-      this.logger.info('movie already tracked in library', { untrackedFiles });
+      this.logger.info("movie already tracked in library", { untrackedFiles });
 
       await forEachSeries(untrackedFiles, ({ file }) =>
-        fileDAO.save({ path: file, movieId: movieInDatabase.match?.id })
+        fileDAO.save({ path: file, movieId: movieInDatabase.match?.id }),
       );
 
       return;
@@ -232,17 +231,17 @@ export class ScanLibraryProcessor extends WorkerHost {
       throw new Error(`cant parse movie name or year [${movie}]`);
     }
 
-    this.logger.info('parsed filename', { title, year });
+    this.logger.info("parsed filename", { title, year });
 
     const matchByTitle = await movieDAO.findOne({
       where: { title },
     });
 
     if (matchByTitle) {
-      this.logger.info('movie already in database', { title, year });
+      this.logger.info("movie already in database", { title, year });
 
       await forEachSeries(untrackedFiles, ({ file }) =>
-        fileDAO.save({ path: file, movieId: matchByTitle.id })
+        fileDAO.save({ path: file, movieId: matchByTitle.id }),
       );
 
       return;
@@ -250,7 +249,7 @@ export class ScanLibraryProcessor extends WorkerHost {
 
     const localizedResults = await this.tmdbService.searchMovie(title);
     const englishResults = await this.tmdbService.searchMovie(title, {
-      language: 'en',
+      language: "en",
     });
 
     const results = [...localizedResults, ...englishResults];
@@ -259,24 +258,24 @@ export class ScanLibraryProcessor extends WorkerHost {
     const tmdbMovie = (() => {
       const [exactMatch] = results.filter(
         (result) =>
-          dayjs(result.releaseDate).format('YYYY') === year &&
+          dayjs(result.releaseDate).format("YYYY") === year &&
           (sanitize(title) === sanitize(result.title) ||
-            sanitize(title) === sanitize(result.originalTitle))
+            sanitize(title) === sanitize(result.originalTitle)),
       );
 
       if (exactMatch) {
         return exactMatch;
       }
 
-      this.logger.warn('could not find exact match movie');
-      this.logger.warn('fallback to year match and levenstein');
+      this.logger.warn("could not find exact match movie");
+      this.logger.warn("fallback to year match and levenstein");
 
       const [bestMatch] = orderBy(
         results.filter(
-          (result) => dayjs(result.releaseDate).format('YYYY') === year
+          (result) => dayjs(result.releaseDate).format("YYYY") === year,
         ),
         [(result) => leven(result.title, title)],
-        ['asc']
+        ["asc"],
       );
 
       if (bestMatch) {
@@ -289,24 +288,24 @@ export class ScanLibraryProcessor extends WorkerHost {
     })();
 
     if (!tmdbMovie) {
-      this.logger.error('no movie found matching title and year for');
+      this.logger.error("no movie found matching title and year for");
       this.logger.error(`${title} (${year})`);
       return;
     }
 
-    this.logger.info('found movie on tmdb', { tmdbId: tmdbMovie.tmdbId });
+    this.logger.info("found movie on tmdb", { tmdbId: tmdbMovie.tmdbId });
 
     const match = await movieDAO.findOne({
       where: { tmdbId: tmdbMovie.tmdbId },
     });
 
     if (match) {
-      this.logger.info('movie already in library', {
+      this.logger.info("movie already in library", {
         tmdbId: tmdbMovie.tmdbId,
       });
 
       await forEachSeries(untrackedFiles, ({ file }) =>
-        fileDAO.save({ path: file, movieId: match.id })
+        fileDAO.save({ path: file, movieId: match.id }),
       );
     } else {
       const newMovie = await movieDAO.save({
@@ -316,10 +315,10 @@ export class ScanLibraryProcessor extends WorkerHost {
       });
 
       await forEachSeries(untrackedFiles, ({ file }) =>
-        fileDAO.save({ path: file, movieId: newMovie.id })
+        fileDAO.save({ path: file, movieId: newMovie.id }),
       );
 
-      this.logger.info('new movie saved in database', {
+      this.logger.info("new movie saved in database", {
         tmdbId: tmdbMovie.tmdbId,
       });
     }
@@ -328,9 +327,9 @@ export class ScanLibraryProcessor extends WorkerHost {
   @Transaction()
   public async processTVShow(
     { data: { tvshow } }: Job<{ tvshow: string }>,
-    @TransactionManager() manager?: EntityManager
+    @TransactionManager() manager?: EntityManager,
   ) {
-    this.logger.info('start processing tvshow', { tvshow });
+    this.logger.info("start processing tvshow", { tvshow });
 
     const tvShowDAO = TVShowDAO.fromManager(manager!);
     const tvSeasonDAO = TVSeasonDAO.fromManager(manager!);
@@ -339,7 +338,7 @@ export class ScanLibraryProcessor extends WorkerHost {
 
     const isTVShowInDatabase = await fileDAO.findOne({
       where: { path: Like(`%${tvshow}%`), movieId: IsNull() },
-      relations: ['tvEpisode', 'tvEpisode.tvShow'],
+      relations: ["tvEpisode", "tvEpisode.tvShow"],
     });
 
     let tvShow = isTVShowInDatabase
@@ -348,15 +347,15 @@ export class ScanLibraryProcessor extends WorkerHost {
 
     if (!tvShow) {
       const [tmdbResult] = await this.tmdbService.searchTVShow(tvshow, {
-        language: 'en',
+        language: "en",
       });
 
       if (!tmdbResult) {
-        this.logger.error('tvshow not found on tmdb', { tvshow });
+        this.logger.error("tvshow not found on tmdb", { tvshow });
         return;
       }
 
-      this.logger.info('tvshow found on tmdb', { tmdbId: tmdbResult.tmdbId });
+      this.logger.info("tvshow found on tmdb", { tmdbId: tmdbResult.tmdbId });
 
       tvShow = await tvShowDAO.findOrCreate({
         tmdbId: tmdbResult.tmdbId,
@@ -378,17 +377,17 @@ export class ScanLibraryProcessor extends WorkerHost {
               .then((entries) =>
                 entries
                   .filter((f) => f.isFile() || f.isSymbolicLink())
-                  .map((f) => path.join(root, tvshow, season, f.name))
-              )
-        ).then(flatten)
+                  .map((f) => path.join(root, tvshow, season, f.name)),
+              ),
+        ).then(flatten),
       );
 
     await forEachSeries(episodes, async (episodePath) => {
       if (
         // skip non-video files
-        episodePath.endsWith('.srt') ||
-        episodePath.endsWith('.nfo') ||
-        episodePath.startsWith('.')
+        episodePath.endsWith(".srt") ||
+        episodePath.endsWith(".nfo") ||
+        episodePath.startsWith(".")
       ) {
         return;
       }
@@ -408,11 +407,11 @@ export class ScanLibraryProcessor extends WorkerHost {
       const [seasonNumber] = /\d+/.exec(season) || [];
 
       if (!seasonNumber) {
-        this.logger.error('could not parse season number', {
+        this.logger.error("could not parse season number", {
           season,
           seasonNumber,
         });
-        throw new Error('could not parse season number');
+        throw new Error("could not parse season number");
       }
 
       // parse episode number from title
@@ -428,7 +427,7 @@ export class ScanLibraryProcessor extends WorkerHost {
           tvShowId: tvShow!.id,
           seasonNumber: parseInt(seasonNumber, 10),
         },
-        DownloadableMediaState.PROCESSED
+        DownloadableMediaState.PROCESSED,
       );
 
       const episode = await tvEpisodeDAO.findOrCreate({
@@ -450,6 +449,6 @@ export class ScanLibraryProcessor extends WorkerHost {
       });
     });
 
-    this.logger.info('finish processing tvshow', { tvshow });
+    this.logger.info("finish processing tvshow", { tvshow });
   }
 }
