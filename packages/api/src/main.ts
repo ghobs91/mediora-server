@@ -1,13 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
+import winston from 'winston';
 import { router as bullBoardMiddleware } from 'bull-board';
 import * as bodyParser from 'body-parser';
 
 import { AppModule } from './app.module';
 import { winstonOptions } from './utils/winston-options';
+import { markBaselineMigrationIfNeeded } from './mark-baseline-migration';
 
 async function bootstrap() {
   const logger = WinstonModule.createLogger(winstonOptions);
+  await markBaselineMigrationIfNeeded(winston.createLogger(winstonOptions));
   const app = await NestFactory.create(AppModule, { logger });
   app.use(bodyParser.json({ limit: '10mb' }));
   app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));

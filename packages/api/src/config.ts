@@ -1,27 +1,31 @@
+import { env } from './env';
+
 export const DB_CONFIG = {
   type: 'postgres' as const,
-  host: 'postgres',
-  port: 5432,
-  username: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
+  host: env.POSTGRES_HOST,
+  port: env.POSTGRES_PORT,
+  username: env.POSTGRES_USER,
+  password: env.POSTGRES_PASSWORD,
+  database: env.POSTGRES_DB,
   entities: [`${__dirname}/entities/*.entity{.ts,.js}`],
-  synchronize: true,
+  migrations: [`${__dirname}/migrations/*{.ts,.js}`],
+  migrationsRun: true,
+  synchronize: false,
 };
 
-export const DEBUG_REDIS = process.env.DEBUG_REDIS === 'true' || false;
+export const DEBUG_REDIS = env.DEBUG_REDIS;
 export const REDIS_CONFIG = {
-  host: 'redis',
-  port: 6379,
-  password: process.env.REDIS_PASSWORD,
+  host: env.REDIS_HOST,
+  port: env.REDIS_PORT,
+  password: env.REDIS_PASSWORD,
 };
 
 export const JACKETT_RESPONSE_TIMEOUT = {
-  automatic: Number(process.env.JACKETT_AUTOMATIC_SEARCH_TIMEOUT),
-  manual: Number(process.env.JACKETT_MANUAL_SEARCH_TIMEOUT),
+  automatic: env.JACKETT_AUTOMATIC_SEARCH_TIMEOUT,
+  manual: env.JACKETT_MANUAL_SEARCH_TIMEOUT,
 };
 
 export const LIBRARY_CONFIG = {
-  moviesFolderName: process.env.LIBRARY_MOVIES_FOLDER_NAME,
-  tvShowsFolderName: process.env.LIBRARY_TV_SHOWS_FOLDER_NAME,
+  moviesFolderName: env.LIBRARY_MOVIES_FOLDER_NAME,
+  tvShowsFolderName: env.LIBRARY_TV_SHOWS_FOLDER_NAME,
 };
