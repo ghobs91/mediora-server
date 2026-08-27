@@ -10,7 +10,7 @@ import {
 export class OMDBService {
   private async request<TData>(params: OMDBSearchParams = {}) {
     const client = Axios.create({
-      params: { apikey: '9cffdb0d' },
+      params: { apikey: process.env.OMDB_API_KEY },
       baseURL: 'http://www.omdbapi.com/',
     });
 
