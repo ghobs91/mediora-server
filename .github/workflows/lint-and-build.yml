@@ -21,6 +21,7 @@ jobs:
         node-version: 22
         cache: 'yarn'
     - run: yarn
+    - run: yarn lint
     - run: (cd packages/api && yarn build)
     - run: (cd packages/api && yarn test:cov)
     - run: (cd packages/web && yarn test)

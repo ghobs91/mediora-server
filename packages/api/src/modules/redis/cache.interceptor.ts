@@ -20,7 +20,6 @@ export function CacheMethod({ key, ttl }: { key: CacheKeys; ttl: number }) {
   ) {
     const method = descriptor.value;
 
-    // eslint-disable-next-line no-param-reassign
     descriptor.value = async function (...args: any[]) {
       const computedCacheKey = `${key}_${
         args.length ? args.map((arg) => JSON.stringify(arg)) : 'no_args'

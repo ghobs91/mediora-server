@@ -21,8 +21,6 @@ import { LibraryService } from 'src/modules/library/library.service';
 
 import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
 import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
-import { Quality } from 'src/entities/quality.entity';
-import { Tag } from 'src/entities/tag.entity';
 
 import { JackettResult, JackettIndexer } from './jackett.dto';
 import { Entertainment } from '../tmdb/tmdb.dto';
@@ -244,7 +242,7 @@ export class JackettService {
         );
 
         return data.Results;
-      } catch (e) {
+      } catch (_e) {
         return [];
       }
     });

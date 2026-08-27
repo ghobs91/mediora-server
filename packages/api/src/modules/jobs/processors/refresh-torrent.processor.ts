@@ -21,7 +21,6 @@ import { TransmissionService } from 'src/modules/transmission/transmission.servi
 
 @Processor(JobsQueue.REFRESH_TORRENT)
 export class RefreshTorrentProcessor {
-  // eslint-disable-next-line max-params
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     @InjectQueue(JobsQueue.RENAME_AND_LINK)

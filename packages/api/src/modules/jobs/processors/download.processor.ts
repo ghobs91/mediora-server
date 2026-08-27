@@ -20,7 +20,6 @@ import { LibraryService } from 'src/modules/library/library.service';
 
 @Processor(JobsQueue.DOWNLOAD)
 export class DownloadProcessor {
-  // eslint-disable-next-line max-params
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     @InjectQueue(JobsQueue.DOWNLOAD) private readonly downloadQueue: Queue,

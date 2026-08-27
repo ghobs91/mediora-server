@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { Response } from 'express';
 
 import os from 'os';
@@ -45,7 +44,7 @@ export class ImageCacheController {
     try {
       await fs.access(filePath, constants.R_OK);
       return res.sendFile(filePath);
-    } catch (error) {
+    } catch (_error) {
       const { data: buffer } = await axios.get(
         `https://image.tmdb.org/t/p/${imageUrl}`,
         {

@@ -36,7 +36,6 @@ import { FileDAO } from 'src/entities/dao/file.dao';
 
 @Injectable()
 export class LibraryService {
-  // eslint-disable-next-line max-params
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     private readonly movieDAO: MovieDAO,
