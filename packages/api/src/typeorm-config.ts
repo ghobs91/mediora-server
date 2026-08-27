@@ -1,6 +1,7 @@
+import { DataSource } from 'typeorm';
 import { env } from './env';
 
-export = {
+const dataSource = new DataSource({
   type: 'postgres',
   host: env.POSTGRES_HOST,
   port: env.POSTGRES_PORT,
@@ -9,7 +10,6 @@ export = {
   database: env.POSTGRES_DB,
   entities: ['src/entities/**/*.entity.ts'],
   migrations: ['src/migrations/**/*.ts'],
-  cli: {
-    migrationsDir: 'src/migrations',
-  },
-};
+});
+
+export default dataSource;
