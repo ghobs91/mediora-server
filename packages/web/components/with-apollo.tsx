@@ -41,6 +41,7 @@ function createApolloClient() {
 
   const httpLink = new HttpLink({
     uri: `${apiURL}/graphql`,
+    credentials: 'include',
   });
 
   return new ApolloClient({

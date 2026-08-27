@@ -28,6 +28,8 @@ export enum ParameterKey {
   MAX_MOVIE_DOWNLOAD_SIZE = 'max_movie_download_size',
   MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE = 'max_tvshow_episode_download_size',
   ORGANIZE_LIBRARY_STRATEGY = 'organize_library_strategy',
+  SETUP_COMPLETED = 'setup_completed',
+  AUTH_PASSWORD_HASH = 'auth_password_hash',
 }
 
 export enum OrganizeLibraryStrategy {

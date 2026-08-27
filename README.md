@@ -32,7 +32,16 @@ Run the installation script and follow the instructions:
 
 ### Configuration
 
-* Update your config in `.env`
+The first time you open Bobarr at http://localhost:3000, the setup wizard will
+guide you through the required configuration:
+
+* choose an admin password
+* enter your TMDB API key
+* add your Jackett API key
+* choose your region, language, and download organization strategy
+
+The wizard stores application settings in the database. Keep `.env` available
+for Docker credentials, library mount names, and optional VPN configuration.
 
 ### Link your existing library if any (from Sonarr or Raddar)
 
@@ -53,8 +62,8 @@ The line should be: `- /mnt/storage:/usr/library`
 There are two way to start bobarr stack, first without VPN:
 
 * `$ ./bobarr.sh start`
-* Go to http://localhost:9117, add your preferred torrent websites and copy the API Key in top right corner
-* Go to http://localhost:3000/settings and update the jackett API key
+* Go to http://localhost:9117 and add your preferred torrent websites
+* Go to http://localhost:3000 and complete the setup wizard
 
 If you want to enforce all torrent traffic through a VPN:
 
@@ -78,8 +87,8 @@ If you want to enforce all torrent traffic through a VPN:
 
 ### Bobarr configuration
 
-* Go to http://localhost:3000/settings
-* Set your region and language according to your torrent tracker
+* Complete the first-launch wizard at http://localhost:3000
+* Go to http://localhost:3000/settings after setup to configure tags and quality preferences
 * Create and order your preferred tags found in torrent file (ex: vost, multi, english...)
 * Order your preferred qualities to download
 

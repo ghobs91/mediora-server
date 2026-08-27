@@ -10,11 +10,11 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  login(
+  public async login(
     @Body() body: { password?: string },
     @Res({ passthrough: true }) res: Response
   ) {
-    const { token } = this.authService.login(body.password || '');
+    const { token } = await this.authService.login(body.password || '');
 
     res.cookie('bobarr_token', token, {
       httpOnly: true,

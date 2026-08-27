@@ -18,9 +18,11 @@ import { RedisModule } from 'src/modules/redis/redis.module';
 import { HealthController } from 'src/modules/health/health.controller';
 import { ImageCacheModule } from 'src/modules/image-cache/image-cache.module';
 import { OMDBModule } from './modules/omdb/omdb.module';
+import { SetupModule } from './modules/setup/setup.module';
 
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { SetupGuard } from './modules/setup/setup.guard';
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     }),
     TerminusModule,
     AuthModule,
+    SetupModule,
     ParamsModule,
     LibraryModule,
     TMDBModule,
@@ -47,6 +50,9 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     ImageCacheModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: SetupGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule {}

@@ -40,7 +40,7 @@ export class ParamsService {
     const defaultParams: Array<[ParameterKey, string]> = [
       [ParameterKey.LANGUAGE, 'en'],
       [ParameterKey.REGION, 'US'],
-      [ParameterKey.TMDB_API_KEY, 'c8eeff686ad913601c151cd0bc59c2e6'],
+      [ParameterKey.TMDB_API_KEY, ''],
       [ParameterKey.MAX_MOVIE_DOWNLOAD_SIZE, (20e9).toString()], // max file size 20gb
       [ParameterKey.MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE, (5e9).toString()], // max file size 5gb
       [ParameterKey.JACKETT_API_KEY, ''],
