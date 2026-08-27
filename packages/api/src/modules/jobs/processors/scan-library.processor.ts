@@ -2,20 +2,16 @@ import dayjs from 'dayjs';
 import leven from 'leven';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { Processor, Process, InjectQueue } from '@nestjs/bull';
+import { Processor, InjectQueue, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { times, orderBy, flatten } from 'lodash';
-import { Job, Queue } from 'bull';
+import { Job, Queue } from 'bullmq';
 
-import {
-  Transaction,
-  TransactionManager,
-  EntityManager,
-  Like,
-  IsNull,
-} from 'typeorm';
+import { DataSource, EntityManager, Like, IsNull } from 'typeorm';
+
+import { Transaction, TransactionManager } from 'src/utils/transaction';
 
 import {
   filterSeries,
@@ -41,23 +37,45 @@ import { TMDBService } from 'src/modules/tmdb/tmdb.service';
 import { MovieDAO } from 'src/entities/dao/movie.dao';
 import { TVShowDAO } from 'src/entities/dao/tvshow.dao';
 import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
+import { TVEpisode } from 'src/entities/tvepisode.entity';
 import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
 import { FileDAO } from 'src/entities/dao/file.dao';
 
 @Processor(JobsQueue.SCAN_LIBRARY)
-export class ScanLibraryProcessor {
+export class ScanLibraryProcessor extends WorkerHost {
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
+    private readonly dataSource: DataSource,
     @InjectQueue(JobsQueue.SCAN_LIBRARY)
     private readonly scanLibraryQueue: Queue,
     private readonly jobsService: JobsService,
     private readonly tmdbService: TMDBService,
     private readonly tvEpisodeDAO: TVEpisodeDAO
   ) {
+    super();
     this.logger = logger.child({ context: 'ScanLibrary' });
   }
 
-  @Process(ScanLibraryQueueProcessors.FIND_NEW_EPISODES)
+  public async process(job: Job): Promise<any> {
+    switch (job.name) {
+      case ScanLibraryQueueProcessors.FIND_NEW_EPISODES:
+        return this.findNewEpisodes();
+      case ScanLibraryQueueProcessors.SCAN_LIBRARY_FOLDER:
+        return this.scanLibrary();
+      case ScanLibraryQueueProcessors.SCAN_MOVIES_FOLDER:
+        return this.scanMoviesFolder();
+      case ScanLibraryQueueProcessors.SCAN_TV_SHOWS_FOLDER:
+        return this.scanTVShowsFolder();
+      case ScanLibraryQueueProcessors.PROCESS_MOVIE_FOLDER:
+        return this.processMovieFolder(job as Job<{ movie: string }>);
+      case ScanLibraryQueueProcessors.PROCESS_TV_SHOW_FOLDER:
+        return this.processTVShow(job as Job<{ tvshow: string }>);
+      default:
+        this.logger.warn('unknown scan library job name', { name: job.name });
+        return undefined;
+    }
+  }
+
   public async findNewEpisodes() {
     this.logger.info('start find new tvshow episodes');
 
@@ -93,14 +111,14 @@ export class ScanLibraryProcessor {
       });
 
       if (newEpisodesCount > 0) {
-        const newEpisodes = await this.tvEpisodeDAO.save(
+        const newEpisodes = (await this.tvEpisodeDAO.save(
           times(newEpisodesCount, (index) => ({
             tvShow: episode.tvShow,
             season: episode.season,
             episodeNumber: episode.episodeNumber + index + 1,
             seasonNumber: episode.seasonNumber,
           }))
-        );
+        )) as unknown as TVEpisode[];
 
         await map(newEpisodes, ({ id }) => {
           this.jobsService.startDownloadEpisode(id);
@@ -111,7 +129,6 @@ export class ScanLibraryProcessor {
     this.logger.info('finish find new tsvhow episodes');
   }
 
-  @Process(ScanLibraryQueueProcessors.SCAN_LIBRARY_FOLDER)
   public scanLibrary() {
     this.scanLibraryQueue.add(
       ScanLibraryQueueProcessors.SCAN_MOVIES_FOLDER,
@@ -124,7 +141,6 @@ export class ScanLibraryProcessor {
     );
   }
 
-  @Process(ScanLibraryQueueProcessors.SCAN_MOVIES_FOLDER)
   public async scanMoviesFolder() {
     this.logger.info('start scan movies folder', {
       folderName: LIBRARY_CONFIG.moviesFolderName,
@@ -151,7 +167,6 @@ export class ScanLibraryProcessor {
     this.logger.info('finish scan movies folder');
   }
 
-  @Process(ScanLibraryQueueProcessors.SCAN_TV_SHOWS_FOLDER)
   public async scanTVShowsFolder() {
     this.logger.info('start scan tvshows folder', {
       folderName: LIBRARY_CONFIG.tvShowsFolderName,
@@ -174,7 +189,6 @@ export class ScanLibraryProcessor {
     this.logger.info('finish scan tvshows folder');
   }
 
-  @Process(ScanLibraryQueueProcessors.PROCESS_MOVIE_FOLDER)
   @Transaction()
   public async processMovieFolder(
     { data: { movie } }: Job<{ movie: string }>,
@@ -182,8 +196,8 @@ export class ScanLibraryProcessor {
   ) {
     this.logger.info('processing movie', { movie });
 
-    const movieDAO = manager!.getCustomRepository(MovieDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const movieDAO = MovieDAO.fromManager(manager!);
+    const fileDAO = FileDAO.fromManager(manager!);
 
     const root = `/usr/library/${LIBRARY_CONFIG.moviesFolderName}`;
     const movieFolder = path.join(root, movie);
@@ -220,7 +234,9 @@ export class ScanLibraryProcessor {
 
     this.logger.info('parsed filename', { title, year });
 
-    const matchByTitle = await movieDAO.findOne({ where: { title } });
+    const matchByTitle = await movieDAO.findOne({
+      where: { title },
+    });
 
     if (matchByTitle) {
       this.logger.info('movie already in database', { title, year });
@@ -309,7 +325,6 @@ export class ScanLibraryProcessor {
     }
   }
 
-  @Process(ScanLibraryQueueProcessors.PROCESS_TV_SHOW_FOLDER)
   @Transaction()
   public async processTVShow(
     { data: { tvshow } }: Job<{ tvshow: string }>,
@@ -317,10 +332,10 @@ export class ScanLibraryProcessor {
   ) {
     this.logger.info('start processing tvshow', { tvshow });
 
-    const tvShowDAO = manager!.getCustomRepository(TVShowDAO);
-    const tvSeasonDAO = manager!.getCustomRepository(TVSeasonDAO);
-    const tvEpisodeDAO = manager!.getCustomRepository(TVEpisodeDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const tvShowDAO = TVShowDAO.fromManager(manager!);
+    const tvSeasonDAO = TVSeasonDAO.fromManager(manager!);
+    const tvEpisodeDAO = TVEpisodeDAO.fromManager(manager!);
+    const fileDAO = FileDAO.fromManager(manager!);
 
     const isTVShowInDatabase = await fileDAO.findOne({
       where: { path: Like(`%${tvshow}%`), movieId: IsNull() },

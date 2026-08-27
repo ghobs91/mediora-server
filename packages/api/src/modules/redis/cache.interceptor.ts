@@ -4,6 +4,7 @@ import {
   mixin,
   NestInterceptor,
   CallHandler,
+  Type,
 } from '@nestjs/common';
 
 import { of } from 'rxjs';
@@ -66,13 +67,13 @@ export abstract class CacheInterceptor implements NestInterceptor {
   }
 }
 
-export const makeCacheInterceptor = ({
+export const makeCacheInterceptor: ({
   key,
   ttl,
 }: {
   key: CacheKeys;
   ttl: number;
-}) =>
+}) => Type<NestInterceptor> = ({ key, ttl }) =>
   mixin(
     class extends CacheInterceptor {
       protected readonly ttl = ttl;

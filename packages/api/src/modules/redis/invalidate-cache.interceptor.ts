@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
   mixin,
+  Type,
 } from '@nestjs/common';
 
 import { tap } from 'rxjs/operators';
@@ -30,9 +31,10 @@ export abstract class CacheInterceptor implements NestInterceptor {
   }
 }
 
-export const makeInvalidateCacheInterceptor = (keys: CacheKeys[]) =>
-  mixin(
-    class extends CacheInterceptor {
-      protected readonly keys = keys;
-    }
-  );
+export const makeInvalidateCacheInterceptor: (keys: CacheKeys[]) => Type<NestInterceptor> =
+  (keys) =>
+    mixin(
+      class extends CacheInterceptor {
+        protected readonly keys = keys;
+      }
+    );

@@ -1,6 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { TVSeason } from 'src/entities/tvseason.entity';
+import { TVEpisode } from 'src/entities/tvepisode.entity';
+
 import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
 import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
 
@@ -12,11 +15,11 @@ import { JackettResolver } from './jackett.resolver';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TVSeasonDAO, TVEpisodeDAO]),
+    TypeOrmModule.forFeature([TVSeason, TVEpisode]),
     ParamsModule,
     forwardRef(() => LibraryModule),
   ],
-  providers: [JackettService, JackettResolver],
+  providers: [JackettService, JackettResolver, TVSeasonDAO, TVEpisodeDAO],
   exports: [JackettService],
 })
 export class JackettModule {}

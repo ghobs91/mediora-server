@@ -3,11 +3,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Transmission } from 'transmission-client';
-import { DeepPartial, TransactionManager, EntityManager } from 'typeorm';
+import { DataSource, DeepPartial, EntityManager } from 'typeorm';
 
 import { Torrent } from 'src/entities/torrent.entity';
 import { TorrentDAO } from 'src/entities/dao/torrent.dao';
-import { LazyTransaction } from 'src/utils/lazy-transaction';
+import { TransactionManager, LazyTransaction } from 'src/utils/transaction';
 
 @Injectable()
 export class TransmissionService {
@@ -15,6 +15,7 @@ export class TransmissionService {
 
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
+    private readonly dataSource: DataSource,
     private readonly torrentDAO: TorrentDAO
   ) {
     this.logger = logger.child({ context: 'TransmissionService' });
@@ -25,7 +26,9 @@ export class TransmissionService {
   }
 
   public async getResourceTorrent(torrentAttributes: DeepPartial<Torrent>) {
-    const torrent = await this.torrentDAO.findOneOrFail(torrentAttributes);
+    const torrent = await this.torrentDAO.findOneOrFail({
+      where: torrentAttributes as Torrent,
+    });
     const transmissionTorrent = await this.getTorrent(torrent.torrentHash);
     return { ...torrent, transmissionTorrent };
   }
@@ -54,7 +57,7 @@ export class TransmissionService {
       torrentAttributes
     );
 
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
+    const torrentDAO = TorrentDAO.fromManager(manager!);
 
     const transmissionTorrent =
       torrentType === 'url'

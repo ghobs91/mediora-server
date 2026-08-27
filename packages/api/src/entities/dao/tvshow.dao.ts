@@ -1,8 +1,22 @@
-import { EntityRepository, Repository, DeepPartial } from 'typeorm';
-import { TVShow } from '../tvshow.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DeepPartial, EntityManager, Repository } from 'typeorm';
 
-@EntityRepository(TVShow)
-export class TVShowDAO extends Repository<TVShow> {
+import { TVShow } from '../tvshow.entity';
+import { BaseDAO } from './base.dao';
+
+@Injectable()
+export class TVShowDAO extends BaseDAO<TVShow> {
+  public constructor(
+    @InjectRepository(TVShow) repository: Repository<TVShow>
+  ) {
+    super(repository);
+  }
+
+  public static fromManager(manager: EntityManager): TVShowDAO {
+    return new TVShowDAO(manager.getRepository(TVShow));
+  }
+
   public async findOrCreate(tvShowAttributes: DeepPartial<TVShow>) {
     if (!tvShowAttributes.tmdbId) {
       throw new Error('findOrCreate TVShow needs [tmdbId]');

@@ -12,7 +12,7 @@ export function firstOf<TResult>(
 
 function PromiseDelay<TResult>(t: number): Promise<TResult> {
   return new Promise((resolve) => {
-    setTimeout(resolve.bind(null), t);
+    setTimeout(() => resolve(undefined as TResult), t);
   });
 }
 

@@ -1,6 +1,6 @@
 import { forEachSeries } from 'p-iteration';
-import { Processor, Process, InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import { Processor, InjectQueue, WorkerHost } from '@nestjs/bullmq';
+import { Queue, Job } from 'bullmq';
 import { Inject } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -20,7 +20,7 @@ import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
 import { TransmissionService } from 'src/modules/transmission/transmission.service';
 
 @Processor(JobsQueue.REFRESH_TORRENT)
-export class RefreshTorrentProcessor {
+export class RefreshTorrentProcessor extends WorkerHost {
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     @InjectQueue(JobsQueue.RENAME_AND_LINK)
@@ -31,10 +31,14 @@ export class RefreshTorrentProcessor {
     private readonly tvSeasonDAO: TVSeasonDAO,
     private readonly tvEpisodeDAO: TVEpisodeDAO
   ) {
+    super();
     this.logger = logger.child({ context: 'RefreshTorrentProcessor' });
   }
 
-  @Process()
+  public process(_job: Job) {
+    return this.refreshTorrents();
+  }
+
   public async refreshTorrents() {
     this.logger.info('start refresh torrent status');
 

@@ -1,9 +1,24 @@
-import { DownloadableMediaState } from 'src/app.dto';
-import { EntityRepository, Repository } from 'typeorm';
-import { TVSeason } from '../tvseason.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
-@EntityRepository(TVSeason)
-export class TVSeasonDAO extends Repository<TVSeason> {
+import { DownloadableMediaState } from 'src/app.dto';
+
+import { TVSeason } from '../tvseason.entity';
+import { BaseDAO } from './base.dao';
+
+@Injectable()
+export class TVSeasonDAO extends BaseDAO<TVSeason> {
+  public constructor(
+    @InjectRepository(TVSeason) repository: Repository<TVSeason>
+  ) {
+    super(repository);
+  }
+
+  public static fromManager(manager: EntityManager): TVSeasonDAO {
+    return new TVSeasonDAO(manager.getRepository(TVSeason));
+  }
+
   public async inLibrary(tvShowTMDBId: number, seasonNumber: number) {
     const match = await this.createQueryBuilder('tvSeason')
       .innerJoinAndSelect(
@@ -14,7 +29,7 @@ export class TVSeasonDAO extends Repository<TVSeason> {
       )
       .where('tvSeason.seasonNumber = :seasonNumber', { seasonNumber })
       .getOne();
-    return match !== undefined;
+    return match !== null && match !== undefined;
   }
 
   public async findOrCreate(
@@ -24,7 +39,7 @@ export class TVSeasonDAO extends Repository<TVSeason> {
     },
     defaultState?: DownloadableMediaState
   ) {
-    const match = await this.findOne(seasonAttributes);
+    const match = await this.findOne({ where: seasonAttributes });
     return (
       match || (await this.save({ ...seasonAttributes, state: defaultState }))
     );

@@ -1,5 +1,5 @@
 import { ObjectType, Field, Int, Float, InputType } from '@nestjs/graphql';
-import BigInt from 'graphql-bigint';
+import BigInt from 'src/utils/big-int.scalar';
 import { FileType } from 'src/app.dto';
 
 @ObjectType()

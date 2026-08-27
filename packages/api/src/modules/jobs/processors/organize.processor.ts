@@ -2,14 +2,15 @@ import dayjs from 'dayjs';
 import path from 'path';
 import { childCommand } from 'child-command';
 import { oneLine } from 'common-tags';
-import { Processor, Process } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { mapSeries } from 'p-iteration';
-import { Job } from 'bull';
+import { Job } from 'bullmq';
 import { Inject } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { EntityManager, Transaction, TransactionManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { Logger } from 'winston';
 
+import { Transaction, TransactionManager } from 'src/utils/transaction';
 import { LIBRARY_CONFIG } from 'src/config';
 
 import {
@@ -35,14 +36,30 @@ import { ParamsService } from 'src/modules/params/params.service';
 import { FileDAO } from 'src/entities/dao/file.dao';
 
 @Processor(JobsQueue.RENAME_AND_LINK)
-export class OrganizeProcessor {
+export class OrganizeProcessor extends WorkerHost {
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
+    private readonly dataSource: DataSource,
     private readonly transmissionService: TransmissionService,
     private readonly libraryService: LibraryService,
     private readonly paramsService: ParamsService
   ) {
+    super();
     this.logger = this.logger.child({ context: 'OrganizeProcessor' });
+  }
+
+  public async process(job: Job): Promise<any> {
+    switch (job.name) {
+      case OrganizeQueueProcessors.HANDLE_MOVIE:
+        return this.renameAndLinkMovie(job as Job<{ movieId: number }>);
+      case OrganizeQueueProcessors.HANDLE_EPISODE:
+        return this.renameAndLinkEpisode(job as Job<{ episodeId: number }>);
+      case OrganizeQueueProcessors.HANDLE_SEASON:
+        return this.renameAndLinkSeason(job as Job<{ seasonId: number }>);
+      default:
+        this.logger.warn('unknown organize job name', { name: job.name });
+        return undefined;
+    }
   }
 
   private getOrganizeStrategyCommand(strategy: OrganizeLibraryStrategy) {
@@ -59,7 +76,6 @@ export class OrganizeProcessor {
     }
   }
 
-  @Process(OrganizeQueueProcessors.HANDLE_MOVIE)
   @Transaction()
   public async renameAndLinkMovie(
     job: Job<{ movieId: number }>,
@@ -67,9 +83,9 @@ export class OrganizeProcessor {
   ) {
     const { movieId } = job.data;
 
-    const movieDAO = manager!.getCustomRepository(MovieDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const movieDAO = MovieDAO.fromManager(manager!);
+    const torrentDAO = TorrentDAO.fromManager(manager!);
+    const fileDAO = FileDAO.fromManager(manager!);
 
     const organizeStrategy = (await this.paramsService.get(
       ParameterKey.ORGANIZE_LIBRARY_STRATEGY
@@ -163,7 +179,6 @@ export class OrganizeProcessor {
     this.logger.info('finish rename and link movie', { movieId });
   }
 
-  @Process(OrganizeQueueProcessors.HANDLE_EPISODE)
   @Transaction()
   public async renameAndLinkEpisode(
     job: Job<{ episodeId: number }>,
@@ -171,9 +186,9 @@ export class OrganizeProcessor {
   ) {
     const { episodeId } = job.data;
 
-    const tvEpisodeDAO = manager!.getCustomRepository(TVEpisodeDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const tvEpisodeDAO = TVEpisodeDAO.fromManager(manager!);
+    const torrentDAO = TorrentDAO.fromManager(manager!);
+    const fileDAO = FileDAO.fromManager(manager!);
 
     const organizeStrategy = (await this.paramsService.get(
       ParameterKey.ORGANIZE_LIBRARY_STRATEGY
@@ -251,7 +266,6 @@ export class OrganizeProcessor {
     this.logger.info('finish rename and link episode', { episodeId });
   }
 
-  @Process(OrganizeQueueProcessors.HANDLE_SEASON)
   @Transaction()
   public async renameAndLinkSeason(
     job: Job<{ seasonId: number }>,
@@ -259,10 +273,10 @@ export class OrganizeProcessor {
   ) {
     const { seasonId } = job.data;
 
-    const tvSeasonDAO = manager!.getCustomRepository(TVSeasonDAO);
-    const tvEpisodeDAO = manager!.getCustomRepository(TVEpisodeDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const tvSeasonDAO = TVSeasonDAO.fromManager(manager!);
+    const tvEpisodeDAO = TVEpisodeDAO.fromManager(manager!);
+    const torrentDAO = TorrentDAO.fromManager(manager!);
+    const fileDAO = FileDAO.fromManager(manager!);
 
     const organizeStrategy = (await this.paramsService.get(
       ParameterKey.ORGANIZE_LIBRARY_STRATEGY

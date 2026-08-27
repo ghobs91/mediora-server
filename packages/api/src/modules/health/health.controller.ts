@@ -2,9 +2,10 @@ import { Controller, Get } from '@nestjs/common';
 
 import {
   HealthCheckService,
-  DNSHealthIndicator,
   HealthCheck,
+  HealthIndicatorService,
 } from '@nestjs/terminus';
+import axios from 'axios';
 
 import { Public } from 'src/auth/public.decorator';
 
@@ -13,14 +14,25 @@ import { Public } from 'src/auth/public.decorator';
 export class HealthController {
   public constructor(
     private health: HealthCheckService,
-    private dns: DNSHealthIndicator
+    private healthIndicatorService: HealthIndicatorService
   ) {}
 
   @Get()
   @HealthCheck()
   public check() {
     return this.health.check([
-      () => this.dns.pingCheck('tmdb', 'https://www.themoviedb.org/'),
+      () => this.checkTMDB(),
     ]);
+  }
+
+  private async checkTMDB() {
+    const indicator = this.healthIndicatorService.check('tmdb');
+
+    try {
+      await axios.get('https://www.themoviedb.org/', { timeout: 5000 });
+      return indicator.up();
+    } catch (_error) {
+      return indicator.down({ message: 'unable to reach themoviedb.org' });
+    }
   }
 }

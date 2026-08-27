@@ -7,10 +7,10 @@ import childCommand from 'child-command';
 import dayjs from 'dayjs';
 import path from 'path';
 
-import { DeepPartial, TransactionManager, EntityManager, Any } from 'typeorm';
+import { DataSource, DeepPartial, EntityManager, Any } from 'typeorm';
 
 import { FileType, DownloadableMediaState } from 'src/app.dto';
-import { LazyTransaction } from 'src/utils/lazy-transaction';
+import { TransactionManager, LazyTransaction } from 'src/utils/transaction';
 
 import { MovieDAO } from 'src/entities/dao/movie.dao';
 import { Movie } from 'src/entities/movie.entity';
@@ -38,6 +38,7 @@ import { FileDAO } from 'src/entities/dao/file.dao';
 export class LibraryService {
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
+    private readonly dataSource: DataSource,
     private readonly movieDAO: MovieDAO,
     private readonly tvShowDAO: TVShowDAO,
     private readonly tvEpisodeDAO: TVEpisodeDAO,
@@ -115,7 +116,9 @@ export class LibraryService {
   }
 
   public async getMovie(movieId: number) {
-    const movie = await this.movieDAO.findOneOrFail(movieId);
+    const movie = await this.movieDAO.findOneOrFail({
+      where: { id: movieId },
+    });
     return this.enrichMovie(movie);
   }
 
@@ -126,7 +129,9 @@ export class LibraryService {
   }
 
   public async getTVShow(tvShowId: number, params?: { language: string }) {
-    const tvShow = await this.tvShowDAO.findOneOrFail(tvShowId);
+    const tvShow = await this.tvShowDAO.findOneOrFail({
+      where: { id: tvShowId },
+    });
     return this.enrichTVShow(tvShow, params);
   }
 
@@ -185,9 +190,9 @@ export class LibraryService {
     @TransactionManager() manager: EntityManager | null
   ) {
     this.logger.info('start remove movie', { tmdbId });
-    const movieDAO = manager!.getCustomRepository(MovieDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const movieDAO = MovieDAO.fromManager(manager!);
+    const torrentDAO = TorrentDAO.fromManager(manager!);
+    const fileDAO = FileDAO.fromManager(manager!);
 
     const movie = await movieDAO.findOneOrFail({
       where: { tmdbId },
@@ -195,8 +200,7 @@ export class LibraryService {
     });
 
     const torrent = await torrentDAO.findOne({
-      resourceType: FileType.MOVIE,
-      resourceId: movie.id,
+      where: { resourceType: FileType.MOVIE, resourceId: movie.id },
     });
 
     if (torrent) {
@@ -231,9 +235,9 @@ export class LibraryService {
   ) {
     this.logger.info('start remove tv show', { tmdbId });
 
-    const tvShowDAO = manager!.getCustomRepository(TVShowDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const tvShowDAO = TVShowDAO.fromManager(manager!);
+    const torrentDAO = TorrentDAO.fromManager(manager!);
+    const fileDAO = FileDAO.fromManager(manager!);
 
     const tvShow = await tvShowDAO.findOneOrFail({
       where: { tmdbId },
@@ -242,8 +246,7 @@ export class LibraryService {
 
     await forEach(tvShow.seasons, async (season) => {
       const torrent = await torrentDAO.findOne({
-        resourceId: season.id,
-        resourceType: FileType.SEASON,
+        where: { resourceId: season.id, resourceType: FileType.SEASON },
       });
 
       if (torrent) {
@@ -257,8 +260,7 @@ export class LibraryService {
 
     await forEach(tvShow.episodes, async (episode) => {
       const torrent = await torrentDAO.findOne({
-        resourceId: episode.id,
-        resourceType: FileType.EPISODE,
+        where: { resourceId: episode.id, resourceType: FileType.EPISODE },
       });
 
       if (torrent) {
@@ -301,8 +303,10 @@ export class LibraryService {
     this.logger.info('start download movie', { movieId });
     this.logger.info(jackettResult.title);
 
-    const movieDAO = manager!.getCustomRepository(MovieDAO);
-    const movie = await movieDAO.findOneOrFail(movieId);
+    const movieDAO = MovieDAO.fromManager(manager!);
+    const movie = await movieDAO.findOneOrFail({
+      where: { id: movieId },
+    });
 
     if (movie.state !== DownloadableMediaState.MISSING) {
       await this.removeMovie(
@@ -427,9 +431,9 @@ export class LibraryService {
   ) {
     this.logger.info('track missing seasons', { seasonNumbers });
 
-    const tvShowDAO = manager!.getCustomRepository(TVShowDAO);
-    const tvSeasonDAO = manager!.getCustomRepository(TVSeasonDAO);
-    const tvEpisodeDAO = manager!.getCustomRepository(TVEpisodeDAO);
+    const tvShowDAO = TVShowDAO.fromManager(manager!);
+    const tvSeasonDAO = TVSeasonDAO.fromManager(manager!);
+    const tvEpisodeDAO = TVEpisodeDAO.fromManager(manager!);
 
     const tmdbTVShow = await this.tmdbService.getTVShow(tmdbId);
     const tvShow = await tvShowDAO.findOrCreate({
@@ -523,24 +527,24 @@ export class LibraryService {
   ) {
     this.logger.info('start reset library', { deleteFiles, resetSettings });
 
-    await manager!.getCustomRepository(MovieDAO).delete({});
-    await manager!.getCustomRepository(TVShowDAO).delete({});
-    await manager!.getCustomRepository(TVSeasonDAO).delete({});
-    await manager!.getCustomRepository(TVEpisodeDAO).delete({});
+    await MovieDAO.fromManager(manager!).delete({});
+    await TVShowDAO.fromManager(manager!).delete({});
+    await TVSeasonDAO.fromManager(manager!).delete({});
+    await TVEpisodeDAO.fromManager(manager!).delete({});
 
     if (deleteFiles) {
       await forEachSeries(
-        await manager!.getCustomRepository(TorrentDAO).find(),
+        await TorrentDAO.fromManager(manager!).find(),
         (torrent) =>
           this.transmissionService.removeTorrentAndFiles(torrent.torrentHash)
       );
-      await manager!.getCustomRepository(TorrentDAO).delete({});
+      await TorrentDAO.fromManager(manager!).delete({});
     }
 
     if (resetSettings) {
-      await manager!.getCustomRepository(ParameterDAO).delete({});
-      await manager!.getCustomRepository(QualityDAO).delete({});
-      await manager!.getCustomRepository(TagDAO).delete({});
+      await ParameterDAO.fromManager(manager!).delete({});
+      await QualityDAO.fromManager(manager!).delete({});
+      await TagDAO.fromManager(manager!).delete({});
       await this.paramsService.initializeParamsStore(manager);
       await this.paramsService.initializeQuality(manager);
     }
@@ -599,10 +603,10 @@ export class LibraryService {
   }
 
   private async replaceSeason(seasonId: number, manager: EntityManager) {
-    const tvSeasonDAO = manager!.getCustomRepository(TVSeasonDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
-    const tvEpisodeDAO = manager!.getCustomRepository(TVEpisodeDAO);
-    const fileDAO = manager!.getCustomRepository(FileDAO);
+    const tvSeasonDAO = TVSeasonDAO.fromManager(manager);
+    const torrentDAO = TorrentDAO.fromManager(manager);
+    const tvEpisodeDAO = TVEpisodeDAO.fromManager(manager);
+    const fileDAO = FileDAO.fromManager(manager);
 
     const tvSeason = await tvSeasonDAO.findOneOrFail({
       where: { id: seasonId },
@@ -614,8 +618,7 @@ export class LibraryService {
 
       await forEach(tvSeason.episodes, async (episode) => {
         const torrent = await torrentDAO.findOne({
-          resourceId: episode.id,
-          resourceType: FileType.EPISODE,
+          where: { resourceId: episode.id, resourceType: FileType.EPISODE },
         });
 
         if (torrent) {
@@ -658,10 +661,12 @@ export class LibraryService {
   }
 
   private async replaceTVEpisode(episodeId: number, manager: EntityManager) {
-    const tvEpisodeDAO = manager!.getCustomRepository(TVEpisodeDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
+    const tvEpisodeDAO = TVEpisodeDAO.fromManager(manager);
+    const torrentDAO = TorrentDAO.fromManager(manager);
 
-    const tvEpisode = await tvEpisodeDAO.findOneOrFail({ id: episodeId });
+    const tvEpisode = await tvEpisodeDAO.findOneOrFail({
+      where: { id: episodeId },
+    });
 
     if (tvEpisode.state !== DownloadableMediaState.MISSING) {
       this.logger.info('episode already downloaded, removing existing files');
@@ -684,10 +689,12 @@ export class LibraryService {
   }
 
   private async replaceMovie(movieId: number, manager: EntityManager) {
-    const movieDAO = manager!.getCustomRepository(MovieDAO);
-    const torrentDAO = manager!.getCustomRepository(TorrentDAO);
+    const movieDAO = MovieDAO.fromManager(manager);
+    const torrentDAO = TorrentDAO.fromManager(manager);
 
-    const movie = await movieDAO.findOneOrFail({ id: movieId });
+    const movie = await movieDAO.findOneOrFail({
+      where: { id: movieId },
+    });
 
     if (movie.state !== DownloadableMediaState.MISSING) {
       this.logger.info('movie already downloaded, removing existing files');

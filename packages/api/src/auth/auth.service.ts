@@ -15,7 +15,7 @@ export class AuthService {
 
   public async login(password: string) {
     const configuredHash = await this.parameterDAO.findOne({
-      key: ParameterKey.AUTH_PASSWORD_HASH,
+      where: { key: ParameterKey.AUTH_PASSWORD_HASH },
     });
 
     const isValid = configuredHash?.value

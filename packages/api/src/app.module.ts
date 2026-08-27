@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { WinstonModule } from 'nest-winston';
 import { TerminusModule } from '@nestjs/terminus';
 
@@ -28,13 +29,11 @@ import { SetupGuard } from './modules/setup/setup.guard';
   imports: [
     WinstonModule.forRoot(winstonOptions),
     TypeOrmModule.forRoot(DB_CONFIG),
-    GraphQLModule.forRoot({
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
       autoSchemaFile: 'schema.gql',
       introspection: env.ENV !== 'production',
       playground: env.ENV !== 'production',
-      bodyParserConfig: {
-        limit: '10mb',
-      },
     }),
     TerminusModule,
     AuthModule,

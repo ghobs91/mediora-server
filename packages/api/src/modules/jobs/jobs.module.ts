@@ -1,9 +1,15 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { BullModule } from '@nestjs/bull';
+import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { REDIS_CONFIG } from 'src/config';
 import { JobsQueue } from 'src/app.dto';
+
+import { Movie } from 'src/entities/movie.entity';
+import { Torrent } from 'src/entities/torrent.entity';
+import { TVSeason } from 'src/entities/tvseason.entity';
+import { TVEpisode } from 'src/entities/tvepisode.entity';
+import { File } from 'src/entities/file.entity';
 
 import { MovieDAO } from 'src/entities/dao/movie.dao';
 import { TorrentDAO } from 'src/entities/dao/torrent.dao';
@@ -25,27 +31,36 @@ import { ScanLibraryProcessor } from './processors/scan-library.processor';
 import { JobsService } from './jobs.service';
 import { JobsResolver } from './jobs.resolver';
 
-const queues = [
-  JobsQueue.REFRESH_TORRENT,
-  JobsQueue.DOWNLOAD,
-  JobsQueue.RENAME_AND_LINK,
-  JobsQueue.SCAN_LIBRARY,
-].map((name) => ({
-  name,
-  redis: REDIS_CONFIG,
-  defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
-}));
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      MovieDAO,
-      TorrentDAO,
-      TVSeasonDAO,
-      TVEpisodeDAO,
-      FileDAO,
+      Movie,
+      Torrent,
+      TVSeason,
+      TVEpisode,
+      File,
     ]),
-    BullModule.registerQueue(...queues),
+    BullModule.forRoot({
+      connection: REDIS_CONFIG,
+    }),
+    BullModule.registerQueue(
+      {
+        name: JobsQueue.REFRESH_TORRENT,
+        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+      },
+      {
+        name: JobsQueue.DOWNLOAD,
+        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+      },
+      {
+        name: JobsQueue.RENAME_AND_LINK,
+        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+      },
+      {
+        name: JobsQueue.SCAN_LIBRARY,
+        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+      }
+    ),
     JackettModule,
     TransmissionModule,
     TMDBModule,
@@ -59,6 +74,11 @@ const queues = [
     ScanLibraryProcessor,
     JobsService,
     JobsResolver,
+    MovieDAO,
+    TorrentDAO,
+    TVSeasonDAO,
+    TVEpisodeDAO,
+    FileDAO,
   ],
   exports: [JobsService],
 })

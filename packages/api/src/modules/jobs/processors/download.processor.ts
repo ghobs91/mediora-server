@@ -1,6 +1,6 @@
-import { Processor, Process, InjectQueue } from '@nestjs/bull';
+import { Processor, InjectQueue, WorkerHost } from '@nestjs/bullmq';
 import { forEachSeries } from 'p-iteration';
-import { Job, Queue } from 'bull';
+import { Job, Queue } from 'bullmq';
 import { Inject } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -19,7 +19,7 @@ import { JackettService } from 'src/modules/jackett/jackett.service';
 import { LibraryService } from 'src/modules/library/library.service';
 
 @Processor(JobsQueue.DOWNLOAD)
-export class DownloadProcessor {
+export class DownloadProcessor extends WorkerHost {
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     @InjectQueue(JobsQueue.DOWNLOAD) private readonly downloadQueue: Queue,
@@ -29,10 +29,25 @@ export class DownloadProcessor {
     private readonly jackettService: JackettService,
     private readonly libraryService: LibraryService
   ) {
+    super();
     this.logger = logger.child({ context: 'DownloadProcessor' });
   }
 
-  @Process(DownloadQueueProcessors.DOWNLOAD_MISSING)
+  public async process(job: Job) {
+    switch (job.name) {
+      case DownloadQueueProcessors.DOWNLOAD_MISSING:
+        return this.downloadMissing();
+      case DownloadQueueProcessors.DOWNLOAD_MOVIE:
+        return this.downloadMovie(job as Job<number>);
+      case DownloadQueueProcessors.DOWNLOAD_SEASON:
+        return this.downloadSeason(job as Job<number>);
+      case DownloadQueueProcessors.DOWNLOAD_EPISODE:
+        return this.downloadEpisode(job as Job<number>);
+      default:
+        this.logger.warn('unknown download job name', { name: job.name });
+    }
+  }
+
   public async downloadMissing() {
     this.logger.info('start try download missing files');
 
@@ -59,7 +74,6 @@ export class DownloadProcessor {
     this.logger.info('finish try download missing files');
   }
 
-  @Process(DownloadQueueProcessors.DOWNLOAD_MOVIE)
   public async downloadMovie({ data: movieId }: Job<number>) {
     this.logger.info('start download movie', { movieId });
 
@@ -89,7 +103,6 @@ export class DownloadProcessor {
     return;
   }
 
-  @Process(DownloadQueueProcessors.DOWNLOAD_SEASON)
   public async downloadSeason({ data: seasonId }: Job<number>) {
     this.logger.info('start download season', { seasonId });
 
@@ -137,7 +150,6 @@ export class DownloadProcessor {
     return;
   }
 
-  @Process(DownloadQueueProcessors.DOWNLOAD_EPISODE)
   public async downloadEpisode({ data: episodeId }: Job<number>) {
     this.logger.info('start download episode', { episodeId });
 
@@ -176,9 +188,9 @@ export class DownloadProcessor {
     episodeId?: number;
   }) {
     if (
-      (media.movieId && !(await this.movieDAO.findOne(media.movieId))) ||
-      (media.seasonId && !(await this.tvSeasonDAO.findOne(media.seasonId))) ||
-      (media.episodeId && !(await this.tvEpisodeDAO.findOne(media.episodeId)))
+      (media.movieId && !(await this.movieDAO.findOne({ where: { id: media.movieId } }))) ||
+      (media.seasonId && !(await this.tvSeasonDAO.findOne({ where: { id: media.seasonId } }))) ||
+      (media.episodeId && !(await this.tvEpisodeDAO.findOne({ where: { id: media.episodeId } })))
     ) {
       this.logger.warn(
         'media already removed from database, this job will stop',

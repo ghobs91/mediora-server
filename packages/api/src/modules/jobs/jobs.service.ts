@@ -1,7 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue, JobOptions } from 'bull';
-import { BullAdapter, setQueues } from 'bull-board';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue, JobsOptions } from 'bullmq';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 
@@ -25,25 +24,16 @@ export class JobsService {
     private readonly scanLibraryQueue: Queue
   ) {
     this.logger = this.logger.child({ context: 'JobsService' });
-    this.registerQueuesIntoBullBoard();
     this.startRecurringJobs();
-  }
-
-  private registerQueuesIntoBullBoard() {
-    setQueues([
-      new BullAdapter(this.downloadQueue),
-      new BullAdapter(this.refreshTorrentQueue),
-      new BullAdapter(this.renameAndLinkQueue),
-      new BullAdapter(this.scanLibraryQueue),
-    ]);
   }
 
   private startRecurringJobs() {
     this.refreshTorrentQueue.add(
+      'refresh_torrents',
       {},
       {
         repeat: {
-          cron: '*/1 * * * *', // every minute
+          pattern: '* * * * *', // every minute
           startDate: new Date(),
         },
       }
@@ -51,21 +41,21 @@ export class JobsService {
 
     this.startScanLibrary({
       repeat: {
-        cron: '0 */6 * * *', // every 6 hours
+        pattern: '0 */6 * * *', // every 6 hours
         startDate: new Date(),
       },
     });
 
     this.startFindNewEpisodes({
       repeat: {
-        cron: '0 */6 * * *', // every 6 hours
+        pattern: '0 */6 * * *', // every 6 hours
         startDate: new Date(),
       },
     });
 
     this.startDownloadMissing({
       repeat: {
-        cron: '*/30 * * * *', // every 30 minutes
+        pattern: '*/30 * * * *', // every 30 minutes
         startDate: new Date(),
       },
     });
@@ -95,7 +85,7 @@ export class JobsService {
     );
   }
 
-  public startScanLibrary(options?: JobOptions) {
+  public startScanLibrary(options?: JobsOptions) {
     this.logger.info('add scan library job');
     return this.scanLibraryQueue.add(
       ScanLibraryQueueProcessors.SCAN_LIBRARY_FOLDER,
@@ -104,7 +94,7 @@ export class JobsService {
     );
   }
 
-  public startFindNewEpisodes(options?: JobOptions) {
+  public startFindNewEpisodes(options?: JobsOptions) {
     this.logger.info('start find new episodes');
     return this.scanLibraryQueue.add(
       ScanLibraryQueueProcessors.FIND_NEW_EPISODES,
@@ -113,7 +103,7 @@ export class JobsService {
     );
   }
 
-  public startDownloadMissing(options?: JobOptions) {
+  public startDownloadMissing(options?: JobsOptions) {
     this.logger.info('start download missing files');
     return this.downloadQueue.add(
       DownloadQueueProcessors.DOWNLOAD_MISSING,

@@ -1,17 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { map, forEachSeries } from 'p-iteration';
 
-import {
-  Transaction,
-  TransactionManager,
-  EntityManager,
-  Not,
-  In,
-  IsNull,
-} from 'typeorm';
+import { DataSource, EntityManager, Not, In, IsNull } from 'typeorm';
 
 import { ParameterKey, OrganizeLibraryStrategy } from 'src/app.dto';
-import { LazyTransaction } from 'src/utils/lazy-transaction';
+import { TransactionManager, LazyTransaction, Transaction } from 'src/utils/transaction';
 
 import { Entertainment } from 'src/modules/tmdb/tmdb.dto';
 
@@ -25,6 +18,7 @@ import { TagInput } from './params.dto';
 @Injectable()
 export class ParamsService {
   public constructor(
+    private readonly dataSource: DataSource,
     private readonly parameterDAO: ParameterDAO,
     private readonly qualityDAO: QualityDAO,
     private readonly tagDAO: TagDAO
@@ -48,7 +42,7 @@ export class ParamsService {
     ];
 
     await map(defaultParams, ([key, value]) =>
-      manager!.getCustomRepository(ParameterDAO).findOrCreate({ key, value })
+      ParameterDAO.fromManager(manager!).findOrCreate({ key, value })
     );
   }
 
@@ -56,7 +50,7 @@ export class ParamsService {
   public async initializeQuality(
     @TransactionManager() manager: EntityManager | null
   ) {
-    const qualityDAO = manager!.getCustomRepository(QualityDAO);
+    const qualityDAO = QualityDAO.fromManager(manager!);
     const defaultQualities: Array<
       Omit<Quality, 'id' | 'createdAt' | 'updatedAt'>
     > = [
@@ -122,17 +116,17 @@ export class ParamsService {
   }
 
   public async get(key: ParameterKey) {
-    const param = await this.parameterDAO.findOne({ key });
+    const param = await this.parameterDAO.findOne({ where: { key } });
     return param?.value || '';
   }
 
   public async getNumber(key: ParameterKey) {
-    const param = await this.parameterDAO.findOne({ key });
+    const param = await this.parameterDAO.findOne({ where: { key } });
     return param?.value ? parseInt(param.value, 10) : 0;
   }
 
   public async getList(key: ParameterKey) {
-    const param = await this.parameterDAO.findOne({ key });
+    const param = await this.parameterDAO.findOne({ where: { key } });
     return param?.value ? param.value.split(',') : [];
   }
 
@@ -154,14 +148,14 @@ export class ParamsService {
     tags: TagInput[],
     @TransactionManager() manager?: EntityManager
   ) {
-    const tagDAO = manager!.getCustomRepository(TagDAO);
+    const tagDAO = TagDAO.fromManager(manager!);
     await tagDAO.delete(
       tags.length > 0
         ? { name: Not(In(tags.map((tag) => tag.name))) }
         : { id: Not(IsNull()) }
     );
     await forEachSeries(tags, async (tag) => {
-      const match = await tagDAO.findOne({ name: tag.name });
+      const match = await tagDAO.findOne({ where: { name: tag.name } });
       return match
         ? await tagDAO.save({ id: match.id, score: tag.score })
         : await tagDAO.save(tag);

@@ -1,5 +1,5 @@
 import { ObjectType, Field } from '@nestjs/graphql';
-import BigInt from 'graphql-bigint';
+import BigInt from 'src/utils/big-int.scalar';
 
 export interface JackettResult {
   FirstSeen: string;
@@ -38,7 +38,7 @@ export class JackettFormattedResult {
   @Field() public publishDate!: string;
   @Field() public normalizedTitle!: string;
   @Field((_type) => [String]) public normalizedTitleParts!: string[];
-  @Field((_type) => BigInt) public size!: BigInt;
+  @Field((_type) => BigInt) public size!: number;
 }
 
 export interface JackettIndexer {

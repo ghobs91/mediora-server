@@ -1,6 +1,13 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { Movie } from 'src/entities/movie.entity';
+import { TVShow } from 'src/entities/tvshow.entity';
+import { TVSeason } from 'src/entities/tvseason.entity';
+import { TVEpisode } from 'src/entities/tvepisode.entity';
+import { Torrent } from 'src/entities/torrent.entity';
+import { MediaView } from 'src/entities/media-view.entity';
+
 import { MovieDAO } from 'src/entities/dao/movie.dao';
 import { TVShowDAO } from 'src/entities/dao/tvshow.dao';
 import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
@@ -20,12 +27,12 @@ import { LibraryService } from './library.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      MovieDAO,
-      TVShowDAO,
-      TVSeasonDAO,
-      TVEpisodeDAO,
-      TorrentDAO,
-      MediaViewDAO,
+      Movie,
+      TVShow,
+      TVSeason,
+      TVEpisode,
+      Torrent,
+      MediaView,
     ]),
     TMDBModule,
     TransmissionModule,
@@ -33,7 +40,16 @@ import { LibraryService } from './library.service';
     ParamsModule,
     forwardRef(() => JobsModule),
   ],
-  providers: [LibraryResolver, LibraryService],
+  providers: [
+    LibraryResolver,
+    LibraryService,
+    MovieDAO,
+    TVShowDAO,
+    TVSeasonDAO,
+    TVEpisodeDAO,
+    TorrentDAO,
+    MediaViewDAO,
+  ],
   exports: [LibraryService],
 })
 export class LibraryModule {}

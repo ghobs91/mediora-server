@@ -9,7 +9,7 @@ import { CacheKeys } from './cache.dto';
 
 @Injectable()
 export class RedisService {
-  private client: Redis.Redis;
+  private client: Redis;
 
   public constructor(@Inject(WINSTON_MODULE_PROVIDER) private logger: Logger) {
     this.logger = logger.child({ context: 'RedisService' });
