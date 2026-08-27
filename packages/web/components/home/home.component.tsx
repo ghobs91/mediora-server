@@ -1,5 +1,9 @@
 import React from 'react';
 
 export function HomeComponent() {
-  return <h1>Hello world</h1>;
+  return (
+    <div className="flex items-center justify-center py-24 text-muted-foreground">
+      Hello world
+    </div>
+  );
 }

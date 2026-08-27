@@ -1,5 +1,5 @@
-import React from 'react';
-import { Form, notification, Card, Input, Button, Radio, Popover } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 import {
   useGetParamsQuery,
@@ -7,30 +7,97 @@ import {
   GetParamsDocument,
 } from '../../utils/graphql';
 
-export function SettingsFormComponent() {
-  const [form] = Form.useForm();
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
+const organizeLibraryStrategies = [
+  {
+    value: 'link',
+    label: 'Link',
+    description: (
+      <>
+        It will create a symbolic link between the downloaded file and your
+        library folder.
+        <br />
+        This keeps the torrent seeding and deleting the file in your library
+        wont delete the original file.
+      </>
+    ),
+  },
+  {
+    value: 'copy',
+    label: 'Copy',
+    description: (
+      <>
+        It will copy the downloaded file to your library, this is useful when
+        your system does not supports symbolic links.
+        <br />
+        This keeps the torrent seeding and deleting the file in your library
+        wont delete the original file.
+      </>
+    ),
+  },
+  {
+    value: 'move',
+    label: 'Move',
+    description: (
+      <>
+        It will move the downloaded file to your library, this is useful when
+        your system does not supports symbolic links.
+        <br />
+        This wont keep the torrent seeding and deleting the file in your
+        library will be permanent.
+      </>
+    ),
+  },
+];
+
+export function SettingsFormComponent() {
   const { data, loading } = useGetParamsQuery();
-  const [updateParams] = useUpdateParamsMutation({
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  const [updateParams, { loading: saving }] = useUpdateParamsMutation({
     awaitRefetchQueries: true,
     refetchQueries: [{ query: GetParamsDocument }],
-    onCompleted: () =>
-      notification.success({
-        message: 'Settings updated',
-        placement: 'bottomRight',
-      }),
+    onCompleted: () => toast.success('Settings updated'),
     onError: ({ message }) =>
-      notification.error({
-        message: message.replace('GraphQL error: ', ''),
-        placement: 'bottomRight',
-      }),
+      toast.error(message.replace('GraphQL error: ', '')),
   });
 
   const fields = Object.keys(data?.params || {}).filter(
     (key) => key !== '__typename'
   );
 
-  const onFinish = async (values: Record<string, string>) => {
+  useEffect(() => {
+    if (!data?.params) return;
+    const params = data.params as unknown as Record<string, string>;
+    setValues(
+      Object.fromEntries(
+        Object.entries(params).filter(([key]) => key !== '__typename')
+      )
+    );
+  }, [data]);
+
+  const handleChange = (key: string, value: string) => {
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     await updateParams({
       variables: {
         params: Object.entries(values).map(([key, value]) => ({
@@ -41,82 +108,89 @@ export function SettingsFormComponent() {
     });
   };
 
-  return (
-    <Card loading={loading} title="Settings">
-      <Form form={form} initialValues={data?.params || {}} onFinish={onFinish}>
-        {fields.map((key) => (
-          <ParamsInput key={key} inputName={key} />
-        ))}
-        <Button type="default" htmlType="submit">
-          Update
-        </Button>
-      </Form>
-    </Card>
-  );
-}
-
-function ParamsInput({ inputName }: { inputName: string }) {
-  if (inputName === 'organize_library_strategy') {
+  if (loading) {
     return (
-      <Form.Item
-        name={inputName}
-        label={inputName}
-        rules={[{ required: true }]}
-      >
-        <Radio.Group>
-          <Radio.Button value="link">
-            <Popover
-              content={
-                <div>
-                  It will create a symbolic link between the downloaded file and
-                  your library folder.
-                  <br />
-                  This keeps the torrent seeding and deleting the file in your
-                  library wont delete the original file.
-                </div>
-              }
-            >
-              <span>Link</span>
-            </Popover>
-          </Radio.Button>
-          <Radio.Button value="copy">
-            <Popover
-              content={
-                <div>
-                  It will copy the downloaded file to your library, this is
-                  useful when your system does not supports symbolic links.
-                  <br />
-                  This keeps the torrent seeding and deleting the file in your
-                  library wont delete the original file.
-                </div>
-              }
-            >
-              <span>Copy</span>
-            </Popover>
-          </Radio.Button>
-          <Radio.Button value="move">
-            <Popover
-              content={
-                <div>
-                  It will move the downloaded file to your library, this is
-                  useful when your system does not supports symbolic links.
-                  <br />
-                  This wont keep the torrent seeding and deleting the file in
-                  your library will be permanent.
-                </div>
-              }
-            >
-              <span>Move</span>
-            </Popover>
-          </Radio.Button>
-        </Radio.Group>
-      </Form.Item>
+      <Card>
+        <CardHeader>
+          <CardTitle>Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-2/3" />
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <Form.Item name={inputName} label={inputName} rules={[{ required: true }]}>
-      <Input />
-    </Form.Item>
+    <Card>
+      <CardHeader>
+        <CardTitle>Settings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <TooltipProvider>
+            {fields.map((key) => (
+              <ParamsInput
+                key={key}
+                inputName={key}
+                value={values[key]}
+                onChange={(value) => handleChange(key, value)}
+              />
+            ))}
+          </TooltipProvider>
+          <Button type="submit" disabled={saving}>
+            Update
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface ParamsInputProps {
+  inputName: string;
+  value?: string;
+  onChange: (value: string) => void;
+}
+
+function ParamsInput({ inputName, value, onChange }: ParamsInputProps) {
+  if (inputName === 'organize_library_strategy') {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label>{inputName}</Label>
+        <div className="flex items-center gap-2">
+          {organizeLibraryStrategies.map((strategy) => (
+            <Tooltip key={strategy.value}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={value === strategy.value ? 'default' : 'outline'}
+                  onClick={() => onChange(strategy.value)}
+                >
+                  {strategy.label}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                {strategy.description}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={`param-${inputName}`}>{inputName}</Label>
+      <Input
+        id={`param-${inputName}`}
+        value={value}
+        onChange={({ target }) => onChange(target.value)}
+      />
+    </div>
   );
 }

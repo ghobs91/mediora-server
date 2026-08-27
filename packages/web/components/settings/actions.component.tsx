@@ -1,5 +1,6 @@
-import React from 'react';
-import { Button, Card, notification, Modal, Checkbox, Alert } from 'antd';
+import React, { useState } from 'react';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 import {
   useStartScanLibraryMutation,
@@ -9,129 +10,184 @@ import {
   useClearCacheMutation,
 } from '../../utils/graphql';
 
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
 export function ActionsComponents() {
+  const [deleteFiles, setDeleteFiles] = useState(false);
+  const [resetSettings, setResetSettings] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resetInfoOpen, setResetInfoOpen] = useState(false);
+  const [cacheInfoOpen, setCacheInfoOpen] = useState(false);
+
   const [findEpisodes, { loading: loading1 }] = useStartFindNewEpisodesMutation(
     {
-      onCompleted: () =>
-        notification.success({
-          message: 'Find new episodes job started',
-          placement: 'bottomRight',
-        }),
+      onCompleted: () => toast.success('Find new episodes job started'),
     }
   );
 
   const [scanLibrary, { loading: loading2 }] = useStartScanLibraryMutation({
-    onCompleted: () =>
-      notification.success({
-        message: 'Scan library folder started',
-        placement: 'bottomRight',
-      }),
+    onCompleted: () => toast.success('Scan library folder started'),
   });
 
   const [
     downloadMissing,
     { loading: loading3 },
   ] = useStartDownloadMissingMutation({
-    onCompleted: () =>
-      notification.success({
-        message: 'Download missing files started',
-        placement: 'bottomRight',
-      }),
+    onCompleted: () => toast.success('Download missing files started'),
   });
 
   const [resetLibrary] = useResetLibraryMutation({
-    onCompleted: () => {
-      Modal.info({
-        title: 'Reset succesfull!',
-        content: 'The page will now reload',
-        onOk: () => window.location.reload(),
-      });
-    },
+    onCompleted: () => setResetInfoOpen(true),
   });
 
   const [clearCache, { loading: loading4 }] = useClearCacheMutation({
-    onCompleted: () => {
-      Modal.info({
-        title: 'Cache cleared correctly!',
-        content: 'The page will now reload',
-        onOk: () => window.location.reload(),
-      });
-    },
+    onCompleted: () => setCacheInfoOpen(true),
   });
 
+  const jobLoading = loading1 || loading2 || loading3;
+
   function handleResetClick() {
-    const mutableState = { deleteFiles: false, resetSettings: false };
-    Modal.confirm({
-      title: '⚠️ Warning',
-      content: (
-        <>
-          <Alert
-            type="warning"
-            message="This will remove everything from bobarr database and it will re-scan your library folder."
-            style={{ marginBottom: 24 }}
-          />
-          <div>
-            <Checkbox
-              onChange={({ target: { checked } }) =>
-                (mutableState.deleteFiles = checked)
-              }
-            >
-              Delete files downloaded from disk with bobarr (permanent)
-            </Checkbox>
-          </div>
-          <div>
-            <Checkbox
-              onChange={({ target: { checked } }) =>
-                (mutableState.resetSettings = checked)
-              }
-            >
-              Reset settings
-            </Checkbox>
-          </div>
-        </>
-      ),
-      onOk: () => resetLibrary({ variables: mutableState }),
-      width: 480,
-    });
+    setDeleteFiles(false);
+    setResetSettings(false);
+    setConfirmOpen(true);
+  }
+
+  function handleResetConfirm() {
+    setConfirmOpen(false);
+    resetLibrary({ variables: { deleteFiles, resetSettings } });
   }
 
   return (
-    <Card title="Actions" className="actions">
-      <Button
-        size="large"
-        type="default"
-        onClick={() => scanLibrary()}
-        loading={loading1 || loading2 || loading3}
-      >
-        Scan library folder
-      </Button>
-      <Button
-        size="large"
-        type="default"
-        onClick={() => findEpisodes()}
-        loading={loading1 || loading2 || loading3}
-      >
-        Find new episodes
-      </Button>
-      <Button
-        size="large"
-        type="default"
-        onClick={() => downloadMissing()}
-        loading={loading1 || loading2 || loading3}
-      >
-        Download missing files
-      </Button>
-      <Button
-        size="large"
-        type="default"
-        onClick={() => clearCache()}
-        loading={loading4}
-      >
-        Clear cache
-      </Button>
-      <Button size="large" danger={true} onClick={handleResetClick}>
-        Reset bobarr
-      </Button>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <Button size="lg" onClick={() => scanLibrary()} disabled={jobLoading}>
+            {jobLoading && <Loader2 className="animate-spin" />}
+            Scan library folder
+          </Button>
+          <Button
+            size="lg"
+            onClick={() => findEpisodes()}
+            disabled={jobLoading}
+          >
+            {jobLoading && <Loader2 className="animate-spin" />}
+            Find new episodes
+          </Button>
+          <Button
+            size="lg"
+            onClick={() => downloadMissing()}
+            disabled={jobLoading}
+          >
+            {jobLoading && <Loader2 className="animate-spin" />}
+            Download missing files
+          </Button>
+          <Button size="lg" onClick={() => clearCache()} disabled={loading4}>
+            {loading4 && <Loader2 className="animate-spin" />}
+            Clear cache
+          </Button>
+          <Button size="lg" variant="destructive" onClick={handleResetClick}>
+            Reset bobarr
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>⚠️ Warning</DialogTitle>
+            <DialogDescription>
+              This will remove everything from bobarr database and it will
+              re-scan your library folder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="delete-files"
+                checked={deleteFiles}
+                onCheckedChange={(checked) => setDeleteFiles(checked === true)}
+              />
+              <Label htmlFor="delete-files" className="font-normal">
+                Delete files downloaded from disk with bobarr (permanent)
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="reset-settings"
+                checked={resetSettings}
+                onCheckedChange={(checked) =>
+                  setResetSettings(checked === true)
+                }
+              />
+              <Label htmlFor="reset-settings" className="font-normal">
+                Reset settings
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleResetConfirm}>
+              Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ReloadInfoDialog
+        open={resetInfoOpen}
+        onOpenChange={setResetInfoOpen}
+        title="Reset succesfull!"
+      />
+      <ReloadInfoDialog
+        open={cacheInfoOpen}
+        onOpenChange={setCacheInfoOpen}
+        title="Cache cleared correctly!"
+      />
+    </>
+  );
+}
+
+function ReloadInfoDialog({
+  open,
+  onOpenChange,
+  title,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>The page will now reload</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button onClick={() => window.location.reload()}>OK</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

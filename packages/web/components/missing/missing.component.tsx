@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { Tag } from 'antd';
 import { orderBy, uniqBy } from 'lodash';
 import { useRouter } from 'next/router';
-import { SearchOutlined } from '@ant-design/icons';
+import { Search } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
 
 import { formatNumber } from '../../utils/format-number';
 import { availableIn } from '../../utils/available-in';
@@ -15,7 +16,6 @@ import {
 } from '../../utils/graphql';
 
 import { ManualSearchComponent } from '../manual-search/manual-search.component';
-import { MissingComponentStyles } from './missing.styles';
 
 export function MissingComponent() {
   const { pathname } = useRouter();
@@ -54,64 +54,76 @@ export function MissingComponent() {
           />
         )}
 
-        <MissingComponentStyles>
-          <div className="wrapper">
-            {missing.map((row) => (
-              <div key={row.id} className="row">
-                {/* missing movie */}
-                {row.__typename === 'EnrichedMovie' && (
-                  <div>
-                    <span className="title">{row.title}</span>
-                    <span className="date">({row.date.format('YYYY')})</span>
-                  </div>
-                )}
+        <div className="mx-auto w-full max-w-[1200px] px-6">
+          {missing.map((row) => (
+            <div
+              key={row.id}
+              className="mb-2 flex w-full items-center rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+            >
+              {/* missing movie */}
+              {row.__typename === 'EnrichedMovie' && (
+                <div>
+                  <span className="mr-1 font-bold">{row.title}</span>
+                  <span className="text-muted-foreground">
+                    ({row.date.format('YYYY')})
+                  </span>
+                </div>
+              )}
 
-                {/* missing tv episode */}
-                {row.__typename === 'EnrichedTVEpisode' && (
-                  <div>
-                    <span className="title">{row.tvShow?.title}</span>
-                    <span className="episode-number">
-                      S{formatNumber(row.seasonNumber!)}E
-                      {formatNumber(row.episodeNumber!)}
-                    </span>
-                  </div>
-                )}
+              {/* missing tv episode */}
+              {row.__typename === 'EnrichedTVEpisode' && (
+                <div>
+                  <span className="mr-1 font-bold">{row.tvShow?.title}</span>
+                  <span className="text-muted-foreground">
+                    S{formatNumber(row.seasonNumber!)}E
+                    {formatNumber(row.episodeNumber!)}
+                  </span>
+                </div>
+              )}
 
-                <Tag
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setManualSearch(row)}
-                >
-                  <SearchOutlined /> Missing
-                </Tag>
-              </div>
-            ))}
+              <Badge
+                variant="secondary"
+                className="ml-auto cursor-pointer"
+                onClick={() => setManualSearch(row)}
+              >
+                <Search className="mr-1 h-3 w-3" />
+                Missing
+              </Badge>
+            </div>
+          ))}
 
-            {notAired.map((row) => (
-              <div key={row.id} className="row">
-                {/* not released movie */}
-                {row.__typename === 'EnrichedMovie' && (
-                  <div>
-                    <span className="title">{row.title}</span>
-                    <span className="date">({row.date.format('YYYY')})</span>
-                  </div>
-                )}
+          {notAired.map((row) => (
+            <div
+              key={row.id}
+              className="mb-2 flex w-full items-center rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+            >
+              {/* not released movie */}
+              {row.__typename === 'EnrichedMovie' && (
+                <div>
+                  <span className="mr-1 font-bold">{row.title}</span>
+                  <span className="text-muted-foreground">
+                    ({row.date.format('YYYY')})
+                  </span>
+                </div>
+              )}
 
-                {/* not aired tv episode */}
-                {row.__typename === 'EnrichedTVEpisode' && (
-                  <div>
-                    <span className="title">{row.tvShow?.title}</span>
-                    <span className="episode-number">
-                      S{formatNumber(row.seasonNumber!)}E
-                      {formatNumber(row.episodeNumber!)}
-                    </span>
-                  </div>
-                )}
+              {/* not aired tv episode */}
+              {row.__typename === 'EnrichedTVEpisode' && (
+                <div>
+                  <span className="mr-1 font-bold">{row.tvShow?.title}</span>
+                  <span className="text-muted-foreground">
+                    S{formatNumber(row.seasonNumber!)}E
+                    {formatNumber(row.episodeNumber!)}
+                  </span>
+                </div>
+              )}
 
-                <Tag>{availableIn(row.date)}</Tag>
-              </div>
-            ))}
-          </div>
-        </MissingComponentStyles>
+              <Badge variant="outline" className="ml-auto">
+                {availableIn(row.date)}
+              </Badge>
+            </div>
+          ))}
+        </div>
       </>
     );
   }

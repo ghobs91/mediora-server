@@ -1,5 +1,7 @@
-import React from 'react';
-import { Modal, notification } from 'antd';
+import React, { useState } from 'react';
+import { toast } from 'sonner';
+
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 import {
   TmdbSearchResult,
@@ -15,6 +17,8 @@ export function useRemoveLibrary({
 }: {
   result: TmdbSearchResult | EnrichedMovie;
 }) {
+  const [open, setOpen] = useState(false);
+
   const [removeMovie] = useRemoveMovieMutation({
     awaitRefetchQueries: true,
     refetchQueries: [
@@ -23,27 +27,24 @@ export function useRemoveLibrary({
       { query: GetMissingDocument },
     ],
     onError: ({ message }) =>
-      notification.error({
-        message: message.replace('GraphQL error: ', ''),
-        placement: 'bottomRight',
-      }),
-    onCompleted: () =>
-      notification.success({
-        message: 'Movie removed from library',
-        placement: 'bottomRight',
-      }),
+      toast.error(message.replace('GraphQL error: ', '')),
+    onCompleted: () => toast.success('Movie removed from library'),
   });
 
-  const handleClick = () =>
-    Modal.confirm({
-      title: <strong>{result.title}</strong>,
-      content: `Remove from library and delete files?`,
-      centered: true,
-      okText: 'Yes',
-      cancelText: 'No',
-      okType: 'danger',
-      onOk: () => removeMovie({ variables: { tmdbId: result.tmdbId } }),
-    });
+  const handleClick = () => setOpen(true);
 
-  return handleClick;
+  const confirmDialog = (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={setOpen}
+      title={result.title}
+      description="Remove from library and delete files?"
+      confirmLabel="Yes"
+      cancelLabel="No"
+      destructive
+      onConfirm={() => removeMovie({ variables: { tmdbId: result.tmdbId } })}
+    />
+  );
+
+  return { handleClick, confirmDialog };
 }

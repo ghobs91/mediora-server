@@ -1,8 +1,6 @@
 import React from 'react';
-import prettySize from 'prettysize';
 import { add, reduce, map } from 'lodash';
-import { Tag, Progress } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
+import { Loader2 } from 'lucide-react';
 
 import {
   DownloadingMedia,
@@ -10,6 +8,10 @@ import {
   FileType,
   TorrentStatus,
 } from '../../utils/graphql';
+
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { formatBytes } from '@/utils/format-bytes';
 
 interface DownloadingRow extends DownloadingMedia {
   torrentStatus: TorrentStatus[];
@@ -94,37 +96,40 @@ export function DownloadingRowsComponent({
     });
 
   return (
-    <div className="wrapper">
+    <>
       {displayedRows.map((row) => (
-        <div key={row.id} className="download-row">
-          <div className="status">
+        <div
+          key={row.id}
+          className="flex items-center gap-3 border-b border-border px-2 py-1.5 text-sm hover:bg-muted/50"
+        >
+          <div className="shrink-0">
             {row.torrentStatus.isStopped ? (
-              <Tag color="orange">Download paused</Tag>
+              <Badge variant="outline" className="text-amber-500">
+                Download paused
+              </Badge>
             ) : (
-              <Tag color="blue">
-                Downloading <LoadingOutlined style={{ marginLeft: 10 }} />
-              </Tag>
+              <Badge variant="outline" className="text-blue-500">
+                Downloading{' '}
+                <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin" />
+              </Badge>
             )}
           </div>
-          <div className="name">{row.title}</div>
-          <div className="torrent-name">({row.torrent})</div>
-          <div className="speed">
+          <div className="truncate font-semibold uppercase">{row.title}</div>
+          <div className="shrink-0 truncate text-xs uppercase text-muted-foreground">
+            ({row.torrent})
+          </div>
+          <div className="ml-auto shrink-0 text-xs text-muted-foreground">
             ({row.torrentStatus.percent}%
             {row.torrentStatus.downloadSpeed ? (
-              <> - {prettySize(row.torrentStatus.downloadSpeed)}/s</>
+              <> - {formatBytes(row.torrentStatus.downloadSpeed)}/s</>
             ) : null}
             )
           </div>
-          <div className="progress">
-            <Progress
-              size="small"
-              percent={row.torrentStatus.percent}
-              status={row.torrentStatus.isStopped ? 'exception' : 'active'}
-              showInfo={false}
-            />
+          <div className="w-[250px] shrink-0">
+            <Progress value={row.torrentStatus.percent} />
           </div>
         </div>
       ))}
-    </div>
+    </>
   );
 }

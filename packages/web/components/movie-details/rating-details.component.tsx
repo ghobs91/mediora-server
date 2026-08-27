@@ -4,7 +4,7 @@ import {
   TmdbSearchResult,
   EnrichedMovie,
 } from '../../utils/graphql';
-import { RatingDetailsStyles } from './rating-details.styles';
+
 export const RatingDetailComponent = ({
   entertainment,
 }: {
@@ -24,20 +24,27 @@ export const RatingDetailComponent = ({
   };
 
   return (
-    <RatingDetailsStyles>
-      {Object.entries(allRatings)?.map(([key, value], index) => {
+    <div className="flex flex-wrap items-center">
+      {Object.entries(allRatings).map(([key, value], index) => {
         const rate = value?.split(/(?=[%, /])/);
 
         if (!rate) return null;
 
         return (
-          <li key={`${entertainment.tmdbId}${index}`}>
-            <img src={`/assets/rating/${key}.png`} />
-            <span className="rating-details--rate">{rate?.[0]}</span>
-            <span className="rating-details--rate-suffix">{rate?.[1]}</span>
-          </li>
+          <div
+            key={`${entertainment.tmdbId}${index}`}
+            className="flex items-center pr-5"
+          >
+            <img
+              src={`/assets/rating/${key}.png`}
+              alt={key}
+              className="mr-1.5 h-[30px] w-[30px]"
+            />
+            <span className="text-xl">{rate?.[0]}</span>
+            <span className="text-sm opacity-60">{rate?.[1]}</span>
+          </div>
         );
       })}
-    </RatingDetailsStyles>
+    </div>
   );
 };

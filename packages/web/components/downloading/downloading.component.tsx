@@ -2,7 +2,6 @@ import React from 'react';
 
 import { useGetDownloadingQuery } from '../../utils/graphql';
 
-import { DownloadingComponentStyles } from './downloading.styles';
 import { SearchingRowsComponent } from './searching-rows.component';
 import { DownloadingRowsComponent } from './downloading-rows.component';
 
@@ -21,15 +20,13 @@ export function DownloadingComponent({ types }: { types: string[] }) {
   );
 
   return (
-    <DownloadingComponentStyles>
-      <div className="wrapper">
-        <SearchingRowsComponent rows={searching || []} />
-        {/* dont mount downloading rows when it's not needed */}
-        {/* this component does request polling */}
-        {downloading && downloading.length > 0 && (
-          <DownloadingRowsComponent rows={downloading || []} />
-        )}
-      </div>
-    </DownloadingComponentStyles>
+    <div className="mx-auto max-w-[1200px]">
+      <SearchingRowsComponent rows={searching || []} />
+      {/* dont mount downloading rows when it's not needed */}
+      {/* this component does request polling */}
+      {downloading && downloading.length > 0 && (
+        <DownloadingRowsComponent rows={downloading || []} />
+      )}
+    </div>
   );
 }

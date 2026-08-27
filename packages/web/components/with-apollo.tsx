@@ -19,7 +19,7 @@ const apolloClientCache = new InMemoryCache();
 function createApolloClient() {
   return new ApolloClient({
     ssrMode: isServer,
-    connectToDevTools: !isServer,
+    devtools: { enabled: !isServer },
     link: new HttpLink({ uri: `${apiURL}/graphql` }),
     cache: apolloClientCache,
     queryDeduplication: true,

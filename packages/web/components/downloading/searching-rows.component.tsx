@@ -1,6 +1,7 @@
 import React from 'react';
-import { Tag } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
+import { Loader2 } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
 
 import { SearchingMedia, FileType } from '../../utils/graphql';
 
@@ -28,17 +29,20 @@ export function SearchingRowsComponent({ rows }: { rows: SearchingMedia[] }) {
   }, []);
 
   return (
-    <div className="wrapper">
+    <>
       {searching.map((row) => (
-        <div key={row.id} className="download-row">
-          <div className="status">
-            <Tag color="purple">
-              Searching <LoadingOutlined style={{ marginLeft: 10 }} />
-            </Tag>
+        <div
+          key={row.id}
+          className="flex items-center gap-3 border-b border-border px-2 py-1.5 text-sm hover:bg-muted/50"
+        >
+          <div className="shrink-0">
+            <Badge variant="outline" className="text-purple-500">
+              Searching <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin" />
+            </Badge>
           </div>
-          <div className="name">{row.title}</div>
+          <div className="truncate font-semibold uppercase">{row.title}</div>
         </div>
       ))}
-    </div>
+    </>
   );
 }

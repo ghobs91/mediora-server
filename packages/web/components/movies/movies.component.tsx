@@ -1,13 +1,12 @@
 import React from 'react';
-import Mansonry from 'react-masonry-component';
-import { Skeleton, Empty } from 'antd';
+
+import { Skeleton } from '@/components/ui/skeleton';
 
 import { useGetLibraryMoviesQuery, EnrichedMovie } from '../../utils/graphql';
 
 import { LibraryHeaderComponent } from '../library-header/library-header.component';
 import { TMDBCardComponent } from '../tmdb-card/tmdb-card.component';
 
-import { MoviesComponentStyles } from './movies.styles';
 import { useSortable } from '../sortable/sortable.component';
 
 const sortAttributes = [
@@ -28,30 +27,38 @@ export function MoviesComponent() {
   return (
     <>
       <LibraryHeaderComponent types={['movie']} />
-      <MoviesComponentStyles>
-        <div className="wrapper">
-          <Skeleton active={true} loading={loading}>
-            {data?.movies.length === 0 ? (
-              <Empty />
-            ) : (
-              <>
-                {renderSortable()}
-                <Mansonry className="flex">
-                  {results.map((movie) => (
-                    <div className="movie-card" key={movie.id}>
-                      <TMDBCardComponent
-                        type="movie"
-                        result={movie}
-                        inLibrary={true}
-                      />
-                    </div>
-                  ))}
-                </Mansonry>
-              </>
-            )}
-          </Skeleton>
-        </div>
-      </MoviesComponentStyles>
+      <div className="mx-auto w-full max-w-[1200px] px-6 pt-8">
+        {loading ? (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <Skeleton key={index} className="aspect-[2/3] w-full" />
+            ))}
+          </div>
+        ) : data?.movies?.length === 0 ? (
+          <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+            <p className="text-lg font-medium text-muted-foreground">
+              Your movie library is empty
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground/70">
+              Add movies from the search or discover pages.
+            </p>
+          </div>
+        ) : (
+          <>
+            {renderSortable()}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
+              {results.map((movie) => (
+                <TMDBCardComponent
+                  key={movie.id}
+                  type="movie"
+                  result={movie}
+                  inLibrary={true}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }

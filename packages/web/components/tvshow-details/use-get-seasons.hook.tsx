@@ -1,5 +1,5 @@
 import { orderBy } from 'lodash';
-import { notification } from 'antd';
+import { toast } from 'sonner';
 
 import {
   useGetTvShowSeasonsQuery,
@@ -8,6 +8,7 @@ import {
   GetLibraryTvShowsDocument,
   GetTvShowSeasonsDocument,
   GetDownloadingDocument,
+  TmdbFormattedTvSeason,
 } from '../../utils/graphql';
 
 export function useGetSeasons({ tmdbId }: { tmdbId: number }) {
@@ -26,15 +27,8 @@ export function useGetSeasons({ tmdbId }: { tmdbId: number }) {
       },
     ],
     onError: ({ message }) =>
-      notification.error({
-        message: message.replace('GraphQL error: ', ''),
-        placement: 'bottomRight',
-      }),
-    onCompleted: () =>
-      notification.success({
-        message: 'Episodes sent to download',
-        placement: 'bottomRight',
-      }),
+      toast.error(message.replace('GraphQL error: ', '')),
+    onCompleted: () => toast.success('Episodes sent to download'),
   });
 
   const [removeTVShow] = useRemoveTvShowMutation({
@@ -48,20 +42,13 @@ export function useGetSeasons({ tmdbId }: { tmdbId: number }) {
       },
     ],
     onError: ({ message }) =>
-      notification.error({
-        message: message.replace('GraphQL error: ', ''),
-        placement: 'bottomRight',
-      }),
-    onCompleted: () =>
-      notification.success({
-        message: 'TVShow removed from library',
-        placement: 'bottomRight',
-      }),
+      toast.error(message.replace('GraphQL error: ', '')),
+    onCompleted: () => toast.success('TVShow removed from library'),
   });
 
-  const seasons = orderBy(data?.seasons, ['seasonNumber'], ['desc']).filter(
-    (season) => season.seasonNumber !== 0
-  );
+  const seasons = (
+    orderBy(data?.seasons, ['seasonNumber'], ['desc']) as TmdbFormattedTvSeason[]
+  ).filter((season) => season.seasonNumber !== 0);
 
   return { seasons, loading, trackTVShow, mutationLoading, removeTVShow };
 }

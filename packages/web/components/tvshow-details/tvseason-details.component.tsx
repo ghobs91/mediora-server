@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { Table, Tag } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { SearchOutlined } from '@ant-design/icons';
-import { FaChevronCircleDown, FaChevronCircleRight } from 'react-icons/fa';
+import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 
 import {
   useGetTvSeasonDetailsQuery,
@@ -17,10 +14,39 @@ import { availableIn } from '../../utils/available-in';
 import { ManualSearchComponent } from '../manual-search/manual-search.component';
 import { Media } from '../manual-search/manual-search.helpers';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+
 interface TVSeasonDetailsProps {
   tvShowTMDBId: number;
   season: TmdbFormattedTvSeason;
   tvShowTitle: string;
+}
+
+function EpisodeStatus({ episode }: { episode: EnrichedTvEpisode }) {
+  if (
+    episode.state === DownloadableMediaState.Processed ||
+    episode.state === DownloadableMediaState.Downloaded
+  ) {
+    return <Badge variant="secondary">Downloaded</Badge>;
+  }
+
+  if (
+    episode.state === DownloadableMediaState.Searching ||
+    episode.state === DownloadableMediaState.Downloading
+  ) {
+    return <Badge variant="default">Downloading</Badge>;
+  }
+
+  return <Badge variant="outline">Missing</Badge>;
 }
 
 export function TVSeasonDetailsComponent({
@@ -41,65 +67,6 @@ export function TVSeasonDetailsComponent({
     setIsOpen(!isOpen);
   };
 
-  const columns: ColumnsType<EnrichedTvEpisode> = [
-    {
-      title: 'Title',
-      render: (row: EnrichedTvEpisode) => `Episode ${row.episodeNumber}`,
-      width: 100,
-    },
-    {
-      title: 'Air date',
-      render: (row: EnrichedTvEpisode) => availableIn(dayjs(row.releaseDate)),
-    },
-    {
-      title: 'Status',
-      align: 'right',
-      render: (row: EnrichedTvEpisode) => {
-        let color: string | undefined = undefined;
-        let label = 'Missing';
-
-        if (
-          row.state === DownloadableMediaState.Processed ||
-          row.state === DownloadableMediaState.Downloaded
-        ) {
-          color = 'geekblue';
-          label = 'Downloaded';
-        }
-
-        if (
-          row.state === DownloadableMediaState.Searching ||
-          row.state === DownloadableMediaState.Downloading
-        ) {
-          color = 'blue';
-          label = 'Downloading';
-        }
-
-        return (
-          <Tag color={color} style={{ width: 90, textAlign: 'center' }}>
-            {label}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Actions',
-      align: 'right',
-      width: 100,
-      render: (row: EnrichedTvEpisode) => {
-        const inLibrary = row.state !== DownloadableMediaState.Missing;
-        return (
-          <Tag
-            icon={<SearchOutlined />}
-            onClick={() => setManualSearch(row)}
-            style={{ width: 120, textAlign: 'center', cursor: 'pointer' }}
-          >
-            {inLibrary ? 'Replace' : 'Search'} episode
-          </Tag>
-        );
-      },
-    },
-  ];
-
   return (
     <>
       {manualSearch && (
@@ -119,43 +86,84 @@ export function TVSeasonDetailsComponent({
       )}
 
       <div
-        className="season"
-        style={{ marginBottom: isOpen && season.seasonNumber !== 1 ? 12 : 0 }}
+        className={cn(
+          'rounded-md border border-border bg-card',
+          isOpen && season.seasonNumber !== 1 && 'mb-3'
+        )}
       >
-        <div className="season-top">
-          <div className="season-title" onClick={toggle}>
-            <div className="season-toggle">
-              {isOpen ? <FaChevronCircleDown /> : <FaChevronCircleRight />}
-            </div>
-            <div className="season-number">Season {season.seasonNumber}</div>
+        <div className="flex items-center justify-between px-4 py-2">
+          <button
+            type="button"
+            onClick={toggle}
+            className="flex items-center text-left"
+          >
+            <span className="mr-3 mt-1">
+              {isOpen ? (
+                <ChevronDown className="h-5 w-5" />
+              ) : (
+                <ChevronRight className="h-5 w-5" />
+              )}
+            </span>
+            <span className="mr-2 text-xl font-semibold">
+              Season {season.seasonNumber}
+            </span>
             {season.airDate && (
-              <div className="season-year">
-                {' '}
+              <span className="font-light">
                 ({dayjs(season.airDate).format('YYYY')})
-              </div>
+              </span>
             )}
-          </div>
-          <div
-            className="season-replace"
+          </button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() =>
               setManualSearch({ ...season, tvShowTitle, tvShowTMDBId })
             }
           >
             {season.inLibrary ? 'Replace' : 'Search'} season
-            <SearchOutlined style={{ marginLeft: 8 }} />
-          </div>
+            <Search className="ml-2 h-4 w-4" />
+          </Button>
         </div>
-        {isOpen && (
-          <Table<EnrichedTvEpisode>
-            rowKey="id"
-            size="small"
-            dataSource={data?.episodes || []}
-            columns={columns}
-            showHeader={false}
-            pagination={false}
-            loading={!data && loading}
-          />
-        )}
+
+        {isOpen &&
+          (loading && !data ? (
+            <div className="space-y-2 p-4">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableBody>
+                {(data?.episodes || []).map((episode) => (
+                  <TableRow key={episode.id}>
+                    <TableCell className="w-[100px]">
+                      Episode {episode.episodeNumber}
+                    </TableCell>
+                    <TableCell>
+                      {availableIn(dayjs(episode.releaseDate))}
+                    </TableCell>
+                    <TableCell className="w-[120px] text-right">
+                      <EpisodeStatus episode={episode} />
+                    </TableCell>
+                    <TableCell className="w-[160px] text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setManualSearch(episode)}
+                      >
+                        <Search className="h-4 w-4" />
+                        {episode.state !== DownloadableMediaState.Missing
+                          ? 'Replace'
+                          : 'Search'}{' '}
+                        episode
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ))}
       </div>
     </>
   );

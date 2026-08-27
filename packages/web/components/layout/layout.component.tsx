@@ -1,13 +1,12 @@
 import React from 'react';
 
 import { NavbarComponent } from '../navbar/navbar.component';
-import { LayoutStyles } from './layout.styles';
 
 export function LayoutComponent({ children }: { children?: React.ReactNode }) {
   return (
-    <LayoutStyles>
+    <div className="min-h-screen pt-16">
       <NavbarComponent />
       {children}
-    </LayoutStyles>
+    </div>
   );
 }

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Input, Empty } from 'antd';
 import { orderBy, last } from 'lodash';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 
-import {
-  SortDescendingOutlined,
-  SortAscendingOutlined,
-} from '@ant-design/icons';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 import { createSearchFunction } from '../../utils/create-search-function';
 
@@ -47,35 +45,35 @@ export function useSortable<TEntity>(props: UseSortableProps<TEntity>) {
 
   const renderSortable = () => (
     <>
-      <div className="sortable">
-        <div className="sort-buttons">
+      <div className="mb-6 flex items-center">
+        <div className="flex items-center gap-2">
           {sortAttributes.map((sortAttr) => (
             <Button
               key={sortAttr.key}
-              type={sortAttr.key === key ? 'default' : 'dashed'}
+              variant={sortAttr.key === key ? 'default' : 'outline'}
               onClick={() => handleSort(sortAttr)}
-              icon={getSortIcon({
+            >
+              {getSortIcon({
                 forKey: sortAttr.key,
                 activeKey: key,
                 activeOrder: order,
               })}
-            >
               {sortAttr.label}
             </Button>
           ))}
         </div>
-        <div className="search-input">
-          <Input.Search
+        <div className="ml-auto w-[300px]">
+          <Input
             value={searchQuery}
+            placeholder="Search..."
             onChange={({ target }) => setSearchQuery(target.value)}
           />
         </div>
       </div>
       {searchQuery && results.length === 0 && (
-        <Empty
-          style={{ marginTop: 64 }}
-          description={`No search results for "${searchQuery}"`}
-        />
+        <div className="mt-16 text-center text-muted-foreground">
+          No search results for &quot;{searchQuery}&quot;
+        </div>
       )}
     </>
   );
@@ -93,11 +91,7 @@ function getSortIcon({
   activeOrder: string;
 }) {
   if (activeKey === forKey) {
-    return activeOrder === 'asc' ? (
-      <SortDescendingOutlined />
-    ) : (
-      <SortAscendingOutlined />
-    );
+    return activeOrder === 'asc' ? <ArrowDown /> : <ArrowUp />;
   }
 
   return undefined;

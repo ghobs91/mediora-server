@@ -1,15 +1,6 @@
-import React, { useContext, useState, useEffect } from 'react';
-import { useTheme } from 'styled-components';
-import { FaChevronCircleRight, FaChevronCircleLeft } from 'react-icons/fa';
-
-import {
-  CarouselProvider,
-  Slide,
-  Slider,
-  ButtonNext,
-  CarouselContext,
-  ButtonBack,
-} from 'pure-react-carousel';
+import React, { useEffect } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import {
   TmdbSearchResult,
@@ -26,7 +17,7 @@ export function CarouselComponent({
   results: TmdbSearchResult[];
   type: 'movie' | 'tvshow';
 }) {
-  const theme = useTheme();
+  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start' });
   const { data: moviesLibrary } = useGetLibraryMoviesQuery();
   const { data: tvShowsLibrary } = useGetLibraryTvShowsQuery();
 
@@ -35,70 +26,46 @@ export function CarouselComponent({
     ...(tvShowsLibrary?.tvShows?.map(({ tmdbId }) => tmdbId) || []),
   ];
 
+  useEffect(() => {
+    emblaApi?.scrollTo(0);
+  }, [results, emblaApi]);
+
   return (
-    <div className="carrousel--container">
-      <CarouselProvider
-        naturalSlideHeight={theme.tmdbCardHeight}
-        naturalSlideWidth={220}
-        totalSlides={results.length}
-        dragEnabled={false}
-        visibleSlides={5}
-        step={5}
-      >
-        <ResetCarouselSlideAndGoBack watch={results} />
-        <Slider>
-          {results.map((result, index) => (
-            <Slide
-              key={result.id}
-              index={index}
-              innerClassName="carrousel--slide"
-            >
+    <div className="relative px-10">
+      <div className="overflow-hidden" ref={emblaRef}>
+        <div className="flex gap-6">
+          {results.map((result) => (
+            <div key={result.id} className="min-w-0 flex-[0_0_220px]">
               <TMDBCardComponent
-                key={result.id}
                 type={type}
                 result={result}
                 inLibrary={tmdbIds.includes(result.tmdbId)}
               />
-            </Slide>
+            </div>
           ))}
-        </Slider>
-        {results.length > 5 && (
-          <ButtonNext className="arrow-right">
-            <FaChevronCircleRight size={16} />
-          </ButtonNext>
-        )}
-      </CarouselProvider>
+        </div>
+      </div>
+
+      {results.length > 5 && (
+        <>
+          <button
+            type="button"
+            aria-label="Previous"
+            onClick={() => emblaApi?.scrollPrev()}
+            className="absolute left-0 top-[175px] rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next"
+            onClick={() => emblaApi?.scrollNext()}
+            className="absolute right-0 top-[175px] rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </>
+      )}
     </div>
-  );
-}
-
-function ResetCarouselSlideAndGoBack({ watch }: { watch: any }) {
-  const carouselContext = useContext(CarouselContext);
-  const [currentSlide, setCurrentSlide] = useState(
-    carouselContext.state.currentSlide
-  );
-
-  useEffect(() => {
-    function onChange() {
-      setCurrentSlide(carouselContext.state.currentSlide);
-    }
-    carouselContext.subscribe(onChange);
-    return () => carouselContext.unsubscribe(onChange);
-  }, [carouselContext]);
-
-  useEffect(() => {
-    if (carouselContext.state.currentSlide !== 0) {
-      carouselContext.setStoreState({ currentSlide: 0 });
-    }
-  }, [carouselContext, watch]);
-
-  if (currentSlide === 0) {
-    return <noscript />;
-  }
-
-  return (
-    <ButtonBack className="arrow-left">
-      <FaChevronCircleLeft size={16} />
-    </ButtonBack>
   );
 }

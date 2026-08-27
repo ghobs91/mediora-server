@@ -1,8 +1,8 @@
 import React from 'react';
-import { Skeleton, Empty } from 'antd';
+
+import { Skeleton } from '@/components/ui/skeleton';
 
 import { CarouselComponent } from '../search/carousel.component';
-import { SearchStyles, Wrapper } from '../search/search.styles';
 
 import { useGetRecommendedQuery } from '../../utils/graphql';
 
@@ -18,28 +18,36 @@ export function SuggestionsComponent() {
   const isLoading = !hasRecommendations && loading;
 
   return (
-    <SearchStyles>
-      <div className="search-bar--container">
-        <Wrapper>
-          <div className="search-bar--title">What are we watching next?</div>
-          <div className="search-bar--subtitle" style={{ marginBottom: 0 }}>
+    <div>
+      <div className="bg-primary py-10 text-primary-foreground">
+        <div className="mx-auto max-w-[1200px] px-6">
+          <div className="text-3xl font-semibold">What are we watching next?</div>
+          <div className="text-2xl font-medium">
             Recommendations based on your library...
           </div>
-        </Wrapper>
+        </div>
       </div>
 
-      <Wrapper>
-        <div className="search-results--container">
-          {isLoading && <Skeleton active={true} loading={true} />}
-          {!hasRecommendations && !isLoading && <Empty />}
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mt-12">
+          {isLoading && (
+            <>
+              <CategorySkeleton />
+              <CategorySkeleton />
+            </>
+          )}
+          {!hasRecommendations && !isLoading && (
+            <div className="py-16 text-center text-muted-foreground">
+              No recommendations yet...
+            </div>
+          )}
           {hasRecommendations && !isLoading && (
             <>
               {Boolean(data?.movies?.length) && (
                 <>
-                  <div className="search-results--category">
+                  <div className="mb-4 text-lg font-medium">
                     Recommended Movies
                   </div>
-                  {data?.movies && data.movies.length === 0 && <Empty />}
                   <CarouselComponent
                     type="movie"
                     results={data?.movies || []}
@@ -48,7 +56,7 @@ export function SuggestionsComponent() {
               )}
               {Boolean(data?.tvShows?.length) && (
                 <>
-                  <div className="search-results--category">
+                  <div className="mb-4 text-lg font-medium">
                     Recommended TV Shows
                   </div>
                   <CarouselComponent
@@ -60,7 +68,20 @@ export function SuggestionsComponent() {
             </>
           )}
         </div>
-      </Wrapper>
-    </SearchStyles>
+      </div>
+    </div>
+  );
+}
+
+function CategorySkeleton() {
+  return (
+    <div className="mb-8">
+      <Skeleton className="mb-4 h-6 w-40" />
+      <div className="flex gap-6 overflow-hidden">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="aspect-[2/3] w-[220px] rounded-xl" />
+        ))}
+      </div>
+    </div>
   );
 }

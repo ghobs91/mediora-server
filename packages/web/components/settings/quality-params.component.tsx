@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, notification, Popover, Radio } from 'antd';
-import { FaQuestionCircle } from 'react-icons/fa';
-
+import { toast } from 'sonner';
+import { HelpCircle } from 'lucide-react';
 import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from 'react-beautiful-dnd';
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import {
   useGetQualityQuery,
@@ -16,8 +23,61 @@ import {
   Entertainment,
 } from '../../utils/graphql';
 
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
 import { reorder } from './settings.helpers';
-import { RadioChangeEvent } from 'antd/lib/radio';
+
+function SortableQuality({ quality }: { quality: Quality }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: quality.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'mb-1 cursor-grab rounded-md border border-dashed border-border px-3 py-1.5 text-sm',
+        isDragging && 'opacity-50'
+      )}
+    >
+      {quality.name}
+    </div>
+  );
+}
 
 export function QualityParamsComponent() {
   const [qualities, setQualities] = useState<Quality[]>([]);
@@ -27,24 +87,23 @@ export function QualityParamsComponent() {
   });
   const [saveQuality, { loading: saveLoading }] = useSaveQualityMutation({
     onError: ({ message }) =>
-      notification.error({
-        message: message.replace('GraphQL error: ', ''),
-        placement: 'bottomRight',
-      }),
-    onCompleted: () =>
-      notification.success({
-        message: 'Quality params saved',
-        placement: 'bottomRight',
-      }),
+      toast.error(message.replace('GraphQL error: ', '')),
+    onCompleted: () => toast.success('Quality params saved'),
   });
 
-  const handleDragEnd = (result: DropResult) => {
-    if (result.destination) {
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = qualities.findIndex((q) => q.id === active.id);
+      const newIndex = qualities.findIndex((q) => q.id === over.id);
       setQualities(
         reorder<Quality>({
           list: qualities,
-          startIndex: result.source.index,
-          endIndex: result.destination.index,
+          startIndex: oldIndex,
+          endIndex: newIndex,
         })
       );
     }
@@ -59,74 +118,72 @@ export function QualityParamsComponent() {
     });
   };
 
-  const onTypeChange = (event: RadioChangeEvent) => {
-    event.preventDefault();
-    setType(event.target.value);
-  };
-
   useEffect(() => {
     if (data?.qualities) setQualities(data.qualities);
   }, [data]);
 
   return (
-    <Card
-      title={
-        <>
-          <div className="title">Quality preference</div>
-          <div className="help">
-            <Popover content="Drag and drop to re-order the list">
-              <FaQuestionCircle />
-            </Popover>
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          Quality preference
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-4 w-4 cursor-pointer text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>Drag and drop to re-order the list</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading && !qualities?.length ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
           </div>
-        </>
-      }
-      className="quality-preference"
-      loading={loading && !qualities?.length}
-    >
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Radio.Group
-          onChange={onTypeChange}
-          value={type}
-          style={{ paddingBottom: '20px' }}
-        >
-          <Radio value={Entertainment.Movie}>{Entertainment.Movie}</Radio>
-          <Radio value={Entertainment.TvShow}>TV Show</Radio>
-        </Radio.Group>
-        <Droppable droppableId="droppable">
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef}>
-              {qualities.map((quality, index) => (
-                <Draggable
-                  key={quality.id}
-                  index={index}
-                  draggableId={quality.name}
-                >
-                  {(provided2) => (
-                    <div
-                      ref={provided2.innerRef}
-                      {...provided2.draggableProps}
-                      {...provided2.dragHandleProps}
-                    >
-                      <div className="ant-btn ant-btn-dashed">
-                        {quality.name}
-                      </div>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-      <Button
-        type="default"
-        className="save-btn"
-        onClick={handleSave}
-        loading={saveLoading}
-      >
-        Save
-      </Button>
+        ) : (
+          <>
+            <Select
+              value={type}
+              onValueChange={(value) => setType(value as Entertainment)}
+            >
+              <SelectTrigger className="mb-5 w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={Entertainment.Movie}>
+                  {Entertainment.Movie}
+                </SelectItem>
+                <SelectItem value={Entertainment.TvShow}>TV Show</SelectItem>
+              </SelectContent>
+            </Select>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={qualities.map((q) => q.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {qualities.map((quality) => (
+                  <SortableQuality key={quality.id} quality={quality} />
+                ))}
+              </SortableContext>
+            </DndContext>
+            <Button
+              className="mt-3 w-full"
+              onClick={handleSave}
+              disabled={saveLoading}
+            >
+              Save
+            </Button>
+          </>
+        )}
+      </CardContent>
     </Card>
   );
 }

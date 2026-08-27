@@ -1,5 +1,7 @@
-import React from 'react';
-import { Modal, notification } from 'antd';
+import React, { useState } from 'react';
+import { toast } from 'sonner';
+
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 import {
   useTrackMovieMutation,
@@ -15,6 +17,8 @@ export function useAddLibrary({
 }: {
   result: TmdbSearchResult | EnrichedMovie;
 }) {
+  const [open, setOpen] = useState(false);
+
   const [trackMovie] = useTrackMovieMutation({
     awaitRefetchQueries: true,
     refetchQueries: [
@@ -23,29 +27,27 @@ export function useAddLibrary({
       { query: GetMissingDocument },
     ],
     onError: ({ message }) =>
-      notification.error({
-        message: message.replace('GraphQL error: ', ''),
-        placement: 'bottomRight',
-      }),
-    onCompleted: () =>
-      notification.success({
-        message: 'Movie sent to download',
-        placement: 'bottomRight',
-      }),
+      toast.error(message.replace('GraphQL error: ', '')),
+    onCompleted: () => toast.success('Movie sent to download'),
   });
 
-  const handleClick = () =>
-    Modal.confirm({
-      title: <strong>{result.title}</strong>,
-      content: `Search torrent and start download ?`,
-      centered: true,
-      okText: 'Yes',
-      cancelText: 'No',
-      onOk: () =>
+  const handleClick = () => setOpen(true);
+
+  const confirmDialog = (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={setOpen}
+      title={result.title}
+      description="Search torrent and start download ?"
+      confirmLabel="Yes"
+      cancelLabel="No"
+      onConfirm={() =>
         trackMovie({
           variables: { title: result.title, tmdbId: result.tmdbId },
-        }),
-    });
+        })
+      }
+    />
+  );
 
-  return handleClick;
+  return { handleClick, confirmDialog };
 }

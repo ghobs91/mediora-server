@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PureQueryOptions } from '@apollo/client';
-import { Modal, Button, Skeleton, Input, notification } from 'antd';
+import { FolderOpen, Loader2, Search } from 'lucide-react';
+import { toast } from 'sonner';
 
 import {
   useSearchTorrentLazyQuery,
@@ -11,9 +12,19 @@ import {
   GetMissingDocument,
 } from '../../utils/graphql';
 
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+
 import { toBase64 } from '../../utils/to-base64';
 
-import { ManualSearchStyles } from './manual-search.styles';
 import { Media, getDefaultSearchQuery } from './manual-search.helpers';
 import { JackettResultsTable } from './jackett-results-table';
 
@@ -49,16 +60,10 @@ export function ManualSearchComponent(props: ManualSearchProps) {
       ...(props.refetchQueries || []),
     ],
     onError: ({ message }) =>
-      notification.error({
-        message: message.replace('GraphQL error: ', ''),
-        placement: 'bottomRight',
-      }),
+      toast.error(message.replace('GraphQL error: ', '')),
     onCompleted: () => {
       handleClose();
-      notification.success({
-        message: 'Download episode started',
-        placement: 'bottomRight',
-      });
+      toast.success('Download episode started');
     },
   });
 
@@ -92,9 +97,7 @@ export function ManualSearchComponent(props: ManualSearchProps) {
 
     if (typeof magnetLink !== 'string' || !magnetLink.startsWith('magnet:')) {
       setUploadTorrentLoading(false);
-      return notification.error({
-        message: 'You dont have a magnet link in your clipboard to paste',
-      });
+      return toast.error('You dont have a magnet link in your clipboard to paste');
     }
 
     if (props.media.id) {
@@ -113,63 +116,79 @@ export function ManualSearchComponent(props: ManualSearchProps) {
     return setUploadTorrentLoading(false);
   };
 
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    search({ variables: { query: searchQuery } });
+  };
+
   useEffect(() => {
     search();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <Modal
-      visible={true}
-      destroyOnClose={true}
-      onCancel={handleClose}
-      centered={true}
-      width={960}
-      footer={[
-        <Button key="close" onClick={handleClose}>
-          Close
-        </Button>,
-      ]}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
     >
-      <ManualSearchStyles>
+      <DialogContent className="max-w-4xl">
         <input
           ref={$fileInput}
           type="file"
           accept=".torrent"
-          style={{ display: 'none' }}
+          className="hidden"
           onChange={handleUploadTorrent}
         />
-        <div className="search-title">{defaultSearchQuery}</div>
-        <div className="search-input">
-          <Input.Search
-            defaultValue={searchQuery}
-            onSearch={(value) => setSearchQuery(value)}
-          />
+        <DialogHeader>
+          <DialogTitle>{defaultSearchQuery}</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-3">
+          <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+            <Input
+              value={searchQuery}
+              onChange={({ target }) => setSearchQuery(target.value)}
+            />
+            <Button type="submit" variant="outline" className="shrink-0">
+              <Search />
+            </Button>
+          </form>
           <Button
-            type="primary"
-            className="action-btn"
             onClick={() => $fileInput.current?.click()}
-            loading={isUploadTorrentLoading}
             disabled={isUploadTorrentLoading}
+            className="shrink-0"
           >
+            {isUploadTorrentLoading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <FolderOpen />
+            )}
             Select own .torrent
           </Button>
-          <Button
-            type="primary"
-            className="action-btn"
-            onClick={handlePasteMagnetLink}
-          >
+          <Button onClick={handlePasteMagnetLink} className="shrink-0">
             Paste magnet link
           </Button>
         </div>
-        <Skeleton active={true} loading={loading}>
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : (
           <JackettResultsTable
             media={props.media}
             results={data?.results || []}
             refetchQueries={props.refetchQueries}
           />
-        </Skeleton>
-      </ManualSearchStyles>
-    </Modal>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

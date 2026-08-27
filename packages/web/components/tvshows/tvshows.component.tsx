@@ -1,17 +1,13 @@
 import React from 'react';
-import Mansonry from 'react-masonry-component';
-import styled from 'styled-components';
-import { Skeleton, Empty } from 'antd';
 
 import { useGetLibraryTvShowsQuery, EnrichedTvShow } from '../../utils/graphql';
 
 import { LibraryHeaderComponent } from '../library-header/library-header.component';
 import { TMDBCardComponent } from '../tmdb-card/tmdb-card.component';
 
-import { MoviesComponentStyles } from '../movies/movies.styles';
 import { useSortable } from '../sortable/sortable.component';
 
-const TVShowsComponentStyles = styled(MoviesComponentStyles)``;
+import { Skeleton } from '@/components/ui/skeleton';
 
 const sortAttributes = [
   { label: 'Name', key: 'title' },
@@ -31,30 +27,33 @@ export function TVShowsComponent() {
   return (
     <>
       <LibraryHeaderComponent types={['season', 'episode']} />
-      <TVShowsComponentStyles>
-        <div className="wrapper">
-          <Skeleton active={true} loading={loading}>
-            {data?.tvShows.length === 0 ? (
-              <Empty />
-            ) : (
-              <>
-                {renderSortable()}
-                <Mansonry className="flex">
-                  {results.map((tvShow) => (
-                    <div className="tvshow-card" key={tvShow.id}>
-                      <TMDBCardComponent
-                        type="tvshow"
-                        result={tvShow}
-                        inLibrary={true}
-                      />
-                    </div>
-                  ))}
-                </Mansonry>
-              </>
-            )}
-          </Skeleton>
-        </div>
-      </TVShowsComponentStyles>
+      <div className="mx-auto w-full max-w-[1200px] px-6 pt-8">
+        {loading ? (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <Skeleton key={index} className="aspect-[2/3] rounded-xl" />
+            ))}
+          </div>
+        ) : data?.tvShows.length === 0 ? (
+          <div className="flex items-center justify-center py-24 text-muted-foreground">
+            No TV shows in your library
+          </div>
+        ) : (
+          <>
+            {renderSortable()}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
+              {results.map((tvShow) => (
+                <TMDBCardComponent
+                  key={tvShow.id}
+                  type="tvshow"
+                  result={tvShow}
+                  inLibrary={true}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }
