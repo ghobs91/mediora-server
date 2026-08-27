@@ -32,3 +32,6 @@ library/movies/*
 !library/movies/.gitkeep
 library/tvshows/*
 !library/tvshows/.gitkeep
+
+# typescript build cache
+*.tsbuildinfo
