@@ -29,6 +29,8 @@ services:
     env_file: .env
     build:
       context: ./packages/web
+      args:
+        WEB_UI_API_URL: ${WEB_UI_API_URL:-}
     image: bobarr-web:latest
     command: yarn start
     restart: unless-stopped

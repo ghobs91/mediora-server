@@ -104,6 +104,22 @@ If you want to enforce all torrent traffic through a VPN:
 * Create and order your preferred tags found in torrent file (ex: vost, multi, english...)
 * Order your preferred qualities to download
 
+### Accessing Bobarr remotely over HTTPS
+
+The web UI proxies the API at the same-origin `/api` path, so it works behind
+any HTTPS reverse proxy or tunnel (Tailscale, Cloudflare Tunnel, nginx...)
+without extra routing rules. Open the UI over HTTPS and all API calls stay on
+the same origin; there is no mixed-content blocking.
+
+If your API is reachable at a separate HTTPS origin instead, set
+`WEB_UI_API_URL` in `.env` to that URL and rebuild the web image:
+
+```
+WEB_UI_API_URL=https://api.example.com
+docker compose build web
+docker compose up -d web
+```
+
 ## Usage
 
 * After configuration, go to http://localhost:3000/search and just start searching!

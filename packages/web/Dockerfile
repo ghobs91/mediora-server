@@ -2,6 +2,9 @@ FROM node:22-alpine
 
 RUN apk add curl
 
+ARG WEB_UI_API_URL
+ENV WEB_UI_API_URL=$WEB_UI_API_URL
+
 ENV PORT 3000
 EXPOSE 3000
 
