@@ -22,4 +22,6 @@ jobs:
         cache: 'yarn'
     - run: yarn
     - run: (cd packages/api && yarn build)
+    - run: (cd packages/api && yarn test:cov)
+    - run: (cd packages/web && yarn test)
     - run: (cd packages/web && yarn typecheck && yarn build)

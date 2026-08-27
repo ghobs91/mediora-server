@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import axios from 'axios';
 import xmlParser from 'xml2json-light';
-import { orderBy, uniq, uniqBy } from 'lodash';
+import { uniq, uniqBy } from 'lodash';
 import { mapSeries } from 'p-iteration';
 import { Injectable, Inject } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -10,6 +10,11 @@ import { Logger } from 'winston';
 import { ParameterKey } from 'src/app.dto';
 import { formatNumber } from 'src/utils/format-number';
 import { sanitize } from 'src/utils/sanitize';
+import {
+  formatSearchResult,
+  isDownloadable,
+  sortByBest,
+} from 'src/utils/torrent-ranking';
 
 import { ParamsService } from 'src/modules/params/params.service';
 import { LibraryService } from 'src/modules/library/library.service';
@@ -183,11 +188,7 @@ export class JackettService {
         .filter((item) => Boolean(item))
         ?.flat();
 
-      const sortedByBest = orderBy(
-        flattenIndexers,
-        ['tag.score', 'quality.score', 'seeders'],
-        ['desc', 'desc', 'desc']
-      );
+      const sortedByBest = sortByBest(flattenIndexers);
 
       return opts.withoutFilter ? sortedByBest : [sortedByBest[0]];
     } catch (error) {
@@ -252,86 +253,15 @@ export class JackettService {
     const results = uniqBy(rawResults.flat(), 'Guid')
       .filter((result) => result.Link || result.MagnetUri)
       .map((result) =>
-        this.formatSearchResult({ result, qualityParams, preferredTags })
+        formatSearchResult({ result, qualityParams, preferredTags })
       )
-      .filter((result) => {
-        if (withoutFilter) return true;
-
-        const hasAcceptableSize = result.size < maxSize;
-        const hasSeeders = result.seeders >= 5 && result.seeders > result.peers;
-        const hasTag = result.tag.score > 0;
-
-        if (isSeason) {
-          const isEpisode = result.normalizedTitleParts.some((titlePart) =>
-            titlePart.match(/e\d+|episode|episode\d+|ep|ep\d+/)
-          );
-          return hasAcceptableSize && hasSeeders && !isEpisode;
-        }
-
-        return hasAcceptableSize && hasSeeders && hasTag;
-      });
+      .filter((result) =>
+        isDownloadable({ result, maxSize, isSeason, withoutFilter })
+      );
 
     this.logger.info(`found ${results.length} downloadable results`);
 
     return results;
-  }
-
-  private formatSearchResult = ({
-    result,
-    qualityParams,
-    preferredTags,
-  }: {
-    result: JackettResult;
-    qualityParams: Quality[];
-    preferredTags: Tag[];
-  }) => {
-    const normalizedTitle = sanitize(result.Title);
-    const normalizedTitleParts = normalizedTitle
-      .split(' ')
-      .filter((str) => str && str.trim());
-
-    return {
-      normalizedTitle,
-      normalizedTitleParts,
-      id: result.Guid,
-      title: result.Title,
-      quality: this.parseQuality(normalizedTitleParts, qualityParams),
-      size: result.Size,
-      seeders: result.Seeders,
-      peers: result.Peers,
-      link: result.Guid,
-      // we filter out results wihtout link or magnet uri before
-      // there will always be a download link
-      downloadLink: (result.MagnetUri || result.Link) as string,
-      tag: this.parseTag(normalizedTitleParts, preferredTags),
-      publishDate: result.PublishDate,
-    };
-  };
-
-  private parseTag(normalizedTitle: string[], preferredTags: Tag[]) {
-    const tagMatch = preferredTags.find((tag) =>
-      normalizedTitle.find((part) => part === tag.name.toLowerCase())
-    );
-
-    // we set score to 1 when there's not tag set
-    // like this all results will be treated as potential result
-    const unknownScore = preferredTags.length > 0 ? 0 : 1;
-
-    return tagMatch
-      ? { label: tagMatch.name, score: tagMatch.score }
-      : { label: 'unknown', score: unknownScore };
-  }
-
-  private parseQuality(normalizedTitle: string[], qualityParams: Quality[]) {
-    const qualityMatch = qualityParams.find((quality) =>
-      quality.match.some((keyword) =>
-        normalizedTitle.find((part) => part === keyword.toLowerCase())
-      )
-    );
-
-    return qualityMatch
-      ? { label: qualityMatch.name, score: qualityMatch.score }
-      : { label: 'unknown', score: 0 };
   }
 
   private canSearchOriginalTitle(originalCountries: string[]) {
