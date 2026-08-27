@@ -2,10 +2,10 @@ services:
   api:
     build:
       context: ./packages/api
-    command: yarn dev
+    command: yarn ts-node-dev --interval 1000 --respawn --transpile-only -r tsconfig-paths/register --ignore-watch node_modules src/main.ts
+    user: "root"
     volumes:
       - ./packages/api:/usr/src/app
-      - api_node_modules:/usr/src/app/node_modules
       - api_build:/usr/src/app/dist
   web:
     build:
