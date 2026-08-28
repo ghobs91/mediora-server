@@ -54,6 +54,10 @@ elif [[ $args == 'start:wireguard' ]]; then
   stop_bobarr
   $COMPOSE_VERSION -f docker-compose.yml -f docker-compose.wireguard.yml up --force-recreate -d
   after_start
+elif [[ $args == 'start:tailscale' ]]; then
+  stop_bobarr
+  $COMPOSE_VERSION -f docker-compose.yml -f docker-compose.tailscale.yml up --force-recreate -d
+  after_start
 elif [[ $args == 'stop' ]]; then
   stop_bobarr
   echo ""
@@ -64,5 +68,5 @@ elif [[ $args == 'update' ]]; then
   echo "bobarr docker images correctly updated, you can now re-start bobarr"
 else
   echo "unknow command: $args"
-  echo "use [start | start:vpn | start:wireguard | stop | update]"
+  echo "use [start | start:vpn | start:wireguard | start:tailscale | stop | update]"
 fi

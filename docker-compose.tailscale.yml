@@ -1,0 +1,36 @@
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: bobarr-tailscale
+    cap_add:
+      - net_admin
+      - net_raw
+    security_opt:
+      - label:disable
+    environment:
+      - TS_STATE_DIR=/var/lib/tailscale
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+    networks:
+      - default
+    restart: unless-stopped
+
+  transmission:
+    network_mode: "service:tailscale"
+    depends_on:
+      - tailscale
+
+  api:
+    links:
+      - tailscale:transmission
+    networks:
+      - default
+
+  transmission-web:
+    links:
+      - tailscale:transmission
+    networks:
+      - default
+
+volumes:
+  tailscale_state:
