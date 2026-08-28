@@ -55,13 +55,10 @@ export class MediaMountsService implements OnModuleInit {
     }
 
     const allMounts = await this.mediaMountRepository.find();
-    const knownPaths = new Set(allMounts.map((m) => m.path));
-    for (const path of paths) {
-      if (!knownPaths.has(path)) {
-        const mount = await this.mediaMountRepository.findOne({ where: { path } });
-        if (mount) {
-          await this.mediaMountRepository.remove(mount);
-        }
+    const knownPaths = new Set(paths);
+    for (const mount of allMounts) {
+      if (!knownPaths.has(mount.path)) {
+        await this.mediaMountRepository.remove(mount);
       }
     }
   }
