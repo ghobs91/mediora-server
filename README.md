@@ -89,6 +89,23 @@ If you want to enforce all torrent traffic through a VPN:
 * Copy your wireguard config file (wg0.conf) into the folder `packages/vpn`
 * `$ ./bobarr.sh start:wireguard`
 
+#### Tailscale (Mullvad exit node)
+
+Tailscale routes only the Transmission downloads through a Mullvad exit node.
+The API, web UI, and Jackett keep their normal network. This reuses the same
+Tailscale account/tailnet you already run on your machine; the stack spawns a
+`tailscale` container that joins the same tailnet, so it shows up as an extra
+device in your Tailscale admin console.
+
+* `$ ./bobarr.sh start:tailscale`
+* Bring the Tailscale session online and route Transmission's internet traffic
+  through a specific Mullvad exit node (see `tailscale exit-node list` for the
+  hostnames available to your tailnet). The first run prints a one-time login
+  URL to approve the device in your Tailscale admin console. The exit node
+  selection is persisted with the container state, so it survives restarts:
+  * `$ docker exec bobarr-tailscale tailscale up --exit-node=fr-par-wg-001.mullvad.ts.net --exit-node-allow-lan-access=true`
+* Stop the stack with `$ ./bobarr.sh stop`
+
 ## Configuration
 
 ### Torrent account
