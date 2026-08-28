@@ -13,7 +13,7 @@ import { DataSource, EntityManager, Like, IsNull } from "typeorm";
 
 import { Transaction, TransactionManager } from "src/utils/transaction";
 
-import { filterSeries, forEachSeries, map, mapSeries } from "p-iteration";
+import { forEachSeries, map, mapSeries } from "p-iteration";
 
 import { LIBRARY_CONFIG } from "src/config";
 import { mapConcurrent } from "src/utils/map-concurrent";
@@ -154,15 +154,20 @@ export class ScanLibraryProcessor extends WorkerHost {
         mountPath: mount.path,
       });
 
-      const movies = await fs
-        .readdir(root)
-        .then((entries) =>
-          filterSeries(entries, (entry) =>
-            fs
-              .stat(path.join(root, entry))
-              .then((result) => result.isDirectory()),
-          ),
-        );
+      let movies: string[];
+      try {
+        movies = (await fs.readdir(root, { withFileTypes: true }))
+          .filter((dirent) => dirent.isDirectory())
+          .map((dirent) => dirent.name);
+      } catch (error) {
+        if (error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+          this.logger.info("movies folder not present on mount, skipping", {
+            mountPath: mount.path,
+          });
+          continue;
+        }
+        throw error;
+      }
 
       this.logger.info(`found ${movies.length} movies on disk`, {
         mountPath: mount.path,
@@ -193,9 +198,20 @@ export class ScanLibraryProcessor extends WorkerHost {
         mountPath: mount.path,
       });
 
-      const tvshows = (await fs.readdir(root, { withFileTypes: true }))
-        .filter((dirent) => dirent.isDirectory())
-        .map((dirent) => dirent.name);
+      let tvshows: string[];
+      try {
+        tvshows = (await fs.readdir(root, { withFileTypes: true }))
+          .filter((dirent) => dirent.isDirectory())
+          .map((dirent) => dirent.name);
+      } catch (error) {
+        if (error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+          this.logger.info("tvshows folder not present on mount, skipping", {
+            mountPath: mount.path,
+          });
+          continue;
+        }
+        throw error;
+      }
 
       this.logger.info(`found ${tvshows.length} tvshows on disk`, {
         mountPath: mount.path,
