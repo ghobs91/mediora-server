@@ -33,3 +33,10 @@ export const LIBRARY_ROOT = "/usr/library";
 export const LIBRARY_CONFIG = {
   scanConcurrency: env.LIBRARY_SCAN_CONCURRENCY,
 };
+
+export function getInitialMediaMountPaths(): string[] {
+  if (!env.MEDIA_MOUNTS) return [LIBRARY_ROOT];
+  return env.MEDIA_MOUNTS.split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+}

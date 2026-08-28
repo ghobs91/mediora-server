@@ -29,6 +29,8 @@ const envSchema = z.object({
   LIBRARY_TV_SHOWS_FOLDER_NAME: z.string().default("tvshows"),
   LIBRARY_SCAN_CONCURRENCY: z.coerce.number().int().positive().default(4),
 
+  MEDIA_MOUNTS: z.string().optional(),
+
   APP_PASSWORD: z.string().optional(),
   JWT_SECRET: z.string().default("bobarr"),
 });

@@ -77,6 +77,14 @@ export class OrganizeProcessor extends WorkerHost {
     }
   }
 
+  private getDownloadPath(filename: string): string {
+    const downloadDir = '/downloads/complete';
+    if (path.isAbsolute(filename)) {
+      return filename;
+    }
+    return path.join(downloadDir, filename);
+  }
+
   @Transaction()
   public async renameAndLinkMovie(
     job: Job<{ movieId: number }>,
@@ -151,12 +159,13 @@ export class OrganizeProcessor extends WorkerHost {
 
     await childCommand(`mkdir -p "${newFolder}"`);
     await mapSeries(torrentFiles, async (torrentFile) => {
+      const downloadPath = this.getDownloadPath(torrentFile.original);
       await childCommand(
         oneLine`
-            cd "${newFolder}" &&
+            mkdir -p "${newFolder}" &&
             ${this.getOrganizeStrategyCommand(organizeStrategy)}
-              "../../downloads/complete/${torrentFile.original}"
-              "${torrentFile.next}"
+              "${downloadPath}"
+              "${path.join(newFolder, torrentFile.next)}"
           `
       );
 
@@ -237,12 +246,12 @@ export class OrganizeProcessor extends WorkerHost {
 
     await childCommand(`mkdir -p "${seasonFolder}"`);
     await mapSeries(torrentFiles, async (torrentFile) => {
+      const downloadPath = this.getDownloadPath(torrentFile.original);
       await childCommand(
         oneLine`
-          cd "${seasonFolder}" &&
           ${this.getOrganizeStrategyCommand(organizeStrategy)}
-            "../../../downloads/complete/${torrentFile.original}"
-            "${torrentFile.next}"
+            "${downloadPath}"
+            "${path.join(seasonFolder, torrentFile.next)}"
         `
       );
 
@@ -362,12 +371,12 @@ export class OrganizeProcessor extends WorkerHost {
         .filter((v) => v !== undefined)
         .join(' - ');
 
+      const downloadPath = this.getDownloadPath(file.original);
       await childCommand(
         oneLine`
-          cd "${seasonFolder}" &&
           ${this.getOrganizeStrategyCommand(organizeStrategy)}
-          "../../../downloads/complete/${file.original}"
-          "${newName}${file.ext}"
+          "${downloadPath}"
+          "${path.join(seasonFolder, `${newName}${file.ext}`)}"
         `
       );
 
@@ -378,7 +387,7 @@ export class OrganizeProcessor extends WorkerHost {
       if (episode) {
         await fileDAO.save({
           episodeId: episode.id,
-          path: `${path.join(seasonFolder, newName)}.${file.ext}`,
+          path: path.join(seasonFolder, `${newName}${file.ext}`),
         });
       }
     });

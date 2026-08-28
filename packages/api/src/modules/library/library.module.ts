@@ -7,6 +7,7 @@ import { TVSeason } from 'src/entities/tvseason.entity';
 import { TVEpisode } from 'src/entities/tvepisode.entity';
 import { Torrent } from 'src/entities/torrent.entity';
 import { MediaView } from 'src/entities/media-view.entity';
+import { MediaMount } from 'src/entities/media-mount.entity';
 
 import { MovieDAO } from 'src/entities/dao/movie.dao';
 import { TVShowDAO } from 'src/entities/dao/tvshow.dao';
@@ -26,6 +27,8 @@ import { LibraryQueryService } from './library-query.service';
 import { LibraryDownloadService } from './library-download.service';
 import { LibraryOrganizationService } from './library-organization.service';
 import { LibraryFoldersService } from './library-folders.service';
+import { MediaMountsResolver } from './media-mounts.resolver';
+import { MediaMountsService } from './media-mounts.service';
 
 @Module({
   imports: [
@@ -36,6 +39,7 @@ import { LibraryFoldersService } from './library-folders.service';
       TVEpisode,
       Torrent,
       MediaView,
+      MediaMount,
     ]),
     TMDBModule,
     TransmissionModule,
@@ -49,6 +53,8 @@ import { LibraryFoldersService } from './library-folders.service';
     LibraryDownloadService,
     LibraryOrganizationService,
     LibraryFoldersService,
+    MediaMountsResolver,
+    MediaMountsService,
     MovieDAO,
     TVShowDAO,
     TVSeasonDAO,
@@ -61,6 +67,7 @@ import { LibraryFoldersService } from './library-folders.service';
     LibraryDownloadService,
     LibraryOrganizationService,
     LibraryFoldersService,
+    MediaMountsService,
   ],
 })
 export class LibraryModule {}

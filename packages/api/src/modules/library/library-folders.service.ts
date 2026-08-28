@@ -3,10 +3,10 @@ import path from 'path';
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { ParameterKey } from 'src/app.dto';
-import { LIBRARY_ROOT } from 'src/config';
 import { env } from 'src/env';
 
 import { ParamsService } from 'src/modules/params/params.service';
+import { MediaMountsService } from './media-mounts.service';
 
 import {
   LibraryFolderState,
@@ -64,7 +64,10 @@ export function getLibraryFolderState(access: FolderAccess) {
 
 @Injectable()
 export class LibraryFoldersService {
-  public constructor(private readonly paramsService: ParamsService) {}
+  public constructor(
+    private readonly paramsService: ParamsService,
+    private readonly mediaMountsService: MediaMountsService,
+  ) {}
 
   public async getFolderNames() {
     const [movies, tvshows] = await Promise.all([
@@ -84,7 +87,29 @@ export class LibraryFoldersService {
 
   public async getFolderPath(type: LibraryFolderType) {
     const names = await this.getFolderNames();
-    return path.join(LIBRARY_ROOT, names[type]);
+    const mounts = await this.mediaMountsService.getWritableMounts();
+    if (mounts.length === 0) {
+      throw new Error('No writable media mounts available');
+    }
+    return path.join(mounts[0].path, names[type]);
+  }
+
+  public async getFolderPathOnMount(type: LibraryFolderType, mountId: number) {
+    const names = await this.getFolderNames();
+    const mount = await this.mediaMountsService.findOne(mountId);
+    if (!mount) {
+      throw new Error(`Mount not found: ${mountId}`);
+    }
+    return path.join(mount.path, names[type]);
+  }
+
+  public async getFolderPathForAllMounts(type: LibraryFolderType): Promise<Array<{ mountId: number; path: string }>> {
+    const names = await this.getFolderNames();
+    const mounts = await this.mediaMountsService.findAll();
+    return mounts.map((mount) => ({
+      mountId: mount.id,
+      path: path.join(mount.path, names[type]),
+    }));
   }
 
   public async updateFolderNames({
@@ -120,45 +145,97 @@ export class LibraryFoldersService {
 
   public async inspect(): Promise<LibraryFoldersStatus> {
     const names = await this.getFolderNames();
-    const mount = await this.inspectPath(LIBRARY_ROOT, 'mount', true);
+    const mounts = await this.mediaMountsService.findAll();
+
+    const mountStatuses: LibraryFolderStatus[] = [];
+    for (const mount of mounts) {
+      const stats = await this.readStats(mount.path).then((r) => r.stats);
+      const state = getLibraryFolderState({
+        exists: !!stats,
+        isDirectory: stats?.isDirectory() ?? false,
+        canRead: await this.hasAccess(mount.path, fsConstants.R_OK),
+        canWrite: await this.hasAccess(mount.path, fsConstants.W_OK),
+        canTraverse: await this.hasAccess(mount.path, fsConstants.X_OK),
+        canCreate: await this.hasAccess(mount.path, fsConstants.W_OK | fsConstants.X_OK),
+        mode: stats ? this.formatMode(stats) : null,
+        ownerUid: stats?.uid ?? null,
+        ownerGid: stats?.gid ?? null,
+      });
+
+      const moviesPath = path.join(mount.path, names.movies);
+      const tvshowsPath = path.join(mount.path, names.tvshows);
+
+      mountStatuses.push({
+        type: 'mount',
+        name: mount.label || mount.path,
+        path: mount.path,
+        state,
+        exists: !!stats,
+        isDirectory: stats?.isDirectory() ?? false,
+        canRead: await this.hasAccess(mount.path, fsConstants.R_OK),
+        canWrite: await this.hasAccess(mount.path, fsConstants.W_OK),
+        canTraverse: await this.hasAccess(mount.path, fsConstants.X_OK),
+        canCreate: await this.hasAccess(mount.path, fsConstants.W_OK | fsConstants.X_OK),
+        mode: stats ? this.formatMode(stats) : null,
+        ownerUid: stats?.uid ?? null,
+        ownerGid: stats?.gid ?? null,
+        message: this.getMessage(state, {
+          exists: !!stats,
+          isDirectory: stats?.isDirectory() ?? false,
+          canRead: await this.hasAccess(mount.path, fsConstants.R_OK),
+          canWrite: await this.hasAccess(mount.path, fsConstants.W_OK),
+          canTraverse: await this.hasAccess(mount.path, fsConstants.X_OK),
+          canCreate: await this.hasAccess(mount.path, fsConstants.W_OK | fsConstants.X_OK),
+          mode: stats ? this.formatMode(stats) : null,
+          ownerUid: stats?.uid ?? null,
+          ownerGid: stats?.gid ?? null,
+        }, true),
+        remedy: this.getRemedy(state, {
+          exists: !!stats,
+          isDirectory: stats?.isDirectory() ?? false,
+          canRead: await this.hasAccess(mount.path, fsConstants.R_OK),
+          canWrite: await this.hasAccess(mount.path, fsConstants.W_OK),
+          canTraverse: await this.hasAccess(mount.path, fsConstants.X_OK),
+          canCreate: await this.hasAccess(mount.path, fsConstants.W_OK | fsConstants.X_OK),
+          mode: stats ? this.formatMode(stats) : null,
+          ownerUid: stats?.uid ?? null,
+          ownerGid: stats?.gid ?? null,
+        }, true),
+      });
+
+      mountStatuses.push(await this.inspectPath(moviesPath, 'movies', false));
+      mountStatuses.push(await this.inspectPath(tvshowsPath, 'tvshows', false));
+    }
 
     return {
-      mount,
+      mount: mountStatuses.length > 0 ? mountStatuses[0] : null,
       processUid: process.getuid?.() ?? null,
       processGid: process.getgid?.() ?? null,
       processRunsAsRoot: process.getuid?.() === 0,
-      folders: await Promise.all([
-        this.inspectPath(
-          path.join(LIBRARY_ROOT, names.movies),
-          'movies',
-          false
-        ),
-        this.inspectPath(
-          path.join(LIBRARY_ROOT, names.tvshows),
-          'tvshows',
-          false
-        ),
-      ]),
+      folders: mountStatuses,
     };
   }
 
   private async createMissingFolders() {
-    const { stats: mount } = await this.readStats(LIBRARY_ROOT);
-    if (!mount || !mount.isDirectory()) return;
-    if (!(await this.hasAccess(LIBRARY_ROOT, fsConstants.W_OK | fsConstants.X_OK))) {
-      return;
-    }
+    const mounts = await this.mediaMountsService.findAll();
+    for (const mount of mounts) {
+      const { stats } = await this.readStats(mount.path);
+      if (!stats || !stats.isDirectory()) continue;
+      if (!(await this.hasAccess(mount.path, fsConstants.W_OK | fsConstants.X_OK))) {
+        continue;
+      }
 
-    const names = await this.getFolderNames();
-    await Promise.all(
-      Object.values(names).map(async (name) => {
-        try {
-          await fs.mkdir(path.join(LIBRARY_ROOT, name), { recursive: true });
-        } catch (_error) {
-          // inspect() reports the actionable permission error to the user.
-        }
-      })
-    );
+      const names = await this.getFolderNames();
+      await Promise.all(
+        Object.values(names).map(async (name) => {
+          try {
+            await fs.mkdir(path.join(mount.path, name), { recursive: true });
+          } catch (_error) {
+            // inspect() reports the actionable permission error to the user.
+          }
+        })
+      );
+    }
   }
 
   private async inspectPath(

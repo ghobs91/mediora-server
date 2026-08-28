@@ -36,6 +36,7 @@ import { TVEpisode } from "src/entities/tvepisode.entity";
 import { TVSeasonDAO } from "src/entities/dao/tvseason.dao";
 import { FileDAO } from "src/entities/dao/file.dao";
 import { LibraryFoldersService } from "src/modules/library/library-folders.service";
+import { MediaMountsService } from "src/modules/library/media-mounts.service";
 
 @Processor(JobsQueue.SCAN_LIBRARY)
 export class ScanLibraryProcessor extends WorkerHost {
@@ -48,6 +49,7 @@ export class ScanLibraryProcessor extends WorkerHost {
     private readonly tmdbService: TMDBService,
     private readonly tvEpisodeDAO: TVEpisodeDAO,
     private readonly libraryFoldersService: LibraryFoldersService,
+    private readonly mediaMountsService: MediaMountsService,
   ) {
     super();
     this.logger = logger.child({ context: "ScanLibrary" });
@@ -143,55 +145,73 @@ export class ScanLibraryProcessor extends WorkerHost {
   public async scanMoviesFolder() {
     const { movies: moviesFolderName } =
       await this.libraryFoldersService.getFolderNames();
-    this.logger.info("start scan movies folder", {
-      folderName: moviesFolderName,
-    });
+    const mounts = await this.mediaMountsService.getWritableMounts();
 
-    const root = await this.libraryFoldersService.getFolderPath("movies");
-    const movies = await fs
-      .readdir(root)
-      .then((entries) =>
-        filterSeries(entries, (entry) =>
-          fs
-            .stat(path.join(root, entry))
-            .then((result) => result.isDirectory()),
+    for (const mount of mounts) {
+      const root = path.join(mount.path, moviesFolderName);
+      this.logger.info("start scan movies folder", {
+        folderName: moviesFolderName,
+        mountPath: mount.path,
+      });
+
+      const movies = await fs
+        .readdir(root)
+        .then((entries) =>
+          filterSeries(entries, (entry) =>
+            fs
+              .stat(path.join(root, entry))
+              .then((result) => result.isDirectory()),
+          ),
+        );
+
+      this.logger.info(`found ${movies.length} movies on disk`, {
+        mountPath: mount.path,
+      });
+
+      await mapConcurrent(movies, LIBRARY_CONFIG.scanConcurrency, (movie) =>
+        this.scanLibraryQueue.add(
+          ScanLibraryQueueProcessors.PROCESS_MOVIE_FOLDER,
+          { movie },
         ),
       );
 
-    this.logger.info(`found ${movies.length} movies on disk`);
-
-    await mapConcurrent(movies, LIBRARY_CONFIG.scanConcurrency, (movie) =>
-      this.scanLibraryQueue.add(
-        ScanLibraryQueueProcessors.PROCESS_MOVIE_FOLDER,
-        { movie },
-      ),
-    );
-
-    this.logger.info("finish scan movies folder");
+      this.logger.info("finish scan movies folder", {
+        mountPath: mount.path,
+      });
+    }
   }
 
   public async scanTVShowsFolder() {
     const { tvshows: tvShowsFolderName } =
       await this.libraryFoldersService.getFolderNames();
-    this.logger.info("start scan tvshows folder", {
-      folderName: tvShowsFolderName,
-    });
+    const mounts = await this.mediaMountsService.getWritableMounts();
 
-    const root = await this.libraryFoldersService.getFolderPath("tvshows");
-    const tvshows = (await fs.readdir(root, { withFileTypes: true }))
-      .filter((dirent) => dirent.isDirectory())
-      .map((dirent) => dirent.name);
+    for (const mount of mounts) {
+      const root = path.join(mount.path, tvShowsFolderName);
+      this.logger.info("start scan tvshows folder", {
+        folderName: tvShowsFolderName,
+        mountPath: mount.path,
+      });
 
-    this.logger.info(`found ${tvshows.length} tvshows on disk`);
+      const tvshows = (await fs.readdir(root, { withFileTypes: true }))
+        .filter((dirent) => dirent.isDirectory())
+        .map((dirent) => dirent.name);
 
-    await mapConcurrent(tvshows, LIBRARY_CONFIG.scanConcurrency, (tvshow) =>
-      this.scanLibraryQueue.add(
-        ScanLibraryQueueProcessors.PROCESS_TV_SHOW_FOLDER,
-        { tvshow },
-      ),
-    );
+      this.logger.info(`found ${tvshows.length} tvshows on disk`, {
+        mountPath: mount.path,
+      });
 
-    this.logger.info("finish scan tvshows folder");
+      await mapConcurrent(tvshows, LIBRARY_CONFIG.scanConcurrency, (tvshow) =>
+        this.scanLibraryQueue.add(
+          ScanLibraryQueueProcessors.PROCESS_TV_SHOW_FOLDER,
+          { tvshow },
+        ),
+      );
+
+      this.logger.info("finish scan tvshows folder", {
+        mountPath: mount.path,
+      });
+    }
   }
 
   @Transaction()
@@ -204,18 +224,39 @@ export class ScanLibraryProcessor extends WorkerHost {
     const movieDAO = MovieDAO.fromManager(manager!);
     const fileDAO = FileDAO.fromManager(manager!);
 
-    const root = await this.libraryFoldersService.getFolderPath("movies");
-    const movieFolder = path.join(root, movie);
+    const { movies: moviesFolderName } =
+      await this.libraryFoldersService.getFolderNames();
+    const mounts = await this.mediaMountsService.getWritableMounts();
+
+    let movieFolder: string | null = null;
+    for (const mount of mounts) {
+      const candidate = path.join(mount.path, moviesFolderName, movie);
+      try {
+        const stats = await fs.stat(candidate);
+        if (stats.isDirectory()) {
+          movieFolder = candidate;
+          break;
+        }
+      } catch {
+        // not on this mount, try next
+      }
+    }
+
+    if (!movieFolder) {
+      this.logger.warn("movie folder not found on any mount", { movie });
+      return;
+    }
+
     const movieFiles = (await fs.readdir(movieFolder, { withFileTypes: true }))
       .filter((dirent) => dirent.isFile() || dirent.isSymbolicLink())
       .map((dirent) => dirent.name);
 
     const files = await mapSeries(movieFiles, async (file) => {
       const match = await fileDAO.findOne({
-        where: { path: path.join(movieFolder, file) },
+        where: { path: path.join(movieFolder!, file) },
         relations: ["movie"],
       });
-      return { match, file: path.join(movieFolder, file) };
+      return { match, file: path.join(movieFolder!, file) };
     });
 
     const movieInDatabase = files.find((file) => file.match?.movie);
@@ -369,9 +410,31 @@ export class ScanLibraryProcessor extends WorkerHost {
       });
     }
 
-    const root = await this.libraryFoldersService.getFolderPath("tvshows");
+    const { tvshows: tvShowsFolderName } =
+      await this.libraryFoldersService.getFolderNames();
+    const mounts = await this.mediaMountsService.getWritableMounts();
+
+    let showRoot: string | null = null;
+    for (const mount of mounts) {
+      const candidate = path.join(mount.path, tvShowsFolderName, tvshow);
+      try {
+        const stats = await fs.stat(candidate);
+        if (stats.isDirectory()) {
+          showRoot = candidate;
+          break;
+        }
+      } catch {
+        // not on this mount, try next
+      }
+    }
+
+    if (!showRoot) {
+      this.logger.warn("tvshow folder not found on any mount", { tvshow });
+      return;
+    }
+
     const episodes = await fs
-      .readdir(path.join(root, tvshow), { withFileTypes: true })
+      .readdir(showRoot, { withFileTypes: true })
       .then((seasons) =>
         mapSeries(
           seasons
@@ -379,11 +442,11 @@ export class ScanLibraryProcessor extends WorkerHost {
             .map((season) => season.name),
           (season) =>
             fs
-              .readdir(path.join(root, tvshow, season), { withFileTypes: true })
+              .readdir(path.join(showRoot, season), { withFileTypes: true })
               .then((entries) =>
                 entries
                   .filter((f) => f.isFile() || f.isSymbolicLink())
-                  .map((f) => path.join(root, tvshow, season, f.name)),
+                  .map((f) => path.join(showRoot, season, f.name)),
               ),
         ).then(flatten),
       );

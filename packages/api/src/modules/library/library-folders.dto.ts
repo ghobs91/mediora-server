@@ -60,8 +60,8 @@ export class LibraryFolderStatus {
 
 @ObjectType()
 export class LibraryFoldersStatus {
-  @Field(() => LibraryFolderStatus)
-  public mount!: LibraryFolderStatus;
+  @Field(() => LibraryFolderStatus, { nullable: true })
+  public mount!: LibraryFolderStatus | null;
 
   @Field(() => Int, { nullable: true })
   public processUid!: number | null;
