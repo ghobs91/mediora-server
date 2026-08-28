@@ -1,6 +1,7 @@
 node_modules
 
 # misc
+.env
 .DS_Store
 .idea
 .vscode
