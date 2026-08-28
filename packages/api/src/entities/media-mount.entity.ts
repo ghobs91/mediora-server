@@ -35,7 +35,7 @@ export class MediaMount {
   @Column({ unique: true })
   public path!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @Column('varchar', { nullable: true })
   public label!: string | null;
 
@@ -47,7 +47,7 @@ export class MediaMount {
   @Column({ default: MediaMountState.MISSING })
   public state!: MediaMountState;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @Column('varchar', { nullable: true })
   public errorMessage!: string | null;
 
