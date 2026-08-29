@@ -9,8 +9,15 @@ services:
       - label:disable
     environment:
       - TS_STATE_DIR=/var/lib/tailscale
+      - TS_AUTHKEY=${TS_AUTHKEY:-}
+      - TS_ACCEPT_DNS=false
+      - TS_EXIT_NODE=${TS_EXIT_NODE:-}
+    entrypoint:
+      - /bin/sh
+      - /usr/local/bin/tailscale-entrypoint.sh
     volumes:
       - tailscale_state:/var/lib/tailscale
+      - ./scripts/tailscale-entrypoint.sh:/usr/local/bin/tailscale-entrypoint.sh:ro
     networks:
       - default
     restart: unless-stopped

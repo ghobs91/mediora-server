@@ -97,13 +97,32 @@ Tailscale account/tailnet you already run on your machine; the stack spawns a
 `tailscale` container that joins the same tailnet, so it shows up as an extra
 device in your Tailscale admin console.
 
+Set two values in `.env`:
+
+* `TS_AUTHKEY` — an auth key from the Tailscale admin console
+  (`/admin/machines/authkeys`) so the container joins your tailnet without a
+  manual login. Leave it empty for a one-time interactive login, which prints a
+  URL to approve the device.
+* `TS_EXIT_NODE` — the Mullvad exit node hostname for Transmission's traffic
+  (see `tailscale exit-node list`). Leave it empty to run without an exit node
+  and set one later.
+
+Both are read on every boot, so they survive state wipes and restarts:
+
+```
+TS_AUTHKEY=tska-xxxxxxx
+TS_EXIT_NODE=fr-par-wg-001.mullvad.ts.net
+```
+
+A small entrypoint wrapper (`scripts/tailscale-entrypoint.sh`) brings the node up
+via `containerboot`, waits until it is authenticated, then applies the exit node
+with `tailscale set`. Exit-node hostnames cannot be resolved during the initial
+`tailscale up` (before auth), so they must be configured after login. A non-zero
+exit / restart loop on boot means `TS_AUTHKEY` was rejected.
+
 * `$ ./bobarr.sh start:tailscale`
-* Bring the Tailscale session online and route Transmission's internet traffic
-  through a specific Mullvad exit node (see `tailscale exit-node list` for the
-  hostnames available to your tailnet). The first run prints a one-time login
-  URL to approve the device in your Tailscale admin console. The exit node
-  selection is persisted with the container state, so it survives restarts:
-  * `$ docker exec bobarr-tailscale tailscale up --exit-node=fr-par-wg-001.mullvad.ts.net --exit-node-allow-lan-access=true`
+* Verify routing with `$ docker exec bobarr-tailscale tailscale status` and
+  `$ docker exec bobarr-tailscale tailscale ip`
 * Stop the stack with `$ ./bobarr.sh stop`
 
 ## Configuration
