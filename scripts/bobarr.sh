@@ -17,12 +17,12 @@ cat << "EOF"
 EOF
 
 if docker compose > /dev/null 2>&1; then
-    if docker compose version --short | grep "^2." > /dev/null 2>&1; then
+    if docker compose version --short | grep -qE "^[v]?[2-9]\." > /dev/null 2>&1; then
       COMPOSE_VERSION='docker compose'
     fi
 elif docker-compose > /dev/null 2>&1; then
   if ! [[ $(alias docker-compose 2> /dev/null) ]] ; then
-    if docker-compose version --short | grep "^2." > /dev/null 2>&1; then
+    if docker-compose version --short | grep -qE "^[v]?[2-9]\." > /dev/null 2>&1; then
       COMPOSE_VERSION='docker-compose'
     fi
   fi
