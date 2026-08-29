@@ -121,7 +121,12 @@ export function LibraryFoldersComponent() {
         {error && <p className="text-sm text-destructive">{error.message}</p>}
         {data && (
           <div className="space-y-2">
-            <FolderStatus label="Docker library mount" folder={data.libraryFolders.mount} />
+            {data.libraryFolders.mount && (
+              <FolderStatus
+                label="Docker library mount"
+                folder={data.libraryFolders.mount}
+              />
+            )}
             {movies && <FolderStatus label="Movies" folder={movies} />}
             {tvShows && <FolderStatus label="TV shows" folder={tvShows} />}
           </div>

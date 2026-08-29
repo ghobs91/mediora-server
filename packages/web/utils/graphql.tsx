@@ -17,10 +17,13 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
-  /** The `BigInt` scalar type represents non-fractional signed whole numeric values. BigInt can represent values between -(2^53) + 1 and 2^53 - 1.  */
   BigInt: { input: any; output: any; }
-  /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: any; output: any; }
+};
+
+export type ControlTorrentInput = {
+  resourceId: Scalars['Int']['input'];
+  resourceType: FileType;
 };
 
 export enum DownloadableMediaState {
@@ -177,11 +180,36 @@ export type LibraryFolderStatus = {
 export type LibraryFoldersStatus = {
   __typename?: 'LibraryFoldersStatus';
   folders: Array<LibraryFolderStatus>;
-  mount: LibraryFolderStatus;
+  mount?: Maybe<LibraryFolderStatus>;
   processGid?: Maybe<Scalars['Int']['output']>;
   processRunsAsRoot: Scalars['Boolean']['output'];
   processUid?: Maybe<Scalars['Int']['output']>;
 };
+
+export type MediaMount = {
+  __typename?: 'MediaMount';
+  accessType: MediaMountAccessType;
+  createdAt: Scalars['DateTime']['output'];
+  errorMessage?: Maybe<Scalars['String']['output']>;
+  id: Scalars['Int']['output'];
+  label?: Maybe<Scalars['String']['output']>;
+  path: Scalars['String']['output'];
+  state: MediaMountState;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export enum MediaMountAccessType {
+  ReadOnly = 'READ_ONLY',
+  ReadWrite = 'READ_WRITE'
+}
+
+export enum MediaMountState {
+  Inaccessible = 'INACCESSIBLE',
+  Missing = 'MISSING',
+  NotDirectory = 'NOT_DIRECTORY',
+  Ready = 'READY',
+  ReadOnly = 'READ_ONLY'
+}
 
 export type Movie = {
   __typename?: 'Movie';
@@ -195,14 +223,21 @@ export type Movie = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  addMediaMount: GraphQlCommonResponse;
   clearRedisCache: GraphQlCommonResponse;
   downloadMovie: GraphQlCommonResponse;
   downloadOwnTorrent: GraphQlCommonResponse;
   downloadSeason: GraphQlCommonResponse;
   downloadTVEpisode: GraphQlCommonResponse;
+  pauseTorrents: GraphQlCommonResponse;
+  refreshMediaMountState: GraphQlCommonResponse;
+  removeMediaMount: GraphQlCommonResponse;
   removeMovie: GraphQlCommonResponse;
   removeTVShow: GraphQlCommonResponse;
+  removeTorrents: GraphQlCommonResponse;
+  removeTorrentsAndFiles: GraphQlCommonResponse;
   resetLibrary: GraphQlCommonResponse;
+  resumeTorrents: GraphQlCommonResponse;
   saveQualityParams: GraphQlCommonResponse;
   saveTags: GraphQlCommonResponse;
   startDownloadMissingJob: GraphQlCommonResponse;
@@ -211,7 +246,16 @@ export type Mutation = {
   trackMovie: Movie;
   trackTVShow: TvShow;
   updateLibraryFolders: LibraryFoldersStatus;
+  updateMediaMountAccessType: GraphQlCommonResponse;
+  updateMediaMountLabel: GraphQlCommonResponse;
   updateParams: GraphQlCommonResponse;
+};
+
+
+export type MutationAddMediaMountArgs = {
+  accessType?: InputMaybe<MediaMountAccessType>;
+  label?: InputMaybe<Scalars['String']['input']>;
+  path: Scalars['String']['input'];
 };
 
 
@@ -241,6 +285,21 @@ export type MutationDownloadTvEpisodeArgs = {
 };
 
 
+export type MutationPauseTorrentsArgs = {
+  torrents: Array<ControlTorrentInput>;
+};
+
+
+export type MutationRefreshMediaMountStateArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
+export type MutationRemoveMediaMountArgs = {
+  id: Scalars['Int']['input'];
+};
+
+
 export type MutationRemoveMovieArgs = {
   tmdbId: Scalars['Int']['input'];
 };
@@ -251,9 +310,24 @@ export type MutationRemoveTvShowArgs = {
 };
 
 
+export type MutationRemoveTorrentsArgs = {
+  torrents: Array<ControlTorrentInput>;
+};
+
+
+export type MutationRemoveTorrentsAndFilesArgs = {
+  torrents: Array<ControlTorrentInput>;
+};
+
+
 export type MutationResetLibraryArgs = {
   deleteFiles: Scalars['Boolean']['input'];
   resetSettings: Scalars['Boolean']['input'];
+};
+
+
+export type MutationResumeTorrentsArgs = {
+  torrents: Array<ControlTorrentInput>;
 };
 
 
@@ -282,6 +356,18 @@ export type MutationTrackTvShowArgs = {
 export type MutationUpdateLibraryFoldersArgs = {
   moviesFolderName: Scalars['String']['input'];
   tvShowsFolderName: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateMediaMountAccessTypeArgs = {
+  accessType: MediaMountAccessType;
+  id: Scalars['Int']['input'];
+};
+
+
+export type MutationUpdateMediaMountLabelArgs = {
+  id: Scalars['Int']['input'];
+  label: Scalars['String']['input'];
 };
 
 
@@ -329,6 +415,7 @@ export type Query = {
   getGenres: TmdbGenresResults;
   getLanguages: Array<TmdbLanguagesResult>;
   getLibraryFolders: LibraryFoldersStatus;
+  getMediaMounts: Array<MediaMount>;
   getMissingMovies: Array<EnrichedMovie>;
   getMissingTVEpisodes: Array<EnrichedTvEpisode>;
   getMovieFileDetails: LibraryFileDetails;
@@ -344,6 +431,7 @@ export type Query = {
   getTVShows: Array<EnrichedTvShow>;
   getTags: Array<Tag>;
   getTorrentStatus: Array<TorrentStatus>;
+  getWritableMediaMounts: Array<MediaMount>;
   omdbSearch: OmdbInfo;
   search: TmdbSearchResults;
   searchJackett: Array<JackettFormattedResult>;
@@ -351,7 +439,7 @@ export type Query = {
 
 
 export type QueryDiscoverArgs = {
-  entertainment?: InputMaybe<Entertainment>;
+  entertainment?: Entertainment;
   genres?: InputMaybe<Array<Scalars['Float']['input']>>;
   originLanguage?: InputMaybe<Scalars['String']['input']>;
   page?: InputMaybe<Scalars['Float']['input']>;
@@ -541,6 +629,34 @@ export type DownloadOwnTorrentMutationVariables = Exact<{
 
 export type DownloadOwnTorrentMutation = { __typename?: 'Mutation', downloadOwnTorrent: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
 
+export type PauseTorrentsMutationVariables = Exact<{
+  torrents: Array<ControlTorrentInput>;
+}>;
+
+
+export type PauseTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type ResumeTorrentsMutationVariables = Exact<{
+  torrents: Array<ControlTorrentInput>;
+}>;
+
+
+export type ResumeTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type RemoveTorrentsMutationVariables = Exact<{
+  torrents: Array<ControlTorrentInput>;
+}>;
+
+
+export type RemoveTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type RemoveTorrentsAndFilesMutationVariables = Exact<{
+  torrents: Array<ControlTorrentInput>;
+}>;
+
+
+export type RemoveTorrentsAndFilesMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
 export type StartScanLibraryMutationVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -639,7 +755,7 @@ export type UpdateLibraryFoldersMutationVariables = Exact<{
 }>;
 
 
-export type UpdateLibraryFoldersMutation = { __typename?: 'Mutation', libraryFolders: { __typename?: 'LibraryFoldersStatus', processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
+export type UpdateLibraryFoldersMutation = { __typename?: 'Mutation', libraryFolders: { __typename?: 'LibraryFoldersStatus', processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount?: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null } | null, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
 
 export type UpdateParamsMutationVariables = Exact<{
   params: Array<UpdateParamsInput>;
@@ -683,7 +799,7 @@ export type GetLanguagesQuery = { __typename?: 'Query', languages: Array<{ __typ
 export type GetLibraryFoldersQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetLibraryFoldersQuery = { __typename?: 'Query', libraryFolders: { __typename?: 'LibraryFoldersStatus', processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
+export type GetLibraryFoldersQuery = { __typename?: 'Query', libraryFolders: { __typename?: 'LibraryFoldersStatus', processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount?: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null } | null, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
 
 export type GetLibraryMoviesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -830,6 +946,66 @@ export function useDownloadOwnTorrentMutation(baseOptions?: Apollo.MutationHookO
 export type DownloadOwnTorrentMutationHookResult = ReturnType<typeof useDownloadOwnTorrentMutation>;
 export type DownloadOwnTorrentMutationResult = Apollo.MutationResult<DownloadOwnTorrentMutation>;
 export type DownloadOwnTorrentMutationOptions = Apollo.BaseMutationOptions<DownloadOwnTorrentMutation, DownloadOwnTorrentMutationVariables>;
+export const PauseTorrentsDocument = gql`
+    mutation pauseTorrents($torrents: [ControlTorrentInput!]!) {
+  result: pauseTorrents(torrents: $torrents) {
+    success
+    message
+  }
+}
+    `;
+export function usePauseTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<PauseTorrentsMutation, PauseTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<PauseTorrentsMutation, PauseTorrentsMutationVariables>(PauseTorrentsDocument, options);
+      }
+export type PauseTorrentsMutationHookResult = ReturnType<typeof usePauseTorrentsMutation>;
+export type PauseTorrentsMutationResult = Apollo.MutationResult<PauseTorrentsMutation>;
+export type PauseTorrentsMutationOptions = Apollo.BaseMutationOptions<PauseTorrentsMutation, PauseTorrentsMutationVariables>;
+export const ResumeTorrentsDocument = gql`
+    mutation resumeTorrents($torrents: [ControlTorrentInput!]!) {
+  result: resumeTorrents(torrents: $torrents) {
+    success
+    message
+  }
+}
+    `;
+export function useResumeTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<ResumeTorrentsMutation, ResumeTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ResumeTorrentsMutation, ResumeTorrentsMutationVariables>(ResumeTorrentsDocument, options);
+      }
+export type ResumeTorrentsMutationHookResult = ReturnType<typeof useResumeTorrentsMutation>;
+export type ResumeTorrentsMutationResult = Apollo.MutationResult<ResumeTorrentsMutation>;
+export type ResumeTorrentsMutationOptions = Apollo.BaseMutationOptions<ResumeTorrentsMutation, ResumeTorrentsMutationVariables>;
+export const RemoveTorrentsDocument = gql`
+    mutation removeTorrents($torrents: [ControlTorrentInput!]!) {
+  result: removeTorrents(torrents: $torrents) {
+    success
+    message
+  }
+}
+    `;
+export function useRemoveTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<RemoveTorrentsMutation, RemoveTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<RemoveTorrentsMutation, RemoveTorrentsMutationVariables>(RemoveTorrentsDocument, options);
+      }
+export type RemoveTorrentsMutationHookResult = ReturnType<typeof useRemoveTorrentsMutation>;
+export type RemoveTorrentsMutationResult = Apollo.MutationResult<RemoveTorrentsMutation>;
+export type RemoveTorrentsMutationOptions = Apollo.BaseMutationOptions<RemoveTorrentsMutation, RemoveTorrentsMutationVariables>;
+export const RemoveTorrentsAndFilesDocument = gql`
+    mutation removeTorrentsAndFiles($torrents: [ControlTorrentInput!]!) {
+  result: removeTorrentsAndFiles(torrents: $torrents) {
+    success
+    message
+  }
+}
+    `;
+export function useRemoveTorrentsAndFilesMutation(baseOptions?: Apollo.MutationHookOptions<RemoveTorrentsAndFilesMutation, RemoveTorrentsAndFilesMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<RemoveTorrentsAndFilesMutation, RemoveTorrentsAndFilesMutationVariables>(RemoveTorrentsAndFilesDocument, options);
+      }
+export type RemoveTorrentsAndFilesMutationHookResult = ReturnType<typeof useRemoveTorrentsAndFilesMutation>;
+export type RemoveTorrentsAndFilesMutationResult = Apollo.MutationResult<RemoveTorrentsAndFilesMutation>;
+export type RemoveTorrentsAndFilesMutationOptions = Apollo.BaseMutationOptions<RemoveTorrentsAndFilesMutation, RemoveTorrentsAndFilesMutationVariables>;
 export const StartScanLibraryDocument = gql`
     mutation startScanLibrary {
   result: startScanLibraryJob {

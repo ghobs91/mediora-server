@@ -5,6 +5,7 @@ import { Logger } from 'winston';
 import { Transmission } from 'transmission-client';
 import { DataSource, DeepPartial, EntityManager } from 'typeorm';
 
+import { FileType } from 'src/app.dto';
 import { Torrent } from 'src/entities/torrent.entity';
 import { TorrentDAO } from 'src/entities/dao/torrent.dao';
 import { TransactionManager, LazyTransaction } from 'src/utils/transaction';
@@ -23,6 +24,27 @@ export class TransmissionService {
 
   public removeTorrentAndFiles(torrentHash: string) {
     return this.client.remove(torrentHash, true);
+  }
+
+  public async pauseTorrents(ids: { resourceId: number; resourceType: FileType }[]) {
+    return this.client.stop(await this.getHashes(ids));
+  }
+
+  public async resumeTorrents(ids: { resourceId: number; resourceType: FileType }[]) {
+    return this.client.start(await this.getHashes(ids));
+  }
+
+  public async removeTorrents(ids: { resourceId: number; resourceType: FileType }[]) {
+    return this.client.remove(await this.getHashes(ids), false);
+  }
+
+  public async removeTorrentsAndFiles(ids: { resourceId: number; resourceType: FileType }[]) {
+    return this.client.remove(await this.getHashes(ids), true);
+  }
+
+  private async getHashes(ids: { resourceId: number; resourceType: FileType }[]) {
+    const torrents = await this.torrentDAO.find({ where: ids });
+    return torrents.map((torrent) => torrent.torrentHash);
   }
 
   public async getResourceTorrent(torrentAttributes: DeepPartial<Torrent>) {

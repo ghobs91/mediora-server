@@ -1,9 +1,15 @@
-import { Resolver, Query, Args } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { map } from 'p-iteration';
+
+import { GraphQLCommonResponse } from 'src/app.dto';
 
 import { TorrentDAO } from 'src/entities/dao/torrent.dao';
 
-import { TorrentStatus, GetTorrentStatusInput } from './transmission.dto';
+import {
+  TorrentStatus,
+  GetTorrentStatusInput,
+  ControlTorrentInput,
+} from './transmission.dto';
 import { TransmissionService } from './transmission.service';
 
 @Resolver()
@@ -29,5 +35,41 @@ export class TransmissionResolver {
 
       return { ...torrentStatus, resourceId, resourceType };
     });
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async pauseTorrents(
+    @Args('torrents', { type: () => [ControlTorrentInput] })
+    torrents: ControlTorrentInput[]
+  ) {
+    await this.transmissionService.pauseTorrents(torrents);
+    return { success: true, message: 'DOWNLOADS_PAUSED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async resumeTorrents(
+    @Args('torrents', { type: () => [ControlTorrentInput] })
+    torrents: ControlTorrentInput[]
+  ) {
+    await this.transmissionService.resumeTorrents(torrents);
+    return { success: true, message: 'DOWNLOADS_RESUMED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async removeTorrents(
+    @Args('torrents', { type: () => [ControlTorrentInput] })
+    torrents: ControlTorrentInput[]
+  ) {
+    await this.transmissionService.removeTorrents(torrents);
+    return { success: true, message: 'DOWNLOADS_REMOVED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async removeTorrentsAndFiles(
+    @Args('torrents', { type: () => [ControlTorrentInput] })
+    torrents: ControlTorrentInput[]
+  ) {
+    await this.transmissionService.removeTorrentsAndFiles(torrents);
+    return { success: true, message: 'DOWNLOADS_REMOVED_AND_FILES_DELETED' };
   }
 }

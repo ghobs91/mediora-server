@@ -21,3 +21,9 @@ export class GetTorrentStatusInput {
   @Field((_type) => Int) public resourceId!: number;
   @Field((_type) => FileType) public resourceType!: FileType;
 }
+
+@InputType()
+export class ControlTorrentInput {
+  @Field((_type) => Int) public resourceId!: number;
+  @Field((_type) => FileType) public resourceType!: FileType;
+}

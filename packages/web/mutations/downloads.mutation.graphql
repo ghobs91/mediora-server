@@ -1,0 +1,27 @@
+mutation pauseTorrents($torrents: [ControlTorrentInput!]!) {
+  result: pauseTorrents(torrents: $torrents) {
+    success
+    message
+  }
+}
+
+mutation resumeTorrents($torrents: [ControlTorrentInput!]!) {
+  result: resumeTorrents(torrents: $torrents) {
+    success
+    message
+  }
+}
+
+mutation removeTorrents($torrents: [ControlTorrentInput!]!) {
+  result: removeTorrents(torrents: $torrents) {
+    success
+    message
+  }
+}
+
+mutation removeTorrentsAndFiles($torrents: [ControlTorrentInput!]!) {
+  result: removeTorrentsAndFiles(torrents: $torrents) {
+    success
+    message
+  }
+}
