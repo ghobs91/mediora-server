@@ -38,6 +38,7 @@ export class TVEpisodeDAO extends BaseDAO<TVEpisode> {
       .where('episode.state = :episodeState', {
         episodeState: DownloadableMediaState.MISSING,
       })
+      .andWhere('season.monitored = :monitored', { monitored: true })
       .orderBy('episode.tvShow', 'DESC')
       .addOrderBy('episode.season', 'DESC')
       .addOrderBy('episode.episodeNumber', 'DESC')

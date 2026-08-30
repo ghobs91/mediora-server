@@ -29,6 +29,9 @@ export class TVSeason {
   @Column('varchar', { default: DownloadableMediaState.SEARCHING })
   public state: DownloadableMediaState = DownloadableMediaState.SEARCHING;
 
+  @Column('boolean', { default: true })
+  public monitored: boolean = true;
+
   @Column('int')
   public tvShowId!: number;
 
