@@ -33,6 +33,8 @@ const envSchema = z.object({
 
   APP_PASSWORD: z.string().optional(),
   JWT_SECRET: z.string().default("bobarr"),
+
+  SONARR_RADARR_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

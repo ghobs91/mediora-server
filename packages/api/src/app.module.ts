@@ -20,6 +20,7 @@ import { HealthController } from 'src/modules/health/health.controller';
 import { ImageCacheModule } from 'src/modules/image-cache/image-cache.module';
 import { OMDBModule } from './modules/omdb/omdb.module';
 import { SetupModule } from './modules/setup/setup.module';
+import { SonarrRadarrModule } from './modules/sonarr-radarr/sonarr-radarr.module';
 
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
@@ -47,6 +48,7 @@ import { SetupGuard } from './modules/setup/setup.guard';
     TransmissionModule,
     RedisModule,
     ImageCacheModule,
+    SonarrRadarrModule,
   ],
   controllers: [HealthController],
   providers: [
