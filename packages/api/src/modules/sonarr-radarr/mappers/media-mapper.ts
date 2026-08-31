@@ -23,7 +23,7 @@ function imageUrl(path?: string | null): string | null {
   return path ? TMDB_IMG_BASE + path : null;
 }
 
-function isAvailable(state: DownloadableMediaState): boolean {
+export function isAvailable(state: DownloadableMediaState): boolean {
   return (
     state === DownloadableMediaState.DOWNLOADED ||
     state === DownloadableMediaState.PROCESSED

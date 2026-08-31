@@ -131,6 +131,21 @@ export class TMDBService {
     );
   }
 
+  public async searchTVShowByTvdbId(tvdbId: number) {
+    this.logger.info('start search tvshow by tvdbId', { tvdbId });
+
+    const data = await this.request<{
+      results: Array<{ id: number; name: string; api_id?: number }>;
+    }>('/tv/search', { tvdb_id: String(tvdbId) });
+
+    const result = data.results?.[0];
+    const tmdbId = result?.id ?? result?.api_id;
+
+    this.logger.info('finish search tvshow by tvdbId', { tvdbId, tmdbId });
+
+    return tmdbId ? { id: tmdbId, name: result?.name } : null;
+  }
+
   public async searchMovie(query: string, params = {}) {
     this.logger.info('start search movie', { query, params });
 
