@@ -1,5 +1,5 @@
-query searchTorrent($query: String!) {
-  results: searchJackett(query: $query) {
+query searchTorrent($query: String!, $quality: String) {
+  results: searchJackett(query: $query, quality: $quality) {
     id
     title
     quality

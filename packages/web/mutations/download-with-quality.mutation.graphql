@@ -1,0 +1,37 @@
+mutation downloadMovieWithQuality($movieId: Int!, $quality: String) {
+  result: downloadMovieWithQuality(
+    movieId: $movieId
+    quality: $quality
+  ) {
+    success
+    message
+  }
+}
+
+mutation downloadEpisodeWithQuality(
+  $episodeId: Int!
+  $quality: String
+) {
+  result: downloadEpisodeWithQuality(
+    episodeId: $episodeId
+    quality: $quality
+  ) {
+    success
+    message
+  }
+}
+
+mutation downloadSeasonWithQuality(
+  $tvShowTMDBId: Int!
+  $seasonNumber: Int!
+  $quality: String
+) {
+  result: downloadSeasonWithQuality(
+    tvShowTMDBId: $tvShowTMDBId
+    seasonNumber: $seasonNumber
+    quality: $quality
+  ) {
+    success
+    message
+  }
+}

@@ -684,6 +684,31 @@ export type DownloadMovieMutationVariables = Exact<{
 
 export type DownloadMovieMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
 
+export type DownloadMovieWithQualityMutationVariables = Exact<{
+  movieId: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DownloadMovieWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type DownloadEpisodeWithQualityMutationVariables = Exact<{
+  episodeId: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DownloadEpisodeWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type DownloadSeasonWithQualityMutationVariables = Exact<{
+  tvShowTMDBId: Scalars['Int']['input'];
+  seasonNumber: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DownloadSeasonWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
 export type DownloadTvEpisodeMutationVariables = Exact<{
   episodeId: Scalars['Int']['input'];
   jackettResult: JackettInput;
@@ -895,6 +920,7 @@ export type OmdbSearchQuery = { __typename?: 'Query', result: { __typename?: 'OM
 
 export type SearchTorrentQueryVariables = Exact<{
   query: Scalars['String']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
@@ -1110,6 +1136,55 @@ export function useDownloadSeasonMutation(baseOptions?: Apollo.MutationHookOptio
 export type DownloadSeasonMutationHookResult = ReturnType<typeof useDownloadSeasonMutation>;
 export type DownloadSeasonMutationResult = Apollo.MutationResult<DownloadSeasonMutation>;
 export type DownloadSeasonMutationOptions = Apollo.BaseMutationOptions<DownloadSeasonMutation, DownloadSeasonMutationVariables>;
+export const DownloadMovieWithQualityDocument = gql`
+    mutation downloadMovieWithQuality($movieId: Int!, $quality: String) {
+  result: downloadMovieWithQuality(movieId: $movieId, quality: $quality) {
+    success
+    message
+  }
+}
+    `;
+export function useDownloadMovieWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>(DownloadMovieWithQualityDocument, options);
+      }
+export type DownloadMovieWithQualityMutationHookResult = ReturnType<typeof useDownloadMovieWithQualityMutation>;
+export type DownloadMovieWithQualityMutationResult = Apollo.MutationResult<DownloadMovieWithQualityMutation>;
+export type DownloadMovieWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>;
+export const DownloadEpisodeWithQualityDocument = gql`
+    mutation downloadEpisodeWithQuality($episodeId: Int!, $quality: String) {
+  result: downloadEpisodeWithQuality(episodeId: $episodeId, quality: $quality) {
+    success
+    message
+  }
+}
+    `;
+export function useDownloadEpisodeWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>(DownloadEpisodeWithQualityDocument, options);
+      }
+export type DownloadEpisodeWithQualityMutationHookResult = ReturnType<typeof useDownloadEpisodeWithQualityMutation>;
+export type DownloadEpisodeWithQualityMutationResult = Apollo.MutationResult<DownloadEpisodeWithQualityMutation>;
+export type DownloadEpisodeWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>;
+export const DownloadSeasonWithQualityDocument = gql`
+    mutation downloadSeasonWithQuality($tvShowTMDBId: Int!, $seasonNumber: Int!, $quality: String) {
+  result: downloadSeasonWithQuality(
+    tvShowTMDBId: $tvShowTMDBId
+    seasonNumber: $seasonNumber
+    quality: $quality
+  ) {
+    success
+    message
+  }
+}
+    `;
+export function useDownloadSeasonWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>(DownloadSeasonWithQualityDocument, options);
+      }
+export type DownloadSeasonWithQualityMutationHookResult = ReturnType<typeof useDownloadSeasonWithQualityMutation>;
+export type DownloadSeasonWithQualityMutationResult = Apollo.MutationResult<DownloadSeasonWithQualityMutation>;
+export type DownloadSeasonWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>;
 export const RemoveMovieDocument = gql`
     mutation removeMovie($tmdbId: Int!) {
   result: removeMovie(tmdbId: $tmdbId) {
@@ -2021,8 +2096,8 @@ export type OmdbSearchLazyQueryHookResult = ReturnType<typeof useOmdbSearchLazyQ
 export type OmdbSearchSuspenseQueryHookResult = ReturnType<typeof useOmdbSearchSuspenseQuery>;
 export type OmdbSearchQueryResult = Apollo.QueryResult<OmdbSearchQuery, OmdbSearchQueryVariables>;
 export const SearchTorrentDocument = gql`
-    query searchTorrent($query: String!) {
-  results: searchJackett(query: $query) {
+    query searchTorrent($query: String!, $quality: String) {
+  results: searchJackett(query: $query, quality: $quality) {
     id
     title
     quality

@@ -2,9 +2,18 @@ import React, { useState } from 'react';
 import dayjs from 'dayjs';
 import { orderBy, uniqBy } from 'lodash';
 import { useRouter } from 'next/router';
-import { Search } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import { formatNumber } from '../../utils/format-number';
 import { availableIn } from '../../utils/available-in';
@@ -13,6 +22,14 @@ import {
   useGetMissingQuery,
   MissingTvEpisodesFragment,
   MissingMoviesFragment,
+  useGetQualityQuery,
+  useDownloadMovieWithQualityMutation,
+  useDownloadEpisodeWithQualityMutation,
+  Entertainment,
+  GetLibraryMoviesDocument,
+  GetLibraryTvShowsDocument,
+  GetDownloadingDocument,
+  GetMissingDocument,
 } from '../../utils/graphql';
 
 import { ManualSearchComponent } from '../manual-search/manual-search.component';
@@ -29,6 +46,58 @@ export function MissingComponent() {
   >(null);
 
   const isMovies = pathname.includes('movies');
+  const rowType = isMovies
+    ? Entertainment.Movie
+    : Entertainment.TvShow;
+
+  const { data: qualityData } = useGetQualityQuery({
+    variables: { type: rowType },
+  });
+  const qualities = qualityData?.qualities || [];
+  const [quality, setQuality] = useState<string>('');
+
+  const [downloadMovie] = useDownloadMovieWithQualityMutation({
+    awaitRefetchQueries: true,
+    refetchQueries: [
+      { query: GetMissingDocument },
+      { query: GetDownloadingDocument },
+      { query: GetLibraryMoviesDocument },
+    ],
+    onError: ({ message }) =>
+      toast.error(message.replace('GraphQL error: ', '')),
+    onCompleted: () => toast.success('Download movie started'),
+  });
+
+  const [downloadEpisode] = useDownloadEpisodeWithQualityMutation({
+    awaitRefetchQueries: true,
+    refetchQueries: [
+      { query: GetMissingDocument },
+      { query: GetDownloadingDocument },
+      { query: GetLibraryTvShowsDocument },
+    ],
+    onError: ({ message }) =>
+      toast.error(message.replace('GraphQL error: ', '')),
+    onCompleted: () => toast.success('Download episode started'),
+  });
+
+  const handleDownload = (row: MissingTvEpisodesFragment | MissingMoviesFragment) => {
+    if (row.__typename === 'EnrichedMovie') {
+      downloadMovie({
+        variables: {
+          movieId: row.id!,
+          quality: quality || undefined,
+        },
+      });
+    } else {
+      downloadEpisode({
+        variables: {
+          episodeId: row.id!,
+          quality: quality || undefined,
+        },
+      });
+    }
+  };
+
   const rows: Array<MissingTvEpisodesFragment | MissingMoviesFragment> =
     (isMovies ? data?.movies : data?.tvEpisodes) || [];
 
@@ -55,6 +124,26 @@ export function MissingComponent() {
         )}
 
         <div className="mx-auto w-full max-w-[1200px] px-6">
+          {qualities.length > 0 && (
+            <div className="mb-3 flex items-center gap-3">
+              <label className="text-sm text-muted-foreground">
+                Quality
+              </label>
+              <Select value={quality} onValueChange={setQuality}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Any quality" />
+                </SelectTrigger>
+                <SelectContent>
+                  {qualities.map((q) => (
+                    <SelectItem key={q.id} value={q.name}>
+                      {q.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {missing.map((row) => (
             <div
               key={row.id}
@@ -83,12 +172,20 @@ export function MissingComponent() {
 
               <Badge
                 variant="secondary"
-                className="ml-auto cursor-pointer"
+                className="mr-2 cursor-pointer"
                 onClick={() => setManualSearch(row)}
               >
                 <Search className="mr-1 h-3 w-3" />
                 Missing
               </Badge>
+              <Button
+                variant="outline"
+                className="shrink-0"
+                onClick={() => handleDownload(row)}
+              >
+                <Download className="mr-1 h-3 w-3" />
+                Download
+              </Button>
             </div>
           ))}
 

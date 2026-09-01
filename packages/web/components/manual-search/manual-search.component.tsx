@@ -6,7 +6,9 @@ import { toast } from 'sonner';
 import {
   useSearchTorrentLazyQuery,
   useDownloadOwnTorrentMutation,
+  useGetQualityQuery,
   FileType,
+  Entertainment,
   GetLibraryTvShowsDocument,
   GetDownloadingDocument,
   GetMissingDocument,
@@ -21,12 +23,25 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { toBase64 } from '../../utils/to-base64';
 
 import { Media, getDefaultSearchQuery } from './manual-search.helpers';
 import { JackettResultsTable } from './jackett-results-table';
+
+function mediaToEntertainment(media: Media): Entertainment {
+  return media.__typename === 'EnrichedMovie'
+    ? Entertainment.Movie
+    : Entertainment.TvShow;
+}
 
 interface ManualSearchProps {
   media: Media;
@@ -46,6 +61,12 @@ export function ManualSearchComponent(props: ManualSearchProps) {
   const handleClose = () => {
     props.onRequestClose();
   };
+
+  const { data: qualityData } = useGetQualityQuery({
+    variables: { type: mediaToEntertainment(props.media) },
+  });
+  const qualities = qualityData?.qualities || [];
+  const [quality, setQuality] = useState<string>('');
 
   const [search, { data, loading }] = useSearchTorrentLazyQuery({
     variables: { query: searchQuery },
@@ -118,7 +139,12 @@ export function ManualSearchComponent(props: ManualSearchProps) {
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    search({ variables: { query: searchQuery } });
+    search({
+      variables: {
+        query: searchQuery,
+        quality: quality || undefined,
+      },
+    });
   };
 
   useEffect(() => {
@@ -154,6 +180,20 @@ export function ManualSearchComponent(props: ManualSearchProps) {
               <Search />
             </Button>
           </form>
+          {qualities.length > 0 && (
+            <Select value={quality} onValueChange={setQuality}>
+              <SelectTrigger className="w-[180px] shrink-0">
+                <SelectValue placeholder="Any quality" />
+              </SelectTrigger>
+              <SelectContent>
+                {qualities.map((q) => (
+                  <SelectItem key={q.id} value={q.name}>
+                    {q.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button
             onClick={() => $fileInput.current?.click()}
             disabled={isUploadTorrentLoading}
