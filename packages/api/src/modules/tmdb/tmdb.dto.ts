@@ -10,6 +10,7 @@ export interface TMDBRequestParams {
   with_original_language?: string;
   primary_release_year?: number; // movie
   first_air_date_year?: number; // tv show
+  tvdb_id?: string; // tv search by tvdb id
   page?: number;
 }
 

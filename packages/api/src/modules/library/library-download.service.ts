@@ -1,7 +1,7 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { WINSTON_MODULE_PROVIDER } from "nest-winston";
 import { Logger } from "winston";
-import { EntityManager } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import { FileType, DownloadableMediaState } from "src/app.dto";
 import { LazyTransaction, TransactionManager } from "src/utils/transaction";
 import { TransmissionService } from "src/modules/transmission/transmission.service";
@@ -13,6 +13,7 @@ import { MovieDAO } from "src/entities/dao/movie.dao";
 export class LibraryDownloadService {
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
+    private readonly dataSource: DataSource,
     private readonly transmissionService: TransmissionService,
     private readonly organizationService: LibraryOrganizationService,
   ) {

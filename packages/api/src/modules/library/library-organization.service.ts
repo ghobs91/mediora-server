@@ -5,7 +5,7 @@ import { WINSTON_MODULE_PROVIDER } from "nest-winston";
 import { Logger } from "winston";
 import childCommand from "child-command";
 import path from "path";
-import { DeepPartial, EntityManager } from "typeorm";
+import { DeepPartial, DataSource, EntityManager } from "typeorm";
 
 import { FileType, DownloadableMediaState } from "src/app.dto";
 import { TransactionManager, LazyTransaction } from "src/utils/transaction";
@@ -29,6 +29,7 @@ import { ParamsService } from "src/modules/params/params.service";
 export class LibraryOrganizationService {
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
+    private readonly dataSource: DataSource,
     private readonly movieDAO: MovieDAO,
     private readonly tmdbService: TMDBService,
     private readonly jobsService: JobsService,
