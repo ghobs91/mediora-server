@@ -7,6 +7,7 @@ import { env } from 'src/env';
 
 import { ParamsService } from 'src/modules/params/params.service';
 import { MediaMountsService } from './media-mounts.service';
+import { MediaMount } from 'src/entities/media-mount.entity';
 
 import {
   LibraryFolderState,
@@ -15,6 +16,11 @@ import {
 } from './library-folders.dto';
 
 export type LibraryFolderType = 'movies' | 'tvshows';
+
+const MOUNT_PARAM_BY_TYPE: Record<LibraryFolderType, ParameterKey> = {
+  movies: ParameterKey.LIBRARY_MOVIES_MOUNT_ID,
+  tvshows: ParameterKey.LIBRARY_TV_SHOWS_MOUNT_ID,
+};
 
 interface FolderAccess {
   exists: boolean;
@@ -87,11 +93,46 @@ export class LibraryFoldersService {
 
   public async getFolderPath(type: LibraryFolderType) {
     const names = await this.getFolderNames();
+    const mount = await this.getMountForType(type);
+    return path.join(mount.path, names[type]);
+  }
+
+  public async getAssignedMountIds(): Promise<{
+    movies: number | null;
+    tvshows: number | null;
+  }> {
+    const [movies, tvshows] = await Promise.all([
+      this.getAssignedMountId('movies'),
+      this.getAssignedMountId('tvshows'),
+    ]);
+    return { movies, tvshows };
+  }
+
+  private async getAssignedMountId(
+    type: LibraryFolderType
+  ): Promise<number | null> {
+    const raw = await this.paramsService.get(MOUNT_PARAM_BY_TYPE[type]);
+    if (!raw) return null;
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  public async getMountForType(type: LibraryFolderType): Promise<MediaMount> {
     const mounts = await this.mediaMountsService.getWritableMounts();
     if (mounts.length === 0) {
       throw new Error('No writable media mounts available');
     }
-    return path.join(mounts[0].path, names[type]);
+    const assignedId = await this.getAssignedMountId(type);
+    if (assignedId !== null) {
+      const assigned = mounts.find((mount) => mount.id === assignedId);
+      if (!assigned) {
+        throw new Error(
+          `The configured ${type} library mount is not available or writable.`
+        );
+      }
+      return assigned;
+    }
+    return mounts[0];
   }
 
   public async getFolderPathOnMount(type: LibraryFolderType, mountId: number) {
@@ -115,9 +156,13 @@ export class LibraryFoldersService {
   public async updateFolderNames({
     movies,
     tvshows,
+    moviesMountId,
+    tvShowsMountId,
   }: {
     movies: string;
     tvshows: string;
+    moviesMountId?: number | null;
+    tvShowsMountId?: number | null;
   }) {
     const moviesName = validateLibraryFolderName(movies);
     const tvshowsName = validateLibraryFolderName(tvshows);
@@ -128,6 +173,8 @@ export class LibraryFoldersService {
       );
     }
 
+    await this.validateMountAssignments(moviesMountId, tvShowsMountId);
+
     await Promise.all([
       this.paramsService.update(
         ParameterKey.LIBRARY_MOVIES_FOLDER_NAME,
@@ -137,15 +184,56 @@ export class LibraryFoldersService {
         ParameterKey.LIBRARY_TV_SHOWS_FOLDER_NAME,
         tvshowsName
       ),
+      ...(moviesMountId !== undefined
+        ? [
+            this.paramsService.update(
+              ParameterKey.LIBRARY_MOVIES_MOUNT_ID,
+              moviesMountId === null ? '' : String(moviesMountId)
+            ),
+          ]
+        : []),
+      ...(tvShowsMountId !== undefined
+        ? [
+            this.paramsService.update(
+              ParameterKey.LIBRARY_TV_SHOWS_MOUNT_ID,
+              tvShowsMountId === null ? '' : String(tvShowsMountId)
+            ),
+          ]
+        : []),
     ]);
 
     await this.createMissingFolders();
     return this.inspect();
   }
 
+  private async validateMountAssignments(
+    moviesMountId: number | null | undefined,
+    tvShowsMountId: number | null | undefined
+  ) {
+    const assignments: Array<{ type: string; mountId: number }> = [];
+    if (moviesMountId !== undefined && moviesMountId !== null) {
+      assignments.push({ type: 'movies', mountId: moviesMountId });
+    }
+    if (tvShowsMountId !== undefined && tvShowsMountId !== null) {
+      assignments.push({ type: 'tvshows', mountId: tvShowsMountId });
+    }
+    const writableMounts = await this.mediaMountsService.getWritableMounts();
+    for (const { type, mountId } of assignments) {
+      const mount = writableMounts.find((candidate) => candidate.id === mountId);
+      if (!mount) {
+        throw new BadRequestException(
+          `Media mount ${mountId} does not exist or is not writable for the ${type} library.`
+        );
+      }
+    }
+  }
+
   public async inspect(): Promise<LibraryFoldersStatus> {
     const names = await this.getFolderNames();
     const mounts = await this.mediaMountsService.findAll();
+    const assigned = await this.getAssignedMountIds();
+    const moviesMountId = assigned.movies;
+    const tvShowsMountId = assigned.tvshows;
 
     const mountStatuses: LibraryFolderStatus[] = [];
     for (const mount of mounts) {
@@ -209,6 +297,8 @@ export class LibraryFoldersService {
 
     return {
       mount: mountStatuses.length > 0 ? mountStatuses[0] : null,
+      moviesMountId,
+      tvShowsMountId,
       processUid: process.getuid?.() ?? null,
       processGid: process.getgid?.() ?? null,
       processRunsAsRoot: process.getuid?.() === 0,
@@ -218,6 +308,7 @@ export class LibraryFoldersService {
 
   private async createMissingFolders() {
     const mounts = await this.mediaMountsService.findAll();
+    const assigned = await this.getAssignedMountIds();
     for (const mount of mounts) {
       const { stats } = await this.readStats(mount.path);
       if (!stats || !stats.isDirectory()) continue;
@@ -226,8 +317,16 @@ export class LibraryFoldersService {
       }
 
       const names = await this.getFolderNames();
+      const foldersToCreate = [
+        ...(assigned.movies === null || assigned.movies === mount.id
+          ? [names.movies]
+          : []),
+        ...(assigned.tvshows === null || assigned.tvshows === mount.id
+          ? [names.tvshows]
+          : []),
+      ];
       await Promise.all(
-        Object.values(names).map(async (name) => {
+        foldersToCreate.map(async (name) => {
           try {
             await fs.mkdir(path.join(mount.path, name), { recursive: true });
           } catch (_error) {
@@ -350,7 +449,7 @@ export class LibraryFoldersService {
     isMount: boolean
   ) {
     if (isMount && state === LibraryFolderState.MISSING) {
-      return 'Check the /usr/library bind mount in docker-compose.yml.';
+      return 'Check MEDIA_MOUNTS and the matching bind mounts in docker-compose.yml.';
     }
     if (state === LibraryFolderState.MISSING && access.canCreate) {
       return 'Save the folder settings and Bobarr will create this directory.';

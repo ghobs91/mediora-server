@@ -7,6 +7,7 @@ import {
   LibraryFolderState,
   LibraryFolderStatus,
   useGetLibraryFoldersQuery,
+  useGetWritableMediaMountsQuery,
   useUpdateLibraryFoldersMutation,
 } from '../../utils/graphql';
 
@@ -23,8 +24,12 @@ import { Label } from '@/components/ui/label';
 
 export function LibraryFoldersComponent() {
   const { data, loading, error, refetch } = useGetLibraryFoldersQuery();
+  const { data: mountsData, loading: mountsLoading } =
+    useGetWritableMediaMountsQuery();
   const [moviesFolderName, setMoviesFolderName] = useState('movies');
   const [tvShowsFolderName, setTvShowsFolderName] = useState('tvshows');
+  const [moviesMountId, setMoviesMountId] = useState<number | null>(null);
+  const [tvShowsMountId, setTvShowsMountId] = useState<number | null>(null);
   const [updateFolders, { loading: saving }] = useUpdateLibraryFoldersMutation({
     awaitRefetchQueries: true,
     refetchQueries: [{ query: GetLibraryFoldersDocument }],
@@ -38,6 +43,8 @@ export function LibraryFoldersComponent() {
     const tvShows = folders.find((folder) => folder.type === 'tvshows');
     if (movies) setMoviesFolderName(movies.name);
     if (tvShows) setTvShowsFolderName(tvShows.name);
+    setMoviesMountId(data?.libraryFolders.moviesMountId ?? null);
+    setTvShowsMountId(data?.libraryFolders.tvShowsMountId ?? null);
   }, [data]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -55,13 +62,22 @@ export function LibraryFoldersComponent() {
     }
 
     await updateFolders({
-      variables: { moviesFolderName: movies, tvShowsFolderName: tvShows },
+      variables: {
+        moviesFolderName: movies,
+        tvShowsFolderName: tvShows,
+        moviesMountId,
+        tvShowsMountId,
+      },
     });
   };
 
   const folders = data?.libraryFolders.folders || [];
-  const movies = folders.find((folder) => folder.type === 'movies');
-  const tvShows = folders.find((folder) => folder.type === 'tvshows');
+  const writableMounts = mountsData?.getWritableMediaMounts || [];
+  const moviesMountPath = writableMounts.find((mount) => mount.id === moviesMountId)?.path;
+  const tvShowsMountPath = writableMounts.find((mount) => mount.id === tvShowsMountId)?.path;
+  const movies = findFolderStatus(folders, 'movies', moviesMountPath);
+  const tvShows = findFolderStatus(folders, 'tvshows', tvShowsMountPath);
+  const mountStatuses = folders.filter((folder) => folder.type === 'mount');
 
   return (
     <Card>
@@ -73,9 +89,9 @@ export function LibraryFoldersComponent() {
               Library folders
             </CardTitle>
             <CardDescription className="mt-2 max-w-lg">
-              Pick folders inside the Docker library mount. Bobarr checks the
-              actual container user, so permission problems are explained here
-              instead of appearing later as failed scans.
+              Pick folders and disks inside the Docker library mounts. Bobarr
+              checks the actual container user, so permission problems are
+              explained here instead of appearing later as failed scans.
             </CardDescription>
           </div>
           <Button
@@ -103,6 +119,27 @@ export function LibraryFoldersComponent() {
               />
             </div>
             <div className="flex flex-col gap-2">
+              <Label htmlFor="settings-movies-mount">Movies disk</Label>
+              <select
+                id="settings-movies-mount"
+                value={moviesMountId ?? ''}
+                onChange={({ target }) =>
+                  setMoviesMountId(target.value ? Number(target.value) : null)
+                }
+                disabled={mountsLoading}
+                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="" className="bg-card">
+                  Automatic (first writable disk)
+                </option>
+                {writableMounts.map((mount) => (
+                  <option key={mount.id} value={mount.id} className="bg-card">
+                    {mount.label || mount.path} ({mount.path})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
               <Label htmlFor="settings-tvshows-folder">TV shows folder</Label>
               <Input
                 id="settings-tvshows-folder"
@@ -110,6 +147,27 @@ export function LibraryFoldersComponent() {
                 onChange={({ target }) => setTvShowsFolderName(target.value)}
                 placeholder="tvshows"
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="settings-tvshows-mount">TV shows disk</Label>
+              <select
+                id="settings-tvshows-mount"
+                value={tvShowsMountId ?? ''}
+                onChange={({ target }) =>
+                  setTvShowsMountId(target.value ? Number(target.value) : null)
+                }
+                disabled={mountsLoading}
+                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="" className="bg-card">
+                  Automatic (first writable disk)
+                </option>
+                {writableMounts.map((mount) => (
+                  <option key={mount.id} value={mount.id} className="bg-card">
+                    {mount.label || mount.path} ({mount.path})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <Button type="submit" disabled={saving || loading}>
@@ -121,12 +179,13 @@ export function LibraryFoldersComponent() {
         {error && <p className="text-sm text-destructive">{error.message}</p>}
         {data && (
           <div className="space-y-2">
-            {data.libraryFolders.mount && (
+            {mountStatuses.map((mount) => (
               <FolderStatus
-                label="Docker library mount"
-                folder={data.libraryFolders.mount}
+                key={mount.path}
+                label={`Docker library mount: ${mount.name}`}
+                folder={mount}
               />
-            )}
+            ))}
             {movies && <FolderStatus label="Movies" folder={movies} />}
             {tvShows && <FolderStatus label="TV shows" folder={tvShows} />}
           </div>
@@ -142,6 +201,18 @@ export function LibraryFoldersComponent() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function findFolderStatus(
+  folders: LibraryFolderStatus[],
+  type: 'movies' | 'tvshows',
+  mountPath?: string
+) {
+  return folders.find(
+    (folder) =>
+      folder.type === type &&
+      (!mountPath || folder.path.startsWith(`${mountPath}/`))
   );
 }
 

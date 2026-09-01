@@ -22,6 +22,9 @@ services:
     volumes:
       - ./library/downloads:/downloads
       - ./library:/usr/library
+      # Set these host paths when movies and TV shows live on separate disks.
+      - ${MOVIES_LIBRARY_HOST_PATH:-./library}:/usr/drive4tb
+      - ${TV_SHOWS_LIBRARY_HOST_PATH:-./library}:/usr/drive6tb
     ports:
       - 4000:4000
 

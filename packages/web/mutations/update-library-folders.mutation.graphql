@@ -1,10 +1,14 @@
 mutation updateLibraryFolders(
   $moviesFolderName: String!
   $tvShowsFolderName: String!
+  $moviesMountId: Int
+  $tvShowsMountId: Int
 ) {
   libraryFolders: updateLibraryFolders(
     moviesFolderName: $moviesFolderName
     tvShowsFolderName: $tvShowsFolderName
+    moviesMountId: $moviesMountId
+    tvShowsMountId: $tvShowsMountId
   ) {
     mount {
       type
@@ -23,6 +27,8 @@ mutation updateLibraryFolders(
       message
       remedy
     }
+    moviesMountId
+    tvShowsMountId
     processUid
     processGid
     processRunsAsRoot

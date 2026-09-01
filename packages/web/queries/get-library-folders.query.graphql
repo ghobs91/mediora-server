@@ -17,6 +17,8 @@ query getLibraryFolders {
       message
       remedy
     }
+    moviesMountId
+    tvShowsMountId
     processUid
     processGid
     processRunsAsRoot

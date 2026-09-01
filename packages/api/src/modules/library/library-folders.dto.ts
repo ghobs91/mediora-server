@@ -64,6 +64,12 @@ export class LibraryFoldersStatus {
   public mount!: LibraryFolderStatus | null;
 
   @Field(() => Int, { nullable: true })
+  public moviesMountId!: number | null;
+
+  @Field(() => Int, { nullable: true })
+  public tvShowsMountId!: number | null;
+
+  @Field(() => Int, { nullable: true })
   public processUid!: number | null;
 
   @Field(() => Int, { nullable: true })

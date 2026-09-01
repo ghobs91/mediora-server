@@ -180,10 +180,12 @@ export type LibraryFolderStatus = {
 export type LibraryFoldersStatus = {
   __typename?: 'LibraryFoldersStatus';
   folders: Array<LibraryFolderStatus>;
+  moviesMountId?: Maybe<Scalars['Int']['output']>;
   mount?: Maybe<LibraryFolderStatus>;
   processGid?: Maybe<Scalars['Int']['output']>;
   processRunsAsRoot: Scalars['Boolean']['output'];
   processUid?: Maybe<Scalars['Int']['output']>;
+  tvShowsMountId?: Maybe<Scalars['Int']['output']>;
 };
 
 export type MediaMount = {
@@ -355,7 +357,9 @@ export type MutationTrackTvShowArgs = {
 
 export type MutationUpdateLibraryFoldersArgs = {
   moviesFolderName: Scalars['String']['input'];
+  moviesMountId?: InputMaybe<Scalars['Int']['input']>;
   tvShowsFolderName: Scalars['String']['input'];
+  tvShowsMountId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -751,11 +755,13 @@ export type TrackTvShowMutation = { __typename?: 'Mutation', tvShow: { __typenam
 
 export type UpdateLibraryFoldersMutationVariables = Exact<{
   moviesFolderName: Scalars['String']['input'];
+  moviesMountId?: InputMaybe<Scalars['Int']['input']>;
   tvShowsFolderName: Scalars['String']['input'];
+  tvShowsMountId?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
-export type UpdateLibraryFoldersMutation = { __typename?: 'Mutation', libraryFolders: { __typename?: 'LibraryFoldersStatus', processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount?: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null } | null, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
+export type UpdateLibraryFoldersMutation = { __typename?: 'Mutation', libraryFolders: { __typename?: 'LibraryFoldersStatus', moviesMountId?: number | null, tvShowsMountId?: number | null, processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount?: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null } | null, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
 
 export type UpdateParamsMutationVariables = Exact<{
   params: Array<UpdateParamsInput>;
@@ -799,7 +805,11 @@ export type GetLanguagesQuery = { __typename?: 'Query', languages: Array<{ __typ
 export type GetLibraryFoldersQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetLibraryFoldersQuery = { __typename?: 'Query', libraryFolders: { __typename?: 'LibraryFoldersStatus', processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount?: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null } | null, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
+export type GetLibraryFoldersQuery = { __typename?: 'Query', libraryFolders: { __typename?: 'LibraryFoldersStatus', moviesMountId?: number | null, tvShowsMountId?: number | null, processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount?: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null } | null, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
+
+export type GetWritableMediaMountsQueryVariables = Exact<{ [key: string]: never; }>;
+
+export type GetWritableMediaMountsQuery = { __typename?: 'Query', getWritableMediaMounts: Array<{ __typename?: 'MediaMount', id: number, label?: string | null, path: string, state: MediaMountState, accessType: MediaMountAccessType }> };
 
 export type GetLibraryMoviesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1204,10 +1214,12 @@ export type TrackTvShowMutationHookResult = ReturnType<typeof useTrackTvShowMuta
 export type TrackTvShowMutationResult = Apollo.MutationResult<TrackTvShowMutation>;
 export type TrackTvShowMutationOptions = Apollo.BaseMutationOptions<TrackTvShowMutation, TrackTvShowMutationVariables>;
 export const UpdateLibraryFoldersDocument = gql`
-    mutation updateLibraryFolders($moviesFolderName: String!, $tvShowsFolderName: String!) {
+    mutation updateLibraryFolders($moviesFolderName: String!, $tvShowsFolderName: String!, $moviesMountId: Int, $tvShowsMountId: Int) {
   libraryFolders: updateLibraryFolders(
     moviesFolderName: $moviesFolderName
     tvShowsFolderName: $tvShowsFolderName
+    moviesMountId: $moviesMountId
+    tvShowsMountId: $tvShowsMountId
   ) {
     mount {
       type
@@ -1226,6 +1238,8 @@ export const UpdateLibraryFoldersDocument = gql`
       message
       remedy
     }
+    moviesMountId
+    tvShowsMountId
     processUid
     processGid
     processRunsAsRoot
@@ -1476,6 +1490,8 @@ export const GetLibraryFoldersDocument = gql`
       message
       remedy
     }
+    moviesMountId
+    tvShowsMountId
     processUid
     processGid
     processRunsAsRoot
@@ -1518,6 +1534,37 @@ export type GetLibraryFoldersQueryHookResult = ReturnType<typeof useGetLibraryFo
 export type GetLibraryFoldersLazyQueryHookResult = ReturnType<typeof useGetLibraryFoldersLazyQuery>;
 export type GetLibraryFoldersSuspenseQueryHookResult = ReturnType<typeof useGetLibraryFoldersSuspenseQuery>;
 export type GetLibraryFoldersQueryResult = Apollo.QueryResult<GetLibraryFoldersQuery, GetLibraryFoldersQueryVariables>;
+
+export const GetWritableMediaMountsDocument = gql`
+    query getWritableMediaMounts {
+  getWritableMediaMounts {
+    id
+    label
+    path
+    state
+    accessType
+  }
+}
+    `;
+export function useGetWritableMediaMountsQuery(baseOptions?: Apollo.QueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
+      }
+export function useGetWritableMediaMountsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
+        }
+// @ts-ignore
+export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>): Apollo.UseSuspenseQueryResult<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>;
+export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>): Apollo.UseSuspenseQueryResult<GetWritableMediaMountsQuery | undefined, GetWritableMediaMountsQueryVariables>;
+export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
+        }
+export type GetWritableMediaMountsQueryHookResult = ReturnType<typeof useGetWritableMediaMountsQuery>;
+export type GetWritableMediaMountsLazyQueryHookResult = ReturnType<typeof useGetWritableMediaMountsLazyQuery>;
+export type GetWritableMediaMountsSuspenseQueryHookResult = ReturnType<typeof useGetWritableMediaMountsSuspenseQuery>;
+export type GetWritableMediaMountsQueryResult = Apollo.QueryResult<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>;
 export const GetLibraryMoviesDocument = gql`
     query getLibraryMovies {
   movies: getMovies {

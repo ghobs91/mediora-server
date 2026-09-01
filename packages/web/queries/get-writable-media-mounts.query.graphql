@@ -1,0 +1,9 @@
+query getWritableMediaMounts {
+  getWritableMediaMounts {
+    id
+    label
+    path
+    state
+    accessType
+  }
+}

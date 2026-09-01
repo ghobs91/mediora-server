@@ -30,6 +30,8 @@ export enum ParameterKey {
   ORGANIZE_LIBRARY_STRATEGY = 'organize_library_strategy',
   LIBRARY_MOVIES_FOLDER_NAME = 'library_movies_folder_name',
   LIBRARY_TV_SHOWS_FOLDER_NAME = 'library_tv_shows_folder_name',
+  LIBRARY_MOVIES_MOUNT_ID = 'library_movies_mount_id',
+  LIBRARY_TV_SHOWS_MOUNT_ID = 'library_tv_shows_mount_id',
   SETUP_COMPLETED = 'setup_completed',
   AUTH_PASSWORD_HASH = 'auth_password_hash',
 }

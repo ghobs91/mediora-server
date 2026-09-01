@@ -68,6 +68,20 @@ host library (`id -u` and `id -g`), then recreate the stack. Bobarr runs the
 API with that identity so scanning and organizing use the same permissions as
 the download service.
 
+For libraries split across disks, bind each host disk to its own container
+path in `docker-compose.yml` and list those container paths in `.env`:
+
+```
+MOVIES_LIBRARY_HOST_PATH=/path/to/4tb-seagate
+TV_SHOWS_LIBRARY_HOST_PATH=/path/to/6tb-seagate
+MEDIA_MOUNTS=/usr/drive4tb,/usr/drive6tb
+```
+
+The compose file maps these values to `/usr/drive4tb` and `/usr/drive6tb`.
+After recreating the stack, open Settings > Library folders and select the
+4TB mount for Movies and the 6TB mount for TV shows. The selected mounts are
+stored in the database and used for scans and organization.
+
 
 ## How to start
 

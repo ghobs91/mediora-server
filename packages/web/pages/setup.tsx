@@ -80,7 +80,7 @@ interface LibraryFolderStatus {
 }
 
 interface LibraryStatus {
-  mount: LibraryFolderStatus;
+  mount: LibraryFolderStatus | null;
   processUid: number | null;
   processGid: number | null;
   processRunsAsRoot: boolean;
@@ -108,7 +108,8 @@ export default function SetupPage() {
       .then((status: { library?: LibraryStatus }) => {
         if (cancelled || !status.library) return;
         setLibraryStatus(status.library);
-        const [movies, tvShows] = status.library.folders;
+        const movies = status.library.folders.find((folder) => folder.type === 'movies');
+        const tvShows = status.library.folders.find((folder) => folder.type === 'tvshows');
         setForm((current) => ({
           ...current,
           moviesFolderName: movies?.name || current.moviesFolderName,
@@ -417,13 +418,15 @@ export default function SetupPage() {
                       <div className="mt-4 space-y-2">
                         {libraryStatus ? (
                           <>
-                            <LibraryFolderNotice
-                              folder={libraryStatus.mount}
-                              label="Docker library mount"
-                            />
+                            {libraryStatus.mount && (
+                              <LibraryFolderNotice
+                                folder={libraryStatus.mount}
+                                label="Docker library mount"
+                              />
+                            )}
                             {libraryStatus.folders.map((folder) => (
                               <LibraryFolderNotice
-                                key={folder.type}
+                                key={`${folder.type}-${folder.path}`}
                                 folder={folder}
                                 label={
                                   folder.type === 'movies'

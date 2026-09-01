@@ -145,7 +145,8 @@ export class ScanLibraryProcessor extends WorkerHost {
   public async scanMoviesFolder() {
     const { movies: moviesFolderName } =
       await this.libraryFoldersService.getFolderNames();
-    const mounts = await this.mediaMountsService.getWritableMounts();
+    const mount = await this.libraryFoldersService.getMountForType('movies');
+    const mounts = [mount];
 
     for (const mount of mounts) {
       const root = path.join(mount.path, moviesFolderName);
@@ -176,7 +177,7 @@ export class ScanLibraryProcessor extends WorkerHost {
       await mapConcurrent(movies, LIBRARY_CONFIG.scanConcurrency, (movie) =>
         this.scanLibraryQueue.add(
           ScanLibraryQueueProcessors.PROCESS_MOVIE_FOLDER,
-          { movie },
+          { movie, mountId: mount.id },
         ),
       );
 
@@ -189,7 +190,8 @@ export class ScanLibraryProcessor extends WorkerHost {
   public async scanTVShowsFolder() {
     const { tvshows: tvShowsFolderName } =
       await this.libraryFoldersService.getFolderNames();
-    const mounts = await this.mediaMountsService.getWritableMounts();
+    const mount = await this.libraryFoldersService.getMountForType('tvshows');
+    const mounts = [mount];
 
     for (const mount of mounts) {
       const root = path.join(mount.path, tvShowsFolderName);
@@ -220,7 +222,7 @@ export class ScanLibraryProcessor extends WorkerHost {
       await mapConcurrent(tvshows, LIBRARY_CONFIG.scanConcurrency, (tvshow) =>
         this.scanLibraryQueue.add(
           ScanLibraryQueueProcessors.PROCESS_TV_SHOW_FOLDER,
-          { tvshow },
+          { tvshow, mountId: mount.id },
         ),
       );
 
@@ -232,7 +234,7 @@ export class ScanLibraryProcessor extends WorkerHost {
 
   @Transaction()
   public async processMovieFolder(
-    { data: { movie } }: Job<{ movie: string }>,
+    { data: { movie, mountId } }: Job<{ movie: string; mountId?: number }>,
     @TransactionManager() manager?: EntityManager,
   ) {
     this.logger.info("processing movie", { movie });
@@ -242,7 +244,11 @@ export class ScanLibraryProcessor extends WorkerHost {
 
     const { movies: moviesFolderName } =
       await this.libraryFoldersService.getFolderNames();
-    const mounts = await this.mediaMountsService.getWritableMounts();
+    const mounts = mountId
+      ? [await this.mediaMountsService.findOne(mountId)].filter(
+          (mount): mount is NonNullable<typeof mount> => Boolean(mount),
+        )
+      : await this.mediaMountsService.getWritableMounts();
 
     let movieFolder: string | null = null;
     for (const mount of mounts) {
@@ -389,7 +395,7 @@ export class ScanLibraryProcessor extends WorkerHost {
 
   @Transaction()
   public async processTVShow(
-    { data: { tvshow } }: Job<{ tvshow: string }>,
+    { data: { tvshow, mountId } }: Job<{ tvshow: string; mountId?: number }>,
     @TransactionManager() manager?: EntityManager,
   ) {
     this.logger.info("start processing tvshow", { tvshow });
@@ -428,7 +434,11 @@ export class ScanLibraryProcessor extends WorkerHost {
 
     const { tvshows: tvShowsFolderName } =
       await this.libraryFoldersService.getFolderNames();
-    const mounts = await this.mediaMountsService.getWritableMounts();
+    const mounts = mountId
+      ? [await this.mediaMountsService.findOne(mountId)].filter(
+          (mount): mount is NonNullable<typeof mount> => Boolean(mount),
+        )
+      : await this.mediaMountsService.getWritableMounts();
 
     let showRoot: string | null = null;
     for (const mount of mounts) {

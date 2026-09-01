@@ -106,11 +106,17 @@ export class LibraryResolver {
   @Mutation((_returns) => LibraryFoldersStatus)
   public updateLibraryFolders(
     @Args('moviesFolderName') moviesFolderName: string,
-    @Args('tvShowsFolderName') tvShowsFolderName: string
+    @Args('tvShowsFolderName') tvShowsFolderName: string,
+    @Args({ name: 'moviesMountId', type: () => Int, nullable: true })
+    moviesMountId?: number | null,
+    @Args({ name: 'tvShowsMountId', type: () => Int, nullable: true })
+    tvShowsMountId?: number | null
   ) {
     return this.libraryFoldersService.updateFolderNames({
       movies: moviesFolderName,
       tvshows: tvShowsFolderName,
+      moviesMountId,
+      tvShowsMountId,
     });
   }
 

@@ -216,6 +216,30 @@ enum LibraryFolderState {
   READ_ONLY
 }
 
+enum MediaMountAccessType {
+  READ_WRITE
+  READ_ONLY
+}
+
+enum MediaMountState {
+  READY
+  MISSING
+  NOT_DIRECTORY
+  INACCESSIBLE
+  READ_ONLY
+}
+
+type MediaMount {
+  id: Int!
+  path: String!
+  label: String
+  accessType: MediaMountAccessType!
+  state: MediaMountState!
+  errorMessage: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
 type LibraryFolderStatus {
   type: String!
   name: String!
@@ -235,7 +259,9 @@ type LibraryFolderStatus {
 }
 
 type LibraryFoldersStatus {
-  mount: LibraryFolderStatus!
+  mount: LibraryFolderStatus
+  moviesMountId: Int
+  tvShowsMountId: Int
   processUid: Int
   processGid: Int
   processRunsAsRoot: Boolean!
@@ -311,6 +337,8 @@ type Query {
   getCalendar: LibraryCalendar!
   getMovieFileDetails(tmdbId: Int!): LibraryFileDetails!
   getLibraryFolders: LibraryFoldersStatus!
+  getMediaMounts: [MediaMount!]!
+  getWritableMediaMounts: [MediaMount!]!
   omdbSearch(title: String!): OMDBInfo!
 }
 
@@ -336,7 +364,12 @@ type Mutation {
   removeTVShow(tmdbId: Int!): GraphQLCommonResponse!
   resetLibrary(resetSettings: Boolean!, deleteFiles: Boolean!): GraphQLCommonResponse!
   downloadOwnTorrent(torrent: String!, mediaType: FileType!, mediaId: Int!): GraphQLCommonResponse!
-  updateLibraryFolders(moviesFolderName: String!, tvShowsFolderName: String!): LibraryFoldersStatus!
+  updateLibraryFolders(moviesFolderName: String!, tvShowsFolderName: String!, moviesMountId: Int, tvShowsMountId: Int): LibraryFoldersStatus!
+  addMediaMount(path: String!, label: String, accessType: MediaMountAccessType): GraphQLCommonResponse!
+  removeMediaMount(id: Int!): GraphQLCommonResponse!
+  updateMediaMountLabel(id: Int!, label: String!): GraphQLCommonResponse!
+  updateMediaMountAccessType(id: Int!, accessType: MediaMountAccessType!): GraphQLCommonResponse!
+  refreshMediaMountState(id: Int!): GraphQLCommonResponse!
 }
 
 input QualityInput {

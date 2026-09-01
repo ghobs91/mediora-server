@@ -147,6 +147,7 @@ export class MediaMountsService implements OnModuleInit {
   async getWritableMounts(): Promise<MediaMount[]> {
     return this.mediaMountRepository.find({
       where: { accessType: MediaMountAccessType.READ_WRITE },
+      order: { id: 'ASC' },
     });
   }
 
