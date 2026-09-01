@@ -32,6 +32,21 @@ export class TVSeasonDAO extends BaseDAO<TVSeason> {
     return match !== null && match !== undefined;
   }
 
+  public async findOneByTmdbAndSeason(
+    tvShowTMDBId: number,
+    seasonNumber: number,
+  ) {
+    return this.createQueryBuilder('tvSeason')
+      .innerJoinAndSelect(
+        'tvSeason.tvShow',
+        'tvShow',
+        'tvShow.tmdbId = :tvShowTMDBId',
+        { tvShowTMDBId }
+      )
+      .where('tvSeason.seasonNumber = :seasonNumber', { seasonNumber })
+      .getOne();
+  }
+
   public async findOrCreate(
     seasonAttributes: {
       tvShowId: number;

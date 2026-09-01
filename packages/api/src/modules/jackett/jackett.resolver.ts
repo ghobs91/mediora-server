@@ -8,9 +8,10 @@ export class JackettResolver {
   public constructor(private readonly jacketService: JackettService) {}
 
   @Query((_returns) => [JackettFormattedResult])
-  public async searchJackett(@Args('query') query: string) {
+  public async searchJackett(@Args('query') query: string, @Args({ name: 'quality', type: () => String }) quality?: string) {
     const results = await this.jacketService.search([query], {
       withoutFilter: true,
+      quality,
     });
     return results.map((result) => ({
       ...result,

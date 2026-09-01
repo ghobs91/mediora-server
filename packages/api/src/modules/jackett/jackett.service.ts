@@ -72,8 +72,8 @@ export class JackettService {
       : [indexers.indexer];
   }
 
-  public async searchMovie(movieId: number) {
-    this.logger.info("search movie", { movieId });
+  public async searchMovie(movieId: number, quality?: string) {
+    this.logger.info("search movie", { movieId, quality });
 
     const maxSize = await this.paramsService.getNumber(
       ParameterKey.MAX_MOVIE_DOWNLOAD_SIZE,
@@ -85,11 +85,11 @@ export class JackettService {
       `${movie.originalTitle} ${dayjs(movie.releaseDate).format("YYYY")}`,
     ];
 
-    return this.search(queries, { maxSize, type: Entertainment.Movie });
+    return this.search(queries, { maxSize, type: Entertainment.Movie, quality });
   }
 
-  public async searchSeason(seasonId: number) {
-    this.logger.info("search tv season", { seasonId });
+  public async searchSeason(seasonId: number, quality?: string) {
+    this.logger.info("search tv season", { seasonId, quality });
 
     const maxSize = await this.paramsService.getNumber(
       ParameterKey.MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE,
@@ -124,11 +124,12 @@ export class JackettService {
       maxSize: maxSize * tvSeason.episodes.length,
       isSeason: true,
       type: Entertainment.TvShow,
+      quality,
     });
   }
 
-  public async searchEpisode(episodeId: number) {
-    this.logger.info("search tv episode", { episodeId });
+  public async searchEpisode(episodeId: number, quality?: string) {
+    this.logger.info("search tv episode", { episodeId, quality });
 
     const maxSize = await this.paramsService.getNumber(
       ParameterKey.MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE,
@@ -160,7 +161,7 @@ export class JackettService {
       ])
       .flat();
 
-    return this.search(queries, { maxSize, type: Entertainment.TvShow });
+    return this.search(queries, { maxSize, type: Entertainment.TvShow, quality });
   }
 
   public async search(
@@ -169,6 +170,7 @@ export class JackettService {
       maxSize?: number;
       isSeason?: boolean;
       withoutFilter?: boolean;
+      quality?: string;
       type?: Entertainment;
     },
   ) {
@@ -197,7 +199,16 @@ export class JackettService {
 
       const sortedByBest = sortByBest(flattenIndexers);
 
-      return opts.withoutFilter ? sortedByBest : [sortedByBest[0]];
+      let results = opts.withoutFilter ? sortedByBest : [sortedByBest[0]];
+
+      if (opts.quality) {
+        const byQuality = sortedByBest.filter(
+          (result) => result.quality.label === opts.quality,
+        );
+        results = opts.withoutFilter ? byQuality : [byQuality[0]];
+      }
+
+      return results;
     } catch (error) {
       // return empty results array, let application continue it's lifecycle
       if (Array.isArray(error) && error[0].message === noResultsError) {

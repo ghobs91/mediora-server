@@ -38,11 +38,11 @@ export class DownloadProcessor extends WorkerHost {
       case DownloadQueueProcessors.DOWNLOAD_MISSING:
         return this.downloadMissing();
       case DownloadQueueProcessors.DOWNLOAD_MOVIE:
-        return this.downloadMovie(job as Job<number>);
+        return this.downloadMovie(job as Job<{ id: number; quality?: string }>);
       case DownloadQueueProcessors.DOWNLOAD_SEASON:
-        return this.downloadSeason(job as Job<number>);
+        return this.downloadSeason(job as Job<{ id: number; quality?: string }>);
       case DownloadQueueProcessors.DOWNLOAD_EPISODE:
-        return this.downloadEpisode(job as Job<number>);
+        return this.downloadEpisode(job as Job<{ id: number; quality?: string }>);
       default:
         this.logger.warn('unknown download job name', { name: job.name });
     }
@@ -58,26 +58,28 @@ export class DownloadProcessor extends WorkerHost {
     this.logger.info(`found ${missingMovies.length} missing movies`);
 
     await forEachSeries(missingMovies, (movie) =>
-      this.downloadQueue.add(DownloadQueueProcessors.DOWNLOAD_MOVIE, movie.id)
+      this.downloadQueue.add(DownloadQueueProcessors.DOWNLOAD_MOVIE, {
+        id: movie.id,
+      })
     );
 
     const missingEpisodes = await this.tvEpisodeDAO.findMissingFromLibrary();
     this.logger.info(`found ${missingEpisodes.length} missing tv episodes`);
 
     await forEachSeries(missingEpisodes, (episode) =>
-      this.downloadQueue.add(
-        DownloadQueueProcessors.DOWNLOAD_EPISODE,
-        episode.id
-      )
+      this.downloadQueue.add(DownloadQueueProcessors.DOWNLOAD_EPISODE, {
+        id: episode.id,
+      })
     );
 
     this.logger.info('finish try download missing files');
   }
 
-  public async downloadMovie({ data: movieId }: Job<number>) {
-    this.logger.info('start download movie', { movieId });
+  public async downloadMovie({ data }: Job<{ id: number; quality?: string }>) {
+    const { id: movieId, quality } = data;
+    this.logger.info('start download movie', { movieId, quality });
 
-    const [bestResult] = await this.jackettService.searchMovie(movieId);
+    const [bestResult] = await this.jackettService.searchMovie(movieId, quality);
     if (!(await this.canRun({ movieId }))) return;
 
     if (bestResult === undefined) {
@@ -103,10 +105,11 @@ export class DownloadProcessor extends WorkerHost {
     return;
   }
 
-  public async downloadSeason({ data: seasonId }: Job<number>) {
-    this.logger.info('start download season', { seasonId });
+  public async downloadSeason({ data }: Job<{ id: number; quality?: string }>) {
+    const { id: seasonId, quality } = data;
+    this.logger.info('start download season', { seasonId, quality });
 
-    const [bestResult] = await this.jackettService.searchSeason(seasonId);
+    const [bestResult] = await this.jackettService.searchSeason(seasonId, quality);
     if (!(await this.canRun({ seasonId }))) return;
 
     if (bestResult === undefined) {
@@ -126,10 +129,9 @@ export class DownloadProcessor extends WorkerHost {
       // season can already be removed from library
       if (season) {
         await forEachSeries(season.episodes, (episode) =>
-          this.downloadQueue.add(
-            DownloadQueueProcessors.DOWNLOAD_EPISODE,
-            episode.id
-          )
+          this.downloadQueue.add(DownloadQueueProcessors.DOWNLOAD_EPISODE, {
+            id: episode.id,
+          })
         );
       }
 
@@ -150,10 +152,11 @@ export class DownloadProcessor extends WorkerHost {
     return;
   }
 
-  public async downloadEpisode({ data: episodeId }: Job<number>) {
-    this.logger.info('start download episode', { episodeId });
+  public async downloadEpisode({ data }: Job<{ id: number; quality?: string }>) {
+    const { id: episodeId, quality } = data;
+    this.logger.info('start download episode', { episodeId, quality });
 
-    const [bestResult] = await this.jackettService.searchEpisode(episodeId);
+    const [bestResult] = await this.jackettService.searchEpisode(episodeId, quality);
     if (!(await this.canRun({ episodeId }))) return;
 
     if (bestResult === undefined) {

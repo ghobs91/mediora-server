@@ -325,7 +325,7 @@ type Query {
   discover(originLanguage: String, primaryReleaseYear: String, score: Float, genres: [Float!], page: Float, entertainment: Entertainment = Movie): TMDBPaginatedResult!
   getLanguages: [TMDBLanguagesResult!]!
   getGenres: TMDBGenresResults!
-  searchJackett(query: String!): [JackettFormattedResult!]!
+  searchJackett(query: String!, quality: String): [JackettFormattedResult!]!
   getTorrentStatus(torrents: [GetTorrentStatusInput!]!): [TorrentStatus!]!
   getDownloadingMedias: [DownloadingMedia!]!
   getSearchingMedias: [SearchingMedia!]!
@@ -358,6 +358,9 @@ type Mutation {
   downloadMovie(jackettResult: JackettInput!, movieId: Int!): GraphQLCommonResponse!
   downloadSeason(jackettResult: JackettInput!, seasonNumber: Int!, tvShowTMDBId: Int!): GraphQLCommonResponse!
   downloadTVEpisode(jackettResult: JackettInput!, episodeId: Int!): GraphQLCommonResponse!
+  downloadMovieWithQuality(movieId: Int!, quality: String): GraphQLCommonResponse!
+  downloadEpisodeWithQuality(episodeId: Int!, quality: String): GraphQLCommonResponse!
+  downloadSeasonWithQuality(tvShowTMDBId: Int!, seasonNumber: Int!, quality: String): GraphQLCommonResponse!
   trackMovie(tmdbId: Int!, title: String!): Movie!
   removeMovie(tmdbId: Int!): GraphQLCommonResponse!
   trackTVShow(seasonNumbers: [Int!]!, tmdbId: Int!): TVShow!

@@ -61,27 +61,27 @@ export class JobsService {
     });
   }
 
-  public startDownloadMovie(movieId: number) {
-    this.logger.info('add download movie job', { movieId });
+  public startDownloadMovie(movieId: number, quality?: string) {
+    this.logger.info('add download movie job', { movieId, quality });
     return this.downloadQueue.add(
       DownloadQueueProcessors.DOWNLOAD_MOVIE,
-      movieId
+      { id: movieId, quality }
     );
   }
 
-  public startDownloadSeason(seasonId: number) {
-    this.logger.info('add download season job', { seasonId });
+  public startDownloadSeason(seasonId: number, quality?: string) {
+    this.logger.info('add download season job', { seasonId, quality });
     return this.downloadQueue.add(
       DownloadQueueProcessors.DOWNLOAD_SEASON,
-      seasonId
+      { id: seasonId, quality }
     );
   }
 
-  public startDownloadEpisode(episodeId: number) {
-    this.logger.info('add download episode job', { episodeId });
+  public startDownloadEpisode(episodeId: number, quality?: string) {
+    this.logger.info('add download episode job', { episodeId, quality });
     return this.downloadQueue.add(
       DownloadQueueProcessors.DOWNLOAD_EPISODE,
-      episodeId
+      { id: episodeId, quality }
     );
   }
 
