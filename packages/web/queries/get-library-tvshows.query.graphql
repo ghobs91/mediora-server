@@ -9,6 +9,8 @@ query getLibraryTVShows {
     overview
     voteAverage
     releaseDate
+    episodesDownloaded
+    episodesTotal
     createdAt
     updatedAt
   }

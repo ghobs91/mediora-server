@@ -177,7 +177,24 @@ export class LibraryQueryService {
     const tmdbResult = await this.tmdbService
       .getTVShow(tvShow.tmdbId, params)
       .then(this.tmdbService.mapTVShow);
-    return { ...tmdbResult, ...tvShow, title: tmdbResult.title };
+
+    const episodes = await this.tvEpisodeDAO.find({
+      where: { tvShowId: tvShow.id },
+    });
+    const episodesTotal = episodes.length;
+    const episodesDownloaded = episodes.filter(
+      (episode) =>
+        episode.state === DownloadableMediaState.DOWNLOADED ||
+        episode.state === DownloadableMediaState.PROCESSED,
+    ).length;
+
+    return {
+      ...tmdbResult,
+      ...tvShow,
+      title: tmdbResult.title,
+      episodesDownloaded,
+      episodesTotal,
+    };
   };
 
   private enrichTVEpisode = async (tvEpisode: TVEpisode) => {

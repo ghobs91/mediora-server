@@ -13,6 +13,7 @@ import { getImageURL } from '../../utils/get-cached-image-url';
 import { TVShowSeasonsModalComponent } from '../tvshow-details/tvshow-details.component';
 import { MovieDetailsComponent } from '../movie-details/movie-details.component';
 import { RatingComponent } from '../rating/rating.component';
+import { EpisodeProgressComponent } from '../episode-progress/episode-progress.component';
 
 interface TMDBCardComponentProps {
   type: 'tvshow' | 'movie';
@@ -66,9 +67,18 @@ export function TMDBCardComponent(props: TMDBCardComponentProps) {
         </div>
       </div>
 
-      <div className="absolute left-[14px] top-[310px]">
-        <RatingComponent rating={result.voteAverage * 10} />
-      </div>
+      {type === 'tvshow' && 'episodesTotal' in result ? (
+        <div className="absolute left-[14px] top-[310px]">
+          <EpisodeProgressComponent
+            downloaded={result.episodesDownloaded ?? 0}
+            total={result.episodesTotal ?? 0}
+          />
+        </div>
+      ) : (
+        <div className="absolute left-[14px] top-[310px]">
+          <RatingComponent rating={result.voteAverage * 10} />
+        </div>
+      )}
 
       <div className="font-bold">{result.title}</div>
       {result.releaseDate && (

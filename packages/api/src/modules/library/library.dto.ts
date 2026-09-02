@@ -24,6 +24,8 @@ export class EnrichedTVShow extends TVShow {
   @Field({ nullable: true }) public originalTitle?: string;
   @Field({ nullable: true }) public posterPath?: string;
   @Field({ nullable: true }) public runtime!: number;
+  @Field({ nullable: true }) public episodesDownloaded?: number;
+  @Field({ nullable: true }) public episodesTotal?: number;
 }
 
 @ObjectType()

@@ -83,6 +83,8 @@ export type EnrichedTvShow = {
   posterPath?: Maybe<Scalars['String']['output']>;
   releaseDate: Scalars['String']['output'];
   runtime?: Maybe<Scalars['Float']['output']>;
+  episodesDownloaded?: Maybe<Scalars['Float']['output']>;
+  episodesTotal?: Maybe<Scalars['Float']['output']>;
   title: Scalars['String']['output'];
   tmdbId: Scalars['Float']['output'];
   updatedAt: Scalars['DateTime']['output'];
@@ -844,7 +846,7 @@ export type GetLibraryMoviesQuery = { __typename?: 'Query', movies: Array<{ __ty
 export type GetLibraryTvShowsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetLibraryTvShowsQuery = { __typename?: 'Query', tvShows: Array<{ __typename?: 'EnrichedTVShow', id: number, tmdbId: number, title: string, originalTitle?: string | null, posterPath?: string | null, runtime?: number | null, overview: string, voteAverage: number, releaseDate: string, createdAt: any, updatedAt: any }> };
+export type GetLibraryTvShowsQuery = { __typename?: 'Query', tvShows: Array<{ __typename?: 'EnrichedTVShow', id: number, tmdbId: number, title: string, originalTitle?: string | null, posterPath?: string | null, runtime?: number | null, overview: string, voteAverage: number, releaseDate: string, episodesDownloaded?: number | null, episodesTotal?: number | null, createdAt: any, updatedAt: any }> };
 
 export type MissingTvEpisodesFragment = { __typename?: 'EnrichedTVEpisode', id: number, seasonNumber: number, episodeNumber: number, releaseDate: string, tvShow: { __typename?: 'TVShow', id: number, title: string } };
 
@@ -1689,6 +1691,8 @@ export const GetLibraryTvShowsDocument = gql`
     overview
     voteAverage
     releaseDate
+    episodesDownloaded
+    episodesTotal
     createdAt
     updatedAt
   }
