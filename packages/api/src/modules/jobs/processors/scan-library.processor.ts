@@ -6,7 +6,7 @@ import { Processor, InjectQueue, WorkerHost } from "@nestjs/bullmq";
 import { Inject } from "@nestjs/common";
 import { WINSTON_MODULE_PROVIDER } from "nest-winston";
 import { Logger } from "winston";
-import { times, orderBy, flatten } from "lodash";
+import { times, orderBy } from "lodash";
 import { Job, Queue } from "bullmq";
 
 import { DataSource, EntityManager, Like, IsNull } from "typeorm";
@@ -459,23 +459,21 @@ export class ScanLibraryProcessor extends WorkerHost {
       return;
     }
 
-    const episodes = await fs
-      .readdir(showRoot, { withFileTypes: true })
-      .then((seasons) =>
-        mapSeries(
-          seasons
-            .filter((season) => season.isDirectory())
-            .map((season) => season.name),
-          (season) =>
-            fs
-              .readdir(path.join(showRoot, season), { withFileTypes: true })
-              .then((entries) =>
-                entries
-                  .filter((f) => f.isFile() || f.isSymbolicLink())
-                  .map((f) => path.join(showRoot, season, f.name)),
-              ),
-        ).then(flatten),
-      );
+    // Walk recursively so release subfolders (e.g.
+    // `Show/Show.Complete.S01-S07.../Season 1/file.mkv`) are found too.
+    const episodes: string[] = [];
+    const walk = async (dir: string): Promise<void> => {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await walk(full);
+        } else if (entry.isFile() || entry.isSymbolicLink()) {
+          episodes.push(full);
+        }
+      }
+    };
+    await walk(showRoot);
 
     await forEachSeries(episodes, async (episodePath) => {
       if (
@@ -499,18 +497,27 @@ export class ScanLibraryProcessor extends WorkerHost {
       }
 
       const season = path.dirname(episodePath);
-      const [seasonNumber] = /\d+/.exec(season) || [];
+      const seasonNumber =
+        /season\s*(\d+)/i.exec(episodePath)?.[1] ?? /\d+/.exec(season)?.[0];
 
       if (!seasonNumber) {
         this.logger.error("could not parse season number", {
           season,
           seasonNumber,
         });
-        throw new Error("could not parse season number");
+        return;
       }
 
-      // parse episode number from title
-      const [, episodeNumber] = /E(\d+)/.exec(episodePath) || [];
+      // parse episode number from title (S01E01, 1x01, case-insensitive)
+      const [, episodeNumber] =
+        /E(\d+)/i.exec(episodePath) || /\d+[xX](\d+)/.exec(episodePath) || [];
+
+      if (!episodeNumber) {
+        this.logger.error("could not parse episode number", {
+          episode: path.basename(episodePath),
+        });
+        return;
+      }
 
       this.logger.info(`found season number and episode`, {
         seasonNumber,
