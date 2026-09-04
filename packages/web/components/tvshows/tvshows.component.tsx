@@ -2,7 +2,6 @@ import React from 'react';
 
 import { useGetLibraryTvShowsQuery, EnrichedTvShow } from '../../utils/graphql';
 
-import { LibraryHeaderComponent } from '../library-header/library-header.component';
 import { TMDBCardComponent } from '../tmdb-card/tmdb-card.component';
 
 import { useSortable } from '../sortable/sortable.component';
@@ -26,7 +25,6 @@ export function TVShowsComponent() {
 
   return (
     <>
-      <LibraryHeaderComponent types={['season', 'episode']} />
       <div className="mx-auto w-full max-w-[1200px] px-6 pt-8">
         {loading ? (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">

@@ -4,7 +4,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import { useGetLibraryMoviesQuery, EnrichedMovie } from '../../utils/graphql';
 
-import { LibraryHeaderComponent } from '../library-header/library-header.component';
 import { TMDBCardComponent } from '../tmdb-card/tmdb-card.component';
 
 import { useSortable } from '../sortable/sortable.component';
@@ -26,7 +25,6 @@ export function MoviesComponent() {
 
   return (
     <>
-      <LibraryHeaderComponent types={['movie']} />
       <div className="mx-auto w-full max-w-[1200px] px-6 pt-8">
         {loading ? (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
