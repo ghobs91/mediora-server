@@ -25,6 +25,7 @@ import {
 } from "src/app.dto";
 
 import { sanitize } from "src/utils/sanitize";
+import { parseTvFile } from "src/utils/parse-tv-episode";
 
 import { JobsService } from "src/modules/jobs//jobs.service";
 import { TMDBService } from "src/modules/tmdb/tmdb.service";
@@ -475,20 +476,63 @@ export class ScanLibraryProcessor extends WorkerHost {
     };
     await walk(showRoot);
 
+    const touchedSeasonIds = new Set<number>();
+
     await forEachSeries(episodes, async (episodePath) => {
-      if (
-        // skip non-video files
-        episodePath.endsWith(".srt") ||
-        episodePath.endsWith(".nfo") ||
-        episodePath.startsWith(".")
-      ) {
+      const basename = path.basename(episodePath);
+      if (basename.startsWith(".")) {
         return;
       }
 
       this.logger.info(`start processing episode`, {
-        episode: path.basename(episodePath),
+        episode: basename,
       });
 
+      const parsed = parseTvFile(episodePath, showRoot);
+
+      if (!parsed) {
+        this.logger.error("could not parse season/episode number", {
+          episode: basename,
+        });
+        return;
+      }
+
+      const { seasonNumber, episodeNumbers } = parsed;
+
+      this.logger.info(`found season number and episode`, {
+        seasonNumber,
+        episodeNumbers,
+      });
+
+      const tvSeason = await tvSeasonDAO.findOrCreate(
+        {
+          tvShowId: tvShow!.id,
+          seasonNumber,
+        },
+        DownloadableMediaState.PROCESSED,
+      );
+      touchedSeasonIds.add(tvSeason.id);
+
+      const linkedEpisodes = await mapSeries(episodeNumbers, (episodeNumber) =>
+        tvEpisodeDAO.findOrCreate({
+          tvShowId: tvShow!.id,
+          seasonId: tvSeason.id,
+          episodeNumber,
+          seasonNumber,
+        }),
+      );
+
+      await tvEpisodeDAO.save(
+        linkedEpisodes.map((episode) => ({
+          id: episode.id,
+          state: DownloadableMediaState.PROCESSED,
+          season: tvSeason,
+        })),
+      );
+
+      // File paths are unique, so a multi-episode file is linked to its
+      // first episode while every episode in the range is still marked
+      // processed (which is what season counts are derived from).
       const file = await fileDAO.findOne({ where: { path: episodePath } });
 
       if (file) {
@@ -496,59 +540,33 @@ export class ScanLibraryProcessor extends WorkerHost {
         return;
       }
 
-      const season = path.dirname(episodePath);
-      const seasonNumber =
-        /season\s*(\d+)/i.exec(episodePath)?.[1] ?? /\d+/.exec(season)?.[0];
-
-      if (!seasonNumber) {
-        this.logger.error("could not parse season number", {
-          season,
-          seasonNumber,
-        });
-        return;
-      }
-
-      // parse episode number from title (S01E01, 1x01, case-insensitive)
-      const [, episodeNumber] =
-        /E(\d+)/i.exec(episodePath) || /\d+[xX](\d+)/.exec(episodePath) || [];
-
-      if (!episodeNumber) {
-        this.logger.error("could not parse episode number", {
-          episode: path.basename(episodePath),
-        });
-        return;
-      }
-
-      this.logger.info(`found season number and episode`, {
-        seasonNumber,
-        episodeNumber,
-      });
-
-      const tvSeason = await tvSeasonDAO.findOrCreate(
-        {
-          tvShowId: tvShow!.id,
-          seasonNumber: parseInt(seasonNumber, 10),
-        },
-        DownloadableMediaState.PROCESSED,
-      );
-
-      const episode = await tvEpisodeDAO.findOrCreate({
-        tvShowId: tvShow!.id,
-        seasonId: tvSeason.id,
-        episodeNumber: parseInt(episodeNumber, 10),
-        seasonNumber: parseInt(seasonNumber, 10),
-      });
-
-      await tvEpisodeDAO.save({
-        id: episode.id,
-        state: DownloadableMediaState.PROCESSED,
-        season: tvSeason,
-      });
-
       await fileDAO.save({
         path: episodePath,
-        tvEpisodeId: episode.id,
+        tvEpisodeId: linkedEpisodes[0].id,
       });
+    });
+
+    await forEachSeries([...touchedSeasonIds], async (seasonId) => {
+      const season = await tvSeasonDAO.findOne({
+        where: { id: seasonId },
+        relations: ["episodes"],
+      });
+      const seasonEpisodes = season?.episodes ?? [];
+      if (
+        season &&
+        seasonEpisodes.length > 0 &&
+        seasonEpisodes.every(
+          (episode) =>
+            episode.state === DownloadableMediaState.DOWNLOADED ||
+            episode.state === DownloadableMediaState.PROCESSED,
+        ) &&
+        season.state !== DownloadableMediaState.PROCESSED
+      ) {
+        await tvSeasonDAO.save({
+          id: season.id,
+          state: DownloadableMediaState.PROCESSED,
+        });
+      }
     });
 
     this.logger.info("finish processing tvshow", { tvshow });
