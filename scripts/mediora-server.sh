@@ -12,7 +12,7 @@ cat << "EOF"
     | $$$$$$$/|  $$$$$$/| $$$$$$$/|  $$$$$$$| $$      | $$
     |_______/  \______/ |_______/  \_______/|__/      |__/
 
-        https://github.com/iam4x/bobarr
+        https://github.com/ghobs91/mediora-server
 
 EOF
 
@@ -30,42 +30,42 @@ fi
 
 args=$1
 
-stop_bobarr() {
+stop_mediora_server() {
   $COMPOSE_VERSION down --remove-orphans || true
 }
 
 after_start() {
   echo ""
-  echo "bobarr started correctly, printing bobarr api logs"
-  echo "you can close this and bobarr will continue to run in backgound"
+  echo "mediora-server started correctly, printing mediora-server api logs"
+  echo "you can close this and mediora-server will continue to run in backgound"
   echo ""
   $COMPOSE_VERSION logs -f api
 }
 
 if [[ $args == 'start' ]]; then
-  stop_bobarr
+  stop_mediora_server
   $COMPOSE_VERSION up --force-recreate -d
   after_start
 elif [[ $args == 'start:vpn' ]]; then
-  stop_bobarr
+  stop_mediora_server
   $COMPOSE_VERSION -f docker-compose.yml -f docker-compose.vpn.yml up --force-recreate -d
   after_start
 elif [[ $args == 'start:wireguard' ]]; then
-  stop_bobarr
+  stop_mediora_server
   $COMPOSE_VERSION -f docker-compose.yml -f docker-compose.wireguard.yml up --force-recreate -d
   after_start
 elif [[ $args == 'start:tailscale' ]]; then
-  stop_bobarr
+  stop_mediora_server
   $COMPOSE_VERSION -f docker-compose.yml -f docker-compose.tailscale.yml up --force-recreate -d
   after_start
 elif [[ $args == 'stop' ]]; then
-  stop_bobarr
+  stop_mediora_server
   echo ""
-  echo "bobarr correctly stopped"
+  echo "mediora-server correctly stopped"
 elif [[ $args == 'update' ]]; then
   $COMPOSE_VERSION pull
   echo ""
-  echo "bobarr docker images correctly updated, you can now re-start bobarr"
+  echo "mediora-server docker images correctly updated, you can now re-start mediora-server"
 else
   echo "unknow command: $args"
   echo "use [start | start:vpn | start:wireguard | start:tailscale | stop | update]"

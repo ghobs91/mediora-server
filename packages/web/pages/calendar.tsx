@@ -9,7 +9,7 @@ function CalendarPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Calendar</title>
+        <title>Mediora Server - Calendar</title>
       </Head>
       <LayoutComponent>
         <CalendarComponent />

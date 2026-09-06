@@ -11,12 +11,12 @@ networks:
 
 services:
   api:
-    container_name: bobarr-api
+    container_name: mediora-server-api
     env_file: .env
     user: "${PUID:-1000}:${PGID:-1000}"
     build:
       context: ./packages/api
-    image: bobarr-api:latest
+    image: mediora-server-api:latest
     command: yarn start:prod
     restart: unless-stopped
     depends_on:
@@ -44,20 +44,20 @@ services:
       - 4000:4000
 
   web:
-    container_name: bobarr-web
+    container_name: mediora-server-web
     env_file: .env
     build:
       context: ./packages/web
       args:
         WEB_UI_API_URL: ${WEB_UI_API_URL:-}
-    image: bobarr-web:latest
+    image: mediora-server-web:latest
     command: yarn start
     restart: unless-stopped
     ports:
       - 3000:3000
 
   postgres:
-    container_name: bobarr-postgresql
+    container_name: mediora-server-postgresql
     image: postgres:12-alpine
     env_file: .env
     restart: unless-stopped
@@ -71,7 +71,7 @@ services:
       - db_data:/var/lib/postgresql/data
 
   redis:
-    container_name: bobarr-redis
+    container_name: mediora-server-redis
     image: redis:7-alpine
     command: redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
     restart: unless-stopped
@@ -86,7 +86,7 @@ services:
 
   jackett:
     image: linuxserver/jackett
-    container_name: bobarr-jacket
+    container_name: mediora-server-jacket
     env_file: .env
     restart: unless-stopped
     healthcheck:
@@ -103,7 +103,7 @@ services:
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
-    container_name: bobarr-flaresolverr
+    container_name: mediora-server-flaresolverr
     environment:
       - LOG_LEVEL=info
     restart: unless-stopped
@@ -112,7 +112,7 @@ services:
 
   transmission:
     image: linuxserver/transmission
-    container_name: bobarr-transmission
+    container_name: mediora-server-transmission
     env_file: .env
     restart: unless-stopped
     healthcheck:
@@ -128,7 +128,7 @@ services:
 
   transmission-web:
     image: dperson/nginx
-    container_name: bobarr-transmission-web
+    container_name: mediora-server-transmission-web
     depends_on:
       - transmission
     environment:

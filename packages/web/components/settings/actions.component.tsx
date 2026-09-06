@@ -105,7 +105,7 @@ export function ActionsComponents() {
             Clear cache
           </Button>
           <Button size="lg" variant="destructive" onClick={handleResetClick}>
-            Reset bobarr
+            Reset mediora-server
           </Button>
         </CardContent>
       </Card>
@@ -115,7 +115,7 @@ export function ActionsComponents() {
           <DialogHeader>
             <DialogTitle>⚠️ Warning</DialogTitle>
             <DialogDescription>
-              This will remove everything from bobarr database and it will
+              This will remove everything from mediora-server database and it will
               re-scan your library folder.
             </DialogDescription>
           </DialogHeader>
@@ -127,7 +127,7 @@ export function ActionsComponents() {
                 onCheckedChange={(checked) => setDeleteFiles(checked === true)}
               />
               <Label htmlFor="delete-files" className="font-normal">
-                Delete files downloaded from disk with bobarr (permanent)
+                Delete files downloaded from disk with mediora-server (permanent)
               </Label>
             </div>
             <div className="flex items-center gap-2">

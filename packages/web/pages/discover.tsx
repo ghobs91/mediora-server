@@ -9,7 +9,7 @@ function DiscoverPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Discover</title>
+        <title>Mediora Server - Discover</title>
       </Head>
       <LayoutComponent>
         <DiscoverComponent />

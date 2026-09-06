@@ -1,7 +1,7 @@
-# 🍿 Bobarr
+# 🍿 Mediora Server
 > The all-in-one alternative for Sonarr, Radarr, Jackett... with a VPN and running in docker
 
-Bobarr is a movies and tv shows collection manager for BitTorrent users. It uses [themoviedb.org](https://www.themoviedb.org/) to search movies and tv shows to add to your library. Then it searches into your favorites torrent trackers the best match and downloads it for you through a VPN.
+Mediora Server is a movies and tv shows collection manager for BitTorrent users. It uses [themoviedb.org](https://www.themoviedb.org/) to search movies and tv shows to add to your library. Then it searches into your favorites torrent trackers the best match and downloads it for you through a VPN.
 
 ![Screenshot](./screenshot.png)
 
@@ -11,7 +11,7 @@ Bobarr is a movies and tv shows collection manager for BitTorrent users. It uses
 
 ## Why ?
 
-One of the main idea for bobarr is to be simple to setup, simple to use and having everything at the same place.
+One of the main idea for mediora-server is to be simple to setup, simple to use and having everything at the same place.
 You don't have to choose a torrent client, to setup a VPN, to setup radarr, sonarr, then jackett and connect them all together.
 
 It's also built from scratch and it will try to solve long term problem like download multiple qualities and keep them or managing tv shows and movies at the same place.
@@ -28,11 +28,11 @@ And to have something with a better UI, less configuration and faster 🚀
 ## Installation
 
 Run the installation script and follow the instructions:
-* `curl -o- https://raw.githubusercontent.com/iam4x/bobarr/master/scripts/install.sh | bash`
+* `curl -o- https://raw.githubusercontent.com/ghobs91/mediora-server/master/scripts/install.sh | bash`
 
 ### Configuration
 
-The first time you open Bobarr at http://localhost:3000, the setup wizard will
+The first time you open Mediora Server at http://localhost:3000, the setup wizard will
 guide you through the required configuration:
 
 * choose an admin password
@@ -64,7 +64,7 @@ The browser cannot grant a Docker container access to a host path that is not
 mounted.
 
 On Linux, set `PUID` and `PGID` in `.env` to the user and group that own the
-host library (`id -u` and `id -g`), then recreate the stack. Bobarr runs the
+host library (`id -u` and `id -g`), then recreate the stack. Mediora Server runs the
 API with that identity so scanning and organizing use the same permissions as
 the download service.
 
@@ -85,9 +85,9 @@ stored in the database and used for scans and organization.
 
 ## How to start
 
-There are two way to start bobarr stack, first without VPN:
+There are two way to start mediora-server stack, first without VPN:
 
-* `$ ./bobarr.sh start`
+* `$ ./mediora-server.sh start`
 * Go to http://localhost:9117 and add your preferred torrent websites
 * Go to http://localhost:3000 and complete the setup wizard
 
@@ -96,12 +96,12 @@ If you want to enforce all torrent traffic through a VPN:
 #### OpenVPN
 
 * Copy your open vpn config file (.ovpn) into the folder `packages/vpn` name it `vpn.conf`
-* `$ ./bobarr.sh start:vpn`
+* `$ ./mediora-server.sh start:vpn`
 
 #### WireGuard
 
 * Copy your wireguard config file (wg0.conf) into the folder `packages/vpn`
-* `$ ./bobarr.sh start:wireguard`
+* `$ ./mediora-server.sh start:wireguard`
 
 #### Tailscale (Mullvad exit node)
 
@@ -134,10 +134,10 @@ with `tailscale set`. Exit-node hostnames cannot be resolved during the initial
 `tailscale up` (before auth), so they must be configured after login. A non-zero
 exit / restart loop on boot means `TS_AUTHKEY` was rejected.
 
-* `$ ./bobarr.sh start:tailscale`
-* Verify routing with `$ docker exec bobarr-tailscale tailscale status` and
-  `$ docker exec bobarr-tailscale tailscale ip`
-* Stop the stack with `$ ./bobarr.sh stop`
+* `$ ./mediora-server.sh start:tailscale`
+* Verify routing with `$ docker exec mediora-server-tailscale tailscale status` and
+  `$ docker exec mediora-server-tailscale tailscale ip`
+* Stop the stack with `$ ./mediora-server.sh stop`
 
 ## Configuration
 
@@ -147,14 +147,14 @@ exit / restart loop on boot means `TS_AUTHKEY` was rejected.
 * Add indexer and follow the steps
 * Also set [FlareSolverr](https://github.com/Jackett/Jackett#configuring-flaresolverr) url to `http://flaresolverr:8191` in jackett configuration
 
-### Bobarr configuration
+### Mediora Server configuration
 
 * Complete the first-launch wizard at http://localhost:3000
 * Go to http://localhost:3000/settings after setup to configure tags and quality preferences
 * Create and order your preferred tags found in torrent file (ex: vost, multi, english...)
 * Order your preferred qualities to download
 
-### Accessing Bobarr remotely over HTTPS
+### Accessing Mediora Server remotely over HTTPS
 
 The web UI proxies the API at the same-origin `/api` path, so it works behind
 any HTTPS reverse proxy or tunnel (Tailscale, Cloudflare Tunnel, nginx...)
@@ -176,7 +176,7 @@ docker compose up -d web
 * The files will be downloaded into `library/downloads`
 * The files will be moved/copied/simlinked (you can set this in settings) and organized into `library/tvshows` or `library/movies`
 
-The only requirement is to have a folder `tvshows` and a folder `movies` then bobarr can catch up and download to your user defined library folder.
+The only requirement is to have a folder `tvshows` and a folder `movies` then mediora-server can catch up and download to your user defined library folder.
 
 If your movies or tvshow folder have a different name, you can edit `.env` file with your folder names:
 
@@ -189,28 +189,28 @@ You can now head to http://localhost:3000 and hit that "Scan library folder" but
 
 ## How to stop
 
-You can stop the whole bobarr stack with:
+You can stop the whole mediora-server stack with:
 
-* `$ ./bobarr.sh stop`
+* `$ ./mediora-server.sh stop`
 
 ## How to update
 
-Check the [CHANGELOG](https://github.com/iam4x/bobarr/blob/master/CHANGELOG.md) and update your `.env` if needed with new variables added.
+Check the [CHANGELOG](https://github.com/ghobs91/mediora-server/blob/master/CHANGELOG.md) and update your `.env` if needed with new variables added.
 
-* `$ ./bobarr.sh update`
-* `$ ./bobarr.sh start`
+* `$ ./mediora-server.sh update`
+* `$ ./mediora-server.sh start`
 
 ## Services
 
-* Bobarr http://localhost:3000
-* Bobarr GraphQL API http://localhost:4000/graphql
-* Bobarr background jobs http://localhost:4000/jobs
+* Mediora Server http://localhost:3000
+* Mediora Server GraphQL API http://localhost:4000/graphql
+* Mediora Server background jobs http://localhost:4000/jobs
 * Jackett http://localhost:9117
 * Transmission http://localhost:9091
 * FlareSolverr http://localhost:8191
 
 ## Development
 
-Clone the repository and then you can run bobarr API and Web UI in dev watch mode and display logs with:
+Clone the repository and then you can run mediora-server API and Web UI in dev watch mode and display logs with:
 
 * `$ yarn dev`

@@ -16,7 +16,7 @@ export class AuthController {
   ) {
     const { token } = await this.authService.login(body.password || '');
 
-    res.cookie('bobarr_token', token, {
+    res.cookie('mediora-server_token', token, {
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,

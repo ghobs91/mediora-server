@@ -17,7 +17,7 @@ import {
 
 import { Public } from 'src/auth/public.decorator';
 
-const CACHE_ROOT = path.join(os.tmpdir(), 'bobarr-image-cache');
+const CACHE_ROOT = path.join(os.tmpdir(), 'mediora-server-image-cache');
 const SAFE_IMAGE_PATH = /^[\w-]+(\/[\w-]+)*\.(jpg|jpeg|png|webp|svg)$/;
 
 // images are loaded through <img> tags, they can not carry

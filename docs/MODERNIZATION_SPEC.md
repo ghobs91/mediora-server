@@ -1,10 +1,10 @@
-# Mediora/Bobarr Modernization Specification
+# Mediora/Mediora Server Modernization Specification
 
 This document is the handoff specification for continuing the repository overhaul in a later session. It records the target state, completed work, constraints, decisions, verification commands, and remaining milestones.
 
 ## 1. Product Intent
 
-Mediora/Bobarr is a self-hosted Docker media manager for movies and TV shows. It searches TMDB for metadata, searches configured Jackett indexers for torrents, downloads through Transmission, optionally routes torrent traffic through OpenVPN or WireGuard, and organizes completed media under a mounted library.
+Mediora/Mediora Server is a self-hosted Docker media manager for movies and TV shows. It searches TMDB for metadata, searches configured Jackett indexers for torrents, downloads through Transmission, optionally routes torrent traffic through OpenVPN or WireGuard, and organizes completed media under a mounted library.
 
 The primary user is a homelab or self-hosting user who wants one simpler interface instead of configuring Sonarr/Radarr, Jackett, Transmission, and a VPN independently.
 

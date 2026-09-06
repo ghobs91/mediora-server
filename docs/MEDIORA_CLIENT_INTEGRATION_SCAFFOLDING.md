@@ -259,9 +259,9 @@ import { RadarrMovieDto } from '../dto/radarr.dto';
 import { SonarrSeriesDto } from '../dto/sonarr.dto';
 
 /**
- * Maps Bobarr entities -> Radarr/Sonarr DTOs.
+ * Maps Mediora Server entities -> Radarr/Sonarr DTOs.
  * Fill in TMDB-sourced fields (year, runtime, imdbId, images, genres) via the
- * TmdbService; the mapper only needs Bobarr's stored columns + torrent/file
+ * TmdbService; the mapper only needs Mediora Server's stored columns + torrent/file
  * state for the required fields.
  */
 export class MediaMapper {
@@ -335,7 +335,7 @@ export class SonarrRadarrService {
 
   // ---- Radarr ----
   async getSystemStatus() {
-    return { appName: 'Bobarr', version: '1.0.0', os: 'linux' };
+    return { appName: 'Mediora Server', version: '1.0.0', os: 'linux' };
   }
 
   async getRootFolders() {

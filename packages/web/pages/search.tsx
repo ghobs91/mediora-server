@@ -9,7 +9,7 @@ function SearchPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Search</title>
+        <title>Mediora Server - Search</title>
       </Head>
       <LayoutComponent>
         <SearchComponent />

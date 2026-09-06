@@ -89,7 +89,7 @@ export function LibraryFoldersComponent() {
               Library folders
             </CardTitle>
             <CardDescription className="mt-2 max-w-lg">
-              Pick folders and disks inside the Docker library mounts. Bobarr
+              Pick folders and disks inside the Docker library mounts. Mediora Server
               checks the actual container user, so permission problems are
               explained here instead of appearing later as failed scans.
             </CardDescription>

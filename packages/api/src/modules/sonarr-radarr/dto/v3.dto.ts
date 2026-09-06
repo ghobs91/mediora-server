@@ -1,7 +1,7 @@
 // v3 DTOs matching the shapes consumed by the mediora client's
 // SonarrService / RadarrService (which append /api/v3). These intentionally
 // mirror real Sonarr v3 + Radarr v3 payloads so the existing client services
-// work unchanged in mediora-server (Bobarr) mode.
+// work unchanged in mediora-server mode.
 
 export interface SonarrV3Image {
   coverType: string;

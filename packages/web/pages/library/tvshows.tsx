@@ -9,7 +9,7 @@ function TVShowsPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - TV Shows</title>
+        <title>Mediora Server - TV Shows</title>
       </Head>
       <LayoutComponent>
         <TVShowsComponent />

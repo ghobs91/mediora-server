@@ -11,7 +11,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
         (request: { cookies?: Record<string, string> }) =>
-          request?.cookies?.bobarr_token ?? null,
+          request?.cookies?.['mediora-server_token'] ?? null,
       ]),
       ignoreExpiration: false,
       secretOrKey: env.JWT_SECRET,
@@ -19,7 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: { sub?: string }) {
-    if (!payload || payload.sub !== 'bobarr') {
+    if (!payload || payload.sub !== 'mediora-server') {
       throw new UnauthorizedException();
     }
 

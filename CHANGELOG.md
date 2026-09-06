@@ -29,7 +29,7 @@
 
 ### Fixes
 
-- fix install script, make `./bobarr.sh` an executable
+- fix install script, make `./mediora-server.sh` an executable
 - fix start script by printing all api logs
 
 ## [v1.0.0-beta.2] - 2020-12-14

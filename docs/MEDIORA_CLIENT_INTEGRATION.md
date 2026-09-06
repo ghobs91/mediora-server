@@ -1,7 +1,7 @@
-# Integrating the Mediora client with Bobarr (mediora-server)
+# Integrating the Mediora client with Mediora Server (mediora-server)
 
 > Self-contained spec for an agent working in `ghobs91/mediora-server`.
-> Goal: make **Bobarr** speak the **Sonarr v3 + Radarr v3** REST API so the
+> Goal: make **Mediora Server** speak the **Sonarr v3 + Radarr v3** REST API so the
 > **Mediora client** (`ghobs91/mediora`, tvOS/iOS/macos) connects to it as the
 > request backend **without changing the client**.
 
@@ -9,25 +9,25 @@
 
 ## 0. Critical context (read before coding)
 
-1. **Bobarr does NOT currently use Sonarr/Radarr.** It uses **Jackett** (torrent
+1. **Mediora Server does NOT currently use Sonarr/Radarr.** It uses **Jackett** (torrent
    search) + **Transmission** (downloader) + TMDB/OMDB (metadata) + PostgreSQL +
    Redis/BullMQ. The "Sonarr/Radarr" mentions in the README are prose only.
    **The task is therefore an add, not a replacement:** expose Sonarr v3 +
-   Radarr v3 compatible endpoints on top of Bobarr's existing engine.
+   Radarr v3 compatible endpoints on top of Mediora Server's existing engine.
 
 2. **The Mediora client talks DIRECTLY to native Sonarr/Radarr APIs.** There is
    no "Mediora server" middleware. The client ships
    `src/services/{sonarr,radarr,tmdb,jellyfin}.ts` and calls
    `https://<server>/api/v3/*` with the `X-Api-Key` header.
 
-3. **Therefore "connect the two" = Bobarr implements Sonarr v3 + Radarr v3.**
+3. **Therefore "connect the two" = Mediora Server implements Sonarr v3 + Radarr v3.**
    The client stays unchanged; the user just points `SONARR_URL`/`RADARR_URL`
-   at Bobarr.
+   at Mediora Server.
 
 **Recommended approach:** a compatibility layer (new NestJS module) that
-serializes Bobarr's own entities into Radarr/Sonarr-shaped JSON, backed by
-Bobarr's real request/download/library pipeline. **Do not** rewrite the client
-to use Bobarr's native GraphQL API — that is far more work and defeats the goal.
+serializes Mediora Server's own entities into Radarr/Sonarr-shaped JSON, backed by
+Mediora Server's real request/download/library pipeline. **Do not** rewrite the client
+to use Mediora Server's native GraphQL API — that is far more work and defeats the goal.
 
 ---
 
@@ -74,13 +74,13 @@ Source: `ghobs91/mediora/src/services/{sonarr,radarr}.ts`.
 ### 1c. TMDB (orthogonal — no server change)
 
 The client calls `https://api.themoviedb.org/3` **directly** with an embedded
-public key (`tmdb.ts:13`). Bobarr needs **no** TMDB proxy for the client to work
-(discovery/metadata already function). Bobarr already has its own TMDB module
+public key (`tmdb.ts:13`). Mediora Server needs **no** TMDB proxy for the client to work
+(discovery/metadata already function). Mediora Server already has its own TMDB module
 (`packages/api/src/modules/tmdb/`).
 
 ### 1d. Jellyfin (playback — separate concern)
 
-The client streams playback from Jellyfin. **Bobarr has no transcoding/stream
+The client streams playback from Jellyfin. **Mediora Server has no transcoding/stream
 server.** Playback is out of scope for the request integration below (see §6).
 
 ---
@@ -94,7 +94,7 @@ the client service code; recommended = used by client UI screens.
 
 ```jsonc
 // GET /api/v3/system/status
-{ "appName": "Bobarr", "version": "1.0.0", "startTime": "2026-01-01T00:00:00Z", "os": "linux" }
+{ "appName": "Mediora Server", "version": "1.0.0", "startTime": "2026-01-01T00:00:00Z", "os": "linux" }
 
 // GET /api/v3/rootFolder  ->  [ ... ]
 { "id": 1, "path": "/usr/library/movies", "freeSpace": 1073741824, "accessible": true }
@@ -108,8 +108,8 @@ the client service code; recommended = used by client UI screens.
 ```jsonc
 // GET /api/v3/movie, GET /api/v3/movie/{id}
 {
-  "id": 7,                 // REQUIRED  (Bobarr Movie.id)
-  "tmdbId": 278,           // REQUIRED  (Bobarr Movie.tmdbId)
+  "id": 7,                 // REQUIRED  (Mediora Server Movie.id)
+  "tmdbId": 278,           // REQUIRED  (Mediora Server Movie.tmdbId)
   "title": "The Shawshank Redemption",
   "originalTitle": "The Shawshank Redemption",
   "sortTitle": "shawshank redemption",
@@ -139,7 +139,7 @@ the client service code; recommended = used by client UI screens.
 
 **POST body the client sends** (`addMovie`): a full `RadarrMovie` plus
 `rootFolderPath`, `qualityProfileId`, `monitored`, `minimumAvailability`,
-`addOptions: { searchForMovie }`. Bobarr only needs `tmdbId` (+ `title`, `year`)
+`addOptions: { searchForMovie }`. Mediora Server only needs `tmdbId` (+ `title`, `year`)
 from it.
 
 ### 2c. Sonarr series (`SonarrSeries`)
@@ -147,9 +147,9 @@ from it.
 ```jsonc
 // GET /api/v3/series, GET /api/v3/series/{id}
 {
-  "id": 11,                // REQUIRED  (Bobarr TVShow.id)
+  "id": 11,                // REQUIRED  (Mediora Server TVShow.id)
   "tvdbId": 76480,         // REQUIRED  (client: checkSeriesExists) -> store from TMDB
-  "tmdbId": 1399,          // REQUIRED  (Bobarr TVShow.tmdbId)
+  "tmdbId": 1399,          // REQUIRED  (Mediora Server TVShow.tmdbId)
   "title": "Game of Thrones",
   "sortTitle": "game of thrones",
   "status": "continued",
@@ -198,7 +198,7 @@ from it.
 
 ```jsonc
 {
-  "id": 101,               // REQUIRED  (Bobarr TVEpisode.id)
+  "id": 101,               // REQUIRED  (Mediora Server TVEpisode.id)
   "seriesId": 11,          // REQUIRED  (client filters queue by this)
   "tvdbId": 294114,
   "episodeFileId": 201,
@@ -215,7 +215,7 @@ from it.
 
 ```jsonc
 {
-  "id": 201,               // REQUIRED  (Bobarr File.id)
+  "id": 201,               // REQUIRED  (Mediora Server File.id)
   "seriesId": 11,          // REQUIRED
   "seasonNumber": 1,
   "relativePath": "Season 1/...ep01.mkv",
@@ -233,7 +233,7 @@ from it.
 {
   "records": [
     {
-      "id": 50,                  // REQUIRED  (Bobarr Torrent.id)
+      "id": 50,                  // REQUIRED  (Mediora Server Torrent.id)
       "movieId": 7,              // REQUIRED  (client filters by this)
       "title": "The Shawshank Redemption (1994) 1080p",
       "size": 2147483648,
@@ -245,7 +245,7 @@ from it.
       "trackedDownloadState": "downloading",
       "downloadId": "<transmission hash>",  // REQUIRED (== Torrent.torrentHash)
       "protocol": "torrent",
-      "downloadClient": "bobarr",
+      "downloadClient": "mediora-server",
       "indexer": "tracker name",
       "outputPath": "/usr/library/movies/..."
     }
@@ -274,7 +274,7 @@ from it.
 
 ---
 
-## 3. Bobarr engine you will back this with
+## 3. Mediora Server engine you will back this with
 
 - **Entities** (`packages/api/src/entities/`): `Movie` (unique `tmdbId`,
   `state`, `files[]`), `TVShow` (unique `tmdbId`, `seasons[]`, `episodes[]`),
@@ -308,21 +308,21 @@ from it.
     `SONARR_URL=http://<host>:<port>/sonarr`. The client appends `/api/v3/`,
     yielding `/radarr/api/v3/movie` and `/sonarr/api/v3/series`.
 - **Auth**: mark routes `@Public()` (skip JWT) and add a local
-  `XApiKeyGuard` that validates the `X-Api-Key` header against a stored Bobarr
+  `XApiKeyGuard` that validates the `X-Api-Key` header against a stored Mediora Server
   API key (or, minimally, any non-empty key after the setup wizard completes).
   Store the key in `ParameterKey.SONARR_RADARR_API_KEY` or `.env`.
 
 ---
 
-## 5. Endpoint -> Bobarr mapping
+## 5. Endpoint -> Mediora Server mapping
 
-| v3 endpoint | Bobarr backing |
+| v3 endpoint | Mediora Server backing |
 |---|---|
-| `GET /system/status` | static `{appName:"Bobarr", version, ...}` |
+| `GET /system/status` | static `{appName:"Mediora Server", version, ...}` |
 | `GET /rootFolder` | library mounts -> `{id, path, freeSpace, accessible}` |
 | `GET /qualityprofile` | one default profile |
 | `GET /movie` / `GET /series` | serialize `Movie`/`TVShow` (+ files + torrent state) via mapper |
-| `GET /movie/lookup*`, `GET /series/lookup*` | Bobarr TMDB module -> reshape to partial movie/series |
+| `GET /movie/lookup*`, `GET /series/lookup*` | Mediora Server TMDB module -> reshape to partial movie/series |
 | `POST /movie` | create `Movie` (`tmdbId`, `state=SEARCHING`) + start existing search/download |
 | `POST /series` | `trackTVShow` with requested seasons; return Sonarr Series |
 | `DELETE /movie/{id}`, `/series/{id}` | `removeMovie` / `removeTVShow` (honor `deleteFiles`) |
@@ -339,7 +339,7 @@ from it.
    + `GET /rootFolder` for both; verify with curl against the client's URL format.
 2. **Radarr read-only**: `GET /movie`, `/movie/{id}`, `/movie/lookup*`, `/queue`.
    Test in the Mediora client's movie library view.
-3. **Radarr write**: `POST /movie`, `DELETE`. Verify a request triggers Bobarr's
+3. **Radarr write**: `POST /movie`, `DELETE`. Verify a request triggers Mediora Server's
    real download->organize->scan pipeline.
 4. **Sonarr read-only**: `GET /series`, `/series/{id}`, `/series/lookup*`,
    `/episode`, `/episodefile`, `/queue`.
@@ -354,15 +354,15 @@ from it.
 
 ## 7. Known gaps & decisions needed from you
 
-- **Playback (Jellyfin)**: the client streams from Jellyfin; Bobarr has no
+- **Playback (Jellyfin)**: the client streams from Jellyfin; Mediora Server has no
   transcoding/stream server. To fully replace the stack you'd need either (a)
-  keep a Jellyfin for playback and use Bobarr only for requests, or (b) build a
-  streaming layer in Bobarr (large, separate effort). **Which do you want?**
+  keep a Jellyfin for playback and use Mediora Server only for requests, or (b) build a
+  streaming layer in Mediora Server (large, separate effort). **Which do you want?**
 - **Quality profiles / season folders / minimumAvailability**: the client sends
-  these but Bobarr models quality via `Torrent.quality` and organization via
+  these but Mediora Server models quality via `Torrent.quality` and organization via
   `OrganizeLibraryStrategy`. Decide how faithfully to map them; start minimal.
-- **tvdbId**: Bobarr keys on `tmdbId`; Sonarr client reads `tvdbId`
-  (`checkSeriesExists`). You'll need to store/fetch the TVDB ID (Bobarr's TMDB
+- **tvdbId**: Mediora Server keys on `tmdbId`; Sonarr client reads `tvdbId`
+  (`checkSeriesExists`). You'll need to store/fetch the TVDB ID (Mediora Server's TMDB
   module likely has it) — confirm `TVShow` can expose it.
 - **Fidelity vs. subset**: implement exactly the fields the client reads first
   (much less work), then broaden to full Radarr/Sonarr schema for
@@ -373,11 +373,11 @@ from it.
 ## 8. Verification (your agent should do this)
 
 - Unit/integration tests for each v3 controller returning correctly-shaped JSON.
-- **End-to-end in the Mediora app**: set `SONARR_URL`/`RADARR_URL` to Bobarr, run
+- **End-to-end in the Mediora app**: set `SONARR_URL`/`RADARR_URL` to Mediora Server, run
   "test connection", load the movie/TV library, add a movie + a TV season, and
-  confirm it appears in Bobarr's download queue and lands in the library after
+  confirm it appears in Mediora Server's download queue and lands in the library after
   download.
-- Confirm Bobarr's existing tests still pass (`yarn lint`; the api test suite in
+- Confirm Mediora Server's existing tests still pass (`yarn lint`; the api test suite in
   `packages/api/test`).
 
 ---

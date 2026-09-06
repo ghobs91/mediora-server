@@ -1,7 +1,7 @@
 services:
   vpn:
     image: linuxserver/wireguard
-    container_name: bobarr-vpn
+    container_name: mediora-server-vpn
     env_file: .env
     cap_add:
       - NET_ADMIN

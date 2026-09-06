@@ -38,7 +38,7 @@ const envSchema = z.object({
   MEDIA_MOUNTS: z.string().optional(),
 
   APP_PASSWORD: z.string().optional(),
-  JWT_SECRET: z.string().default("bobarr"),
+  JWT_SECRET: z.string().default("mediora-server"),
 
   SONARR_RADARR_API_KEY: z.string().optional(),
 });

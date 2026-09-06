@@ -40,7 +40,7 @@ export class SetupController {
       (body as { password?: string })?.password || ''
     );
 
-    res.cookie('bobarr_token', token, {
+    res.cookie('mediora-server_token', token, {
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,

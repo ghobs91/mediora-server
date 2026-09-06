@@ -22,7 +22,7 @@ describe('AuthService', () => {
     );
 
     await expect(service.login('secret')).resolves.toEqual({ token: 'token' });
-    expect(sign).toHaveBeenCalledWith({ sub: 'bobarr' });
+    expect(sign).toHaveBeenCalledWith({ sub: 'mediora-server' });
   });
 
   it('rejects a wrong password', async () => {

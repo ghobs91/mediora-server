@@ -1,14 +1,14 @@
 {
-  "name": "bobarr",
+  "name": "mediora-server",
   "version": "1.0.0-beta.3",
   "author": "iam4x <iam4x@me.com>",
   "license": "MIT",
   "scripts": {
     "postinstall": "(cd packages/web && yarn) && (cd packages/api && yarn)",
-    "start": "./scripts/bobarr.sh start",
-    "start:vpn": "./scripts/bobarr.sh start:vpn",
-    "start:wireguard": "./scripts/bobarr.sh start:wireguard",
-    "stop": "./scripts/bobarr.sh stop",
+    "start": "./scripts/mediora-server.sh start",
+    "start:vpn": "./scripts/mediora-server.sh start:vpn",
+    "start:wireguard": "./scripts/mediora-server.sh start:wireguard",
+    "stop": "./scripts/mediora-server.sh stop",
     "dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --force-recreate -d && docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 20 -f api web",
     "dev:vpn": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.vpn.yml up --force-recreate -d && docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 20 -f api web",
     "lint": "eslint ."

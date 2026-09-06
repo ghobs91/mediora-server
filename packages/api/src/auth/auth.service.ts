@@ -30,7 +30,7 @@ export class AuthService {
       );
     }
 
-    return { token: this.jwtService.sign({ sub: 'bobarr' }) };
+    return { token: this.jwtService.sign({ sub: 'mediora-server' }) };
   }
 
   public async setPassword(password: string) {

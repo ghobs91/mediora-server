@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'bobarr_token';
+const TOKEN_KEY = 'mediora-server_token';
 
 export function getToken() {
   return typeof window === 'undefined' ? null : localStorage.getItem(TOKEN_KEY);

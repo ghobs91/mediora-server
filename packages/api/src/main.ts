@@ -24,7 +24,7 @@ function requireToken(req: Request, res: Response, next: NextFunction) {
   const auth = req.headers.authorization || '';
   const token =
     (auth.startsWith('Bearer ') ? auth.slice(7) : '') ||
-    req.cookies?.bobarr_token;
+    req.cookies?.['mediora-server_token'];
 
   if (!token) {
     res.status(401).send('Unauthorized');

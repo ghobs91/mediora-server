@@ -9,7 +9,7 @@ function SettingsPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Settings</title>
+        <title>Mediora Server - Settings</title>
       </Head>
       <LayoutComponent>
         <SettingsComponent />

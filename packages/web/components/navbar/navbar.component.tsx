@@ -37,7 +37,7 @@ export function NavbarComponent() {
         href="/search"
         className="mr-10 font-mono text-2xl font-bold tracking-tight"
       >
-        bobarr
+        mediora-server
       </Link>
       <div className="flex items-center gap-1">
         {links.map(([name, url]) => (

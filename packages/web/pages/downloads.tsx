@@ -9,7 +9,7 @@ function DownloadsPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Downloads</title>
+        <title>Mediora Server - Downloads</title>
       </Head>
       <LayoutComponent>
         <DownloadsComponent />

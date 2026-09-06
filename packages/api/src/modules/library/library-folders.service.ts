@@ -428,7 +428,7 @@ export class LibraryFoldersService {
     }
     if (state === LibraryFolderState.MISSING) {
       return access.canCreate
-        ? 'This folder does not exist yet, but Bobarr can create it.'
+        ? 'This folder does not exist yet, but Mediora Server can create it.'
         : 'This folder does not exist and its parent is not writable.';
     }
     if (state === LibraryFolderState.NOT_DIRECTORY) {
@@ -438,7 +438,7 @@ export class LibraryFoldersService {
       return 'The container user cannot read or traverse this folder.';
     }
     if (state === LibraryFolderState.READ_ONLY) {
-      return 'Bobarr can scan this folder but cannot organize new media into it.';
+      return 'Mediora Server can scan this folder but cannot organize new media into it.';
     }
     return 'Ready to scan and organize media.';
   }
@@ -452,7 +452,7 @@ export class LibraryFoldersService {
       return 'Check MEDIA_MOUNTS and the matching bind mounts in docker-compose.yml.';
     }
     if (state === LibraryFolderState.MISSING && access.canCreate) {
-      return 'Save the folder settings and Bobarr will create this directory.';
+      return 'Save the folder settings and Mediora Server will create this directory.';
     }
     if (
       state === LibraryFolderState.INACCESSIBLE ||

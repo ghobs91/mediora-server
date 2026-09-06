@@ -46,13 +46,13 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Login</title>
+        <title>Mediora Server - Login</title>
       </Head>
       <div className="flex min-h-screen items-center justify-center">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-center font-mono text-3xl">
-              bobarr
+              mediora-server
             </CardTitle>
           </CardHeader>
           <CardContent>

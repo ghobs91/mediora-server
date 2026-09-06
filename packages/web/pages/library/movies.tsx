@@ -9,7 +9,7 @@ function MoviesPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Movies</title>
+        <title>Mediora Server - Movies</title>
       </Head>
       <LayoutComponent>
         <MoviesComponent />

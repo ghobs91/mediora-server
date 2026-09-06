@@ -9,7 +9,7 @@ function SuggestionsPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Suggestions</title>
+        <title>Mediora Server - Suggestions</title>
       </Head>
       <LayoutComponent>
         <SuggestionsComponent />

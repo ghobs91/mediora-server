@@ -225,7 +225,7 @@ export default function SetupPage() {
   return (
     <>
       <Head>
-        <title>Bobarr - Setup</title>
+        <title>Mediora Server - Setup</title>
       </Head>
       <main className="min-h-screen px-6 py-12 sm:py-20">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
@@ -235,7 +235,7 @@ export default function SetupPage() {
                 First launch
               </p>
               <h1 className="font-mono text-4xl font-bold tracking-tight sm:text-5xl">
-                Set up bobarr
+                Set up mediora-server
               </h1>
               <p className="mt-3 max-w-xl text-muted-foreground">
                 A few essentials now, then your library dashboard is ready.
@@ -311,7 +311,7 @@ export default function SetupPage() {
                 {step === 1 && (
                   <section className="space-y-5">
                     <p className="text-sm leading-6 text-muted-foreground">
-                      Bobarr uses TMDB for metadata and Jackett for indexer
+                      Mediora Server uses TMDB for metadata and Jackett for indexer
                       searches. Jackett is available at{' '}
                       <a
                         href={jackettUrl}
@@ -389,7 +389,7 @@ export default function SetupPage() {
                         <div>
                           <h3 className="font-semibold">Library folders</h3>
                           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                            Choose folder names inside Bobarr&apos;s Docker mount.
+                            Choose folder names inside Mediora Server&apos;s Docker mount.
                             The browser cannot grant a container access to an
                             arbitrary host path.
                           </p>

@@ -66,7 +66,7 @@ export function SetupGate({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen items-center justify-center px-6">
         <div className="flex max-w-sm flex-col items-center gap-4 text-center">
           <p className="text-sm text-muted-foreground">
-            Bobarr could not connect to its API. Make sure the stack is running,
+            Mediora Server could not connect to its API. Make sure the stack is running,
             then try again.
           </p>
           <p className="text-xs text-destructive">{error}</p>
