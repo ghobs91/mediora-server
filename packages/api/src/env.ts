@@ -21,9 +21,15 @@ const envSchema = z.object({
     .transform((value) => value === "true")
     .default("false"),
 
+  JACKETT_BASE_URL: z
+    .string()
+    .default("http://jackett:9117/api/v2.0/indexers/all"),
   JACKETT_AUTOMATIC_SEARCH_TIMEOUT: z.coerce.number().default(120000),
   JACKETT_MANUAL_SEARCH_TIMEOUT: z.coerce.number().default(15000),
   JACKETT_SEARCH_CONCURRENCY: z.coerce.number().int().positive().default(3),
+
+  TRANSMISSION_HOST: z.string().default("transmission"),
+  TRANSMISSION_PORT: z.coerce.number().default(9091),
 
   LIBRARY_MOVIES_FOLDER_NAME: z.string().default("movies"),
   LIBRARY_TV_SHOWS_FOLDER_NAME: z.string().default("tvshows"),

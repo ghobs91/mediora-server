@@ -11,6 +11,7 @@ export interface TMDBRequestParams {
   primary_release_year?: number; // movie
   first_air_date_year?: number; // tv show
   tvdb_id?: string; // tv search by tvdb id
+  external_source?: string; // /find/{external_id}
   page?: number;
 }
 

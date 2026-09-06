@@ -181,6 +181,17 @@ export class TMDBService {
     };
   }
 
+  public async findMovieByImdbId(imdbId: string) {
+    this.logger.info('start find movie by imdb id', { imdbId });
+    const data = await this.request<{ movie_results: TMDBMovie[] }>(
+      `/find/${imdbId}`,
+      { external_source: 'imdb_id' },
+    );
+    const [first] = data.movie_results ?? [];
+    if (!first) return null;
+    return this.mapMovie(first);
+  }
+
   public async getPopular() {
     this.logger.info('start get popular');
 

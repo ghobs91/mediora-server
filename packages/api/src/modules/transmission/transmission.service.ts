@@ -9,10 +9,17 @@ import { FileType } from 'src/app.dto';
 import { Torrent } from 'src/entities/torrent.entity';
 import { TorrentDAO } from 'src/entities/dao/torrent.dao';
 import { TransactionManager, LazyTransaction } from 'src/utils/transaction';
+import { env } from 'src/env';
+
+const TORRENT_FILE_TIMEOUT_MS = 15000;
+const TORRENT_FILE_MAX_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
 export class TransmissionService {
-  private client = new Transmission({ host: 'transmission' });
+  private client = new Transmission({
+    host: env.TRANSMISSION_HOST,
+    port: env.TRANSMISSION_PORT,
+  });
 
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
@@ -132,7 +139,12 @@ export class TransmissionService {
   }
 
   private async downloadTorrentFile(url: string) {
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: TORRENT_FILE_TIMEOUT_MS,
+      maxContentLength: TORRENT_FILE_MAX_BYTES,
+      maxBodyLength: TORRENT_FILE_MAX_BYTES,
+    });
     const base64 = Buffer.from(response.data, 'binary').toString('base64');
     return this.client.addBase64(base64);
   }

@@ -1,7 +1,6 @@
 import dayjs from 'dayjs';
 import path from 'path';
-import { childCommand } from 'child-command';
-import { oneLine } from 'common-tags';
+import { promises as fs } from 'fs';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { mapSeries } from 'p-iteration';
 import { Job } from 'bullmq';
@@ -63,26 +62,79 @@ export class OrganizeProcessor extends WorkerHost {
     }
   }
 
-  private getOrganizeStrategyCommand(strategy: OrganizeLibraryStrategy) {
-    switch (strategy) {
-      case OrganizeLibraryStrategy.LINK:
-        return 'ln -s';
-      case OrganizeLibraryStrategy.MOVE:
-        return 'mv';
-      case OrganizeLibraryStrategy.COPY:
-        return 'cp -R';
-      default: {
-        throw new Error('unknown strategy');
-      }
-    }
-  }
-
   private getDownloadPath(filename: string): string {
     const downloadDir = '/downloads/complete';
     if (path.isAbsolute(filename)) {
-      return filename;
+      return path.normalize(filename);
     }
     return path.join(downloadDir, filename);
+  }
+
+  // fs-based organize: no shell interpolation (filenames with quotes/$/backticks
+  // are safe), idempotent re-runs, and verifiable before torrent deletion.
+  private async placeFile(
+    strategy: OrganizeLibraryStrategy,
+    src: string,
+    dest: string
+  ): Promise<void> {
+    const normalizedSrc = path.normalize(src);
+    const normalizedDest = path.normalize(dest);
+    if (normalizedSrc.includes('..') || normalizedDest.includes('..')) {
+      throw new Error(`refusing path with traversal: ${src} -> ${dest}`);
+    }
+
+    const srcStat = await fs.stat(normalizedSrc).catch(() => null);
+    if (!srcStat) {
+      throw new Error(`source file missing: ${normalizedSrc}`);
+    }
+
+    await fs.mkdir(path.dirname(normalizedDest), { recursive: true });
+
+    // Idempotent re-run: if dest already exists with non-zero size, keep it.
+    const destStat = await fs.stat(normalizedDest).catch(() => null);
+    if (destStat && destStat.size > 0) {
+      return;
+    }
+    // Remove stale empty dest / previous symlink so LINK acts like ln -sf.
+    if (destStat) {
+      await fs.unlink(normalizedDest).catch(() => undefined);
+    }
+
+    if (strategy === OrganizeLibraryStrategy.LINK) {
+      await fs.symlink(normalizedSrc, normalizedDest);
+    } else if (strategy === OrganizeLibraryStrategy.COPY) {
+      await fs.copyFile(normalizedSrc, normalizedDest);
+    } else {
+      try {
+        await fs.rename(normalizedSrc, normalizedDest);
+      } catch (error) {
+        // Cross-device move (EXDEV): fall back to copy + unlink.
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          (error as NodeJS.ErrnoException).code === 'EXDEV'
+        ) {
+          await fs.copyFile(normalizedSrc, normalizedDest);
+          await fs.unlink(normalizedSrc);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    const placed = await fs.stat(normalizedDest).catch(() => null);
+    if (!placed || placed.size === 0) {
+      throw new Error(`organize failed verification: ${normalizedDest}`);
+    }
+  }
+
+  private async verifyDestinations(paths: string[]): Promise<void> {
+    for (const p of paths) {
+      const stat = await fs.stat(p).catch(() => null);
+      if (!stat || stat.size === 0) {
+        throw new Error(`destination missing before torrent delete: ${p}`);
+      }
+    }
   }
 
   @Transaction()
@@ -157,25 +209,21 @@ export class OrganizeProcessor extends WorkerHost {
       folderName
     );
 
-    await childCommand(`mkdir -p "${newFolder}"`);
+    await fs.mkdir(newFolder, { recursive: true });
     await mapSeries(torrentFiles, async (torrentFile) => {
       const downloadPath = this.getDownloadPath(torrentFile.original);
-      await childCommand(
-        oneLine`
-            mkdir -p "${newFolder}" &&
-            ${this.getOrganizeStrategyCommand(organizeStrategy)}
-              "${downloadPath}"
-              "${path.join(newFolder, torrentFile.next)}"
-          `
-      );
+      const destPath = path.join(newFolder, torrentFile.next);
+      await this.placeFile(organizeStrategy, downloadPath, destPath);
 
       await fileDAO.save({
         movieId,
-        path: path.join(newFolder, torrentFile.next),
+        path: destPath,
       });
     });
 
     if (organizeStrategy === OrganizeLibraryStrategy.MOVE) {
+      const dests = torrentFiles.map((f) => path.join(newFolder, f.next));
+      await this.verifyDestinations(dests);
       await this.transmissionService.removeTorrentAndFiles(torrent.torrentHash);
       await torrentDAO.remove(torrent);
     }
@@ -244,24 +292,21 @@ export class OrganizeProcessor extends WorkerHost {
         return { original: file.name, next: `${next}${ext}` };
       });
 
-    await childCommand(`mkdir -p "${seasonFolder}"`);
+    await fs.mkdir(seasonFolder, { recursive: true });
     await mapSeries(torrentFiles, async (torrentFile) => {
       const downloadPath = this.getDownloadPath(torrentFile.original);
-      await childCommand(
-        oneLine`
-          ${this.getOrganizeStrategyCommand(organizeStrategy)}
-            "${downloadPath}"
-            "${path.join(seasonFolder, torrentFile.next)}"
-        `
-      );
+      const destPath = path.join(seasonFolder, torrentFile.next);
+      await this.placeFile(organizeStrategy, downloadPath, destPath);
 
       await fileDAO.save({
         episodeId,
-        path: path.join(seasonFolder, torrentFile.next),
+        path: destPath,
       });
     });
 
     if (organizeStrategy === OrganizeLibraryStrategy.MOVE) {
+      const dests = torrentFiles.map((f) => path.join(seasonFolder, f.next));
+      await this.verifyDestinations(dests);
       await this.transmissionService.removeTorrentAndFiles(torrent.torrentHash);
       await torrentDAO.remove(torrent);
     }
@@ -320,7 +365,7 @@ export class OrganizeProcessor extends WorkerHost {
         results: Array<{
           original: string;
           ext: string;
-          episodeNb: number;
+          episodeNbs: number[];
           part?: string;
         }>,
         file
@@ -328,20 +373,36 @@ export class OrganizeProcessor extends WorkerHost {
         const ext = path.extname(file.name);
         const fileName = path.basename(file.name.toUpperCase());
 
-        const [, episodeNb1] = /S\d+ ?E(\d+)/.exec(fileName) || []; // Foobar_S01E01.mkv
-        const [, episodeNb2] = /\d+X(\d+)/.exec(fileName) || []; // Foobar_1x01.mkv
-        const episodeNb = episodeNb1 || episodeNb2;
+        const [, episodeNb1, episodeNb1End] =
+          /S\d+ ?E(\d+)(?:\s*[-_~]\s*E?(\d+))?/.exec(fileName) || []; // S01E01, S01E01-E02
+        const [, episodeNb2] = /\d+X(\d+)/.exec(fileName) || []; // 1x01
+        const [, episodeNb3] = /(?:^|[\s._-])EP?(\d{1,3})(?:[\s._-]|$)/.exec(fileName) || []; // EP01 fallback
 
-        const [, part] = /part ?(\d+)/.exec(fileName.toLowerCase()) || []; // Foobar_S01E01_Part1
+        const [, part] = /part ?(\d+)/.exec(fileName.toLowerCase()) || []; // Part1
 
-        if (episodeNb && allowedExtensions.includes(ext.replace(/^\./, ''))) {
+        const episodeNbs = (() => {
+          const start = episodeNb1 || episodeNb2 || episodeNb3;
+          if (!start) return [];
+          const startNb = parseInt(start, 10);
+          const endNb = episodeNb1End ? parseInt(episodeNb1End, 10) : startNb;
+          if (endNb < startNb || endNb - startNb > 20) return [startNb];
+          return Array.from(
+            { length: endNb - startNb + 1 },
+            (_, i) => startNb + i
+          );
+        })();
+
+        if (
+          episodeNbs.length > 0 &&
+          allowedExtensions.includes(ext.replace(/^\./, ''))
+        ) {
           return [
             ...results,
             {
               ext,
               part,
               original: file.name,
-              episodeNb: parseInt(episodeNb, 10),
+              episodeNbs,
             },
           ];
         }
@@ -360,49 +421,52 @@ export class OrganizeProcessor extends WorkerHost {
       throw new Error('could not find any files in torrent');
     }
 
-    await childCommand(`mkdir -p "${seasonFolder}"`);
+    await fs.mkdir(seasonFolder, { recursive: true });
+    const placedPaths: string[] = [];
     await mapSeries(torrentFiles, async (file) => {
-      const newName = [
-        tvShow.title,
-        `S${seasonNb}E${formatNumber(file.episodeNb)}`,
-        file.part ? `Part ${file.part}` : undefined,
-        `${torrent.quality} [${torrent.tag.toUpperCase()}]`,
-      ]
-        .filter((v) => v !== undefined)
-        .join(' - ');
-
       const downloadPath = this.getDownloadPath(file.original);
-      await childCommand(
-        oneLine`
-          ${this.getOrganizeStrategyCommand(organizeStrategy)}
-          "${downloadPath}"
-          "${path.join(seasonFolder, `${newName}${file.ext}`)}"
-        `
-      );
+      // One source file can cover a multi-episode range (E01-E02): link it
+      // once per episode so each episode row resolves to a playable file.
+      for (const episodeNb of file.episodeNbs) {
+        const newName = [
+          tvShow.title,
+          `S${seasonNb}E${formatNumber(episodeNb)}`,
+          file.part ? `Part ${file.part}` : undefined,
+          `${torrent.quality} [${torrent.tag.toUpperCase()}]`,
+        ]
+          .filter((v) => v !== undefined)
+          .join(' - ');
 
-      const episode = season.episodes.find(
-        (k) => k.episodeNumber === file.episodeNb
-      );
+        const destPath = path.join(seasonFolder, `${newName}${file.ext}`);
+        await this.placeFile(organizeStrategy, downloadPath, destPath);
+        placedPaths.push(destPath);
 
-      if (episode) {
-        await fileDAO.save({
-          episodeId: episode.id,
-          path: path.join(seasonFolder, `${newName}${file.ext}`),
-        });
+        const episode = season.episodes.find(
+          (k) => k.episodeNumber === episodeNb
+        );
+
+        if (episode) {
+          await fileDAO.save({
+            episodeId: episode.id,
+            path: destPath,
+          });
+        }
       }
     });
 
     if (organizeStrategy === OrganizeLibraryStrategy.MOVE) {
+      await this.verifyDestinations(placedPaths);
       await this.transmissionService.removeTorrentAndFiles(torrent.torrentHash);
       await torrentDAO.remove(torrent);
     }
 
+    const coveredEpisodeNbs = new Set(
+      torrentFiles.flatMap((file) => file.episodeNbs)
+    );
     // set downloaded episodes to processed
     await tvEpisodeDAO.save(
       season.episodes
-        .filter((episode) =>
-          torrentFiles.some((file) => file.episodeNb === episode.episodeNumber)
-        )
+        .filter((episode) => coveredEpisodeNbs.has(episode.episodeNumber))
         .map((episode) => ({
           id: episode.id,
           state: DownloadableMediaState.PROCESSED,
@@ -412,9 +476,7 @@ export class OrganizeProcessor extends WorkerHost {
     // set other episodes to missing
     await tvEpisodeDAO.save(
       season.episodes
-        .filter((episode) =>
-          torrentFiles.every((file) => file.episodeNb !== episode.episodeNumber)
-        )
+        .filter((episode) => !coveredEpisodeNbs.has(episode.episodeNumber))
         .map((episode) => ({
           id: episode.id,
           state: DownloadableMediaState.MISSING,

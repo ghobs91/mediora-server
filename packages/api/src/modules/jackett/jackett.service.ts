@@ -29,6 +29,7 @@ import {
   JACKETT_RESPONSE_TIMEOUT,
   JACKETT_SEARCH_CONCURRENCY,
 } from "src/config";
+import { env } from "src/env";
 import { mapConcurrent } from "src/utils/map-concurrent";
 
 @Injectable()
@@ -43,33 +44,54 @@ export class JackettService {
     this.logger = logger.child({ context: "JackettService" });
   }
 
-  private async request<TData>(path: string, params: Record<string, any>) {
+  private async request<TData>(
+    path: string,
+    params: Record<string, any>,
+    timeoutMs = JACKETT_RESPONSE_TIMEOUT.manual,
+  ) {
     const jackettApiKey = await this.paramsService.get(
       ParameterKey.JACKETT_API_KEY,
     );
 
     const client = axios.create({
-      baseURL: "http://jackett:9117/api/v2.0/indexers/all",
+      baseURL: env.JACKETT_BASE_URL,
       params: { apikey: jackettApiKey },
+      timeout: timeoutMs,
     });
 
     return client.get<TData>(path, { params });
   }
 
-  private async xmlRequest<TData>(path: string, params: Record<string, any>) {
-    const { data: xml } = await this.request(path, params);
+  private async xmlRequest<TData>(
+    path: string,
+    params: Record<string, any>,
+    timeoutMs = JACKETT_RESPONSE_TIMEOUT.manual,
+  ) {
+    const { data: xml } = await this.request(path, params, timeoutMs);
     return xmlParser.xml2json(xml) as TData;
   }
 
   public async getConfiguredIndexers() {
-    const { indexers } = await this.xmlRequest<{
-      indexers: {
-        indexer: JackettIndexer[] | JackettIndexer;
-      };
-    }>("/results/torznab", { t: "indexers", configured: true });
-    return Array.isArray(indexers.indexer)
-      ? indexers.indexer
-      : [indexers.indexer];
+    try {
+      const { indexers } = await this.xmlRequest<{
+        indexers: {
+          indexer: JackettIndexer[] | JackettIndexer;
+        };
+      }>(
+        "/results/torznab",
+        { t: "indexers", configured: true },
+        JACKETT_RESPONSE_TIMEOUT.manual,
+      );
+      if (!indexers?.indexer) return [];
+      return Array.isArray(indexers.indexer)
+        ? indexers.indexer
+        : [indexers.indexer];
+    } catch (error) {
+      this.logger.warn("jackett unreachable, returning no indexers", {
+        error: error instanceof Error ? error.message : error,
+      });
+      return [];
+    }
   }
 
   public async searchMovie(movieId: number, quality?: string) {
@@ -186,7 +208,7 @@ export class JackettService {
         RankedResult[] | undefined
       >(indexers, JACKETT_SEARCH_CONCURRENCY, (indexer) =>
         Promise.race([
-          this.searchIndexer({ ...opts, queries, indexer }),
+          this.searchIndexer({ ...opts, queries, indexer, timeoutMs: timeout }),
           new Promise<undefined>((resolve) =>
             setTimeout(() => resolve(undefined), timeout),
           ),
@@ -232,6 +254,7 @@ export class JackettService {
     isSeason = false,
     withoutFilter = false,
     type,
+    timeoutMs = JACKETT_RESPONSE_TIMEOUT.automatic,
   }: {
     queries: string[];
     indexer?: JackettIndexer;
@@ -239,6 +262,7 @@ export class JackettService {
     isSeason?: boolean;
     withoutFilter?: boolean;
     type?: Entertainment;
+    timeoutMs?: number;
   }) {
     const qualityParams = await this.paramsService.getQualities(type);
     const preferredTags = await this.paramsService.getTags();
@@ -259,10 +283,15 @@ export class JackettService {
             Tracker: indexer ? [indexer.id] : undefined,
             _: Number(new Date()),
           },
+          timeoutMs,
         );
 
         return data.Results;
-      } catch (_e) {
+      } catch (error) {
+        this.logger.warn("indexer search failed, continuing", {
+          indexer: indexer?.title || "all",
+          error: error instanceof Error ? error.message : error,
+        });
         return [];
       }
     });

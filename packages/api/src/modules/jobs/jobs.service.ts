@@ -28,61 +28,110 @@ export class JobsService {
   }
 
   private startRecurringJobs() {
-    this.refreshTorrentQueue.add(
-      'refresh_torrents',
-      {},
+    // upsertJobScheduler uses a stable scheduler id so reboots / multi-replica
+    // boots don't stack duplicate repeatable jobs.
+    void this.refreshTorrentQueue
+      .upsertJobScheduler(
+        'refresh-torrents',
+        { pattern: '* * * * *' },
+        { name: 'refresh_torrents', data: {} }
+      )
+      .catch((error: unknown) =>
+        this.logger.error('failed to schedule refresh_torrents', { error })
+      );
+
+    void this.startScanLibraryScheduler().catch((error: unknown) =>
+      this.logger.error('failed to schedule scan library jobs', { error })
+    );
+  }
+
+  private async startScanLibraryScheduler() {
+    await this.scanLibraryQueue.upsertJobScheduler(
+      'scan-library',
+      { pattern: '0 */6 * * *' },
       {
-        repeat: {
-          pattern: '* * * * *', // every minute
-          startDate: new Date(),
-        },
+        name: ScanLibraryQueueProcessors.SCAN_LIBRARY_FOLDER,
+        data: {},
       }
     );
-
-    this.startScanLibrary({
-      repeat: {
-        pattern: '0 */6 * * *', // every 6 hours
-        startDate: new Date(),
-      },
-    });
-
-    this.startFindNewEpisodes({
-      repeat: {
-        pattern: '0 */6 * * *', // every 6 hours
-        startDate: new Date(),
-      },
-    });
-
-    this.startDownloadMissing({
-      repeat: {
-        pattern: '*/30 * * * *', // every 30 minutes
-        startDate: new Date(),
-      },
-    });
+    await this.scanLibraryQueue.upsertJobScheduler(
+      'find-new-episodes',
+      { pattern: '0 */6 * * *' },
+      {
+        name: ScanLibraryQueueProcessors.FIND_NEW_EPISODES,
+        data: {},
+      }
+    );
+    await this.downloadQueue.upsertJobScheduler(
+      'download-missing',
+      { pattern: '*/30 * * * *' },
+      {
+        name: DownloadQueueProcessors.DOWNLOAD_MISSING,
+        data: {},
+      }
+    );
   }
 
   public startDownloadMovie(movieId: number, quality?: string) {
     this.logger.info('add download movie job', { movieId, quality });
-    return this.downloadQueue.add(
-      DownloadQueueProcessors.DOWNLOAD_MOVIE,
-      { id: movieId, quality }
-    );
+    return this.downloadQueue
+      .add(
+        DownloadQueueProcessors.DOWNLOAD_MOVIE,
+        { id: movieId, quality },
+        {
+          jobId: `${DownloadQueueProcessors.DOWNLOAD_MOVIE}-${movieId}`,
+          deduplication: { id: `download-movie-${movieId}` },
+        }
+      )
+      .catch((error: unknown) => {
+        // Stable jobId means a retry / double-tap returns the existing job
+        // instead of piling up duplicates.
+        this.logger.warn('download movie job already queued', {
+          movieId,
+          error: error instanceof Error ? error.message : error,
+        });
+        return undefined;
+      });
   }
 
   public startDownloadSeason(seasonId: number, quality?: string) {
     this.logger.info('add download season job', { seasonId, quality });
-    return this.downloadQueue.add(
-      DownloadQueueProcessors.DOWNLOAD_SEASON,
-      { id: seasonId, quality }
-    );
+    return this.downloadQueue
+      .add(
+        DownloadQueueProcessors.DOWNLOAD_SEASON,
+        { id: seasonId, quality },
+        {
+          jobId: `${DownloadQueueProcessors.DOWNLOAD_SEASON}-${seasonId}`,
+          deduplication: { id: `download-season-${seasonId}` },
+        }
+      )
+      .catch((error: unknown) => {
+        this.logger.warn('download season job already queued', {
+          seasonId,
+          error: error instanceof Error ? error.message : error,
+        });
+        return undefined;
+      });
   }
 
   public startDownloadEpisode(episodeId: number, quality?: string) {
     this.logger.info('add download episode job', { episodeId, quality });
-    return this.downloadQueue.add(
-      DownloadQueueProcessors.DOWNLOAD_EPISODE,
-      { id: episodeId, quality }
-    );
+    return this.downloadQueue
+      .add(
+        DownloadQueueProcessors.DOWNLOAD_EPISODE,
+        { id: episodeId, quality },
+        {
+          jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episodeId}`,
+          deduplication: { id: `download-episode-${episodeId}` },
+        }
+      )
+      .catch((error: unknown) => {
+        this.logger.warn('download episode job already queued', {
+          episodeId,
+          error: error instanceof Error ? error.message : error,
+        });
+        return undefined;
+      });
   }
 
   public startScanLibrary(options?: JobsOptions) {

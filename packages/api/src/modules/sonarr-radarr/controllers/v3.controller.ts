@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -57,15 +58,24 @@ export class V3Controller {
   }
 
   @Get('queue')
-  public async getQueue() {
+  public async getQueue(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
     const [sonarrQueue, radarrQueue] = await Promise.all([
       this.sonarrRadarrService.getV3SonarrQueue(),
       this.sonarrRadarrService.getV3RadarrQueue(),
     ]);
 
+    const records = [...sonarrQueue, ...radarrQueue];
+    const size = Math.max(1, Math.min(Number(pageSize) || records.length || 1, 1000));
+    const pageNb = Math.max(1, Number(page) || 1);
+    const start = (pageNb - 1) * size;
     return {
-      records: [...sonarrQueue, ...radarrQueue],
-      totalRecords: sonarrQueue.length + radarrQueue.length,
+      page: pageNb,
+      pageSize: size,
+      records: records.slice(start, start + size),
+      totalRecords: records.length,
     };
   }
 
@@ -82,14 +92,17 @@ export class V3Controller {
   public async lookupSeries(
     @Query() query: SeriesLookupQuery,
   ): Promise<SonarrV3Series[]> {
-    const term = query.term;
+    const term = query.term?.trim();
 
-    if (term?.startsWith('tvdb:')) {
-      const tvdbId = Number(term.replace('tvdb:', ''));
+    if (!term) return [];
+
+    if (term.toLowerCase().startsWith('tvdb:')) {
+      const tvdbId = Number(term.slice('tvdb:'.length));
+      if (!Number.isFinite(tvdbId)) return [];
       return [await this.sonarrRadarrService.getV3SeriesByTvdbId(tvdbId)];
     }
 
-    return [];
+    return this.sonarrRadarrService.searchV3Series(term);
   }
 
   @Get('series/:id')
@@ -146,6 +159,8 @@ export class V3Controller {
     if (body.name === 'SeriesSearch' && body.seriesId) {
       return this.sonarrRadarrService.triggerSeriesSearch(String(body.seriesId));
     }
+
+    throw new BadRequestException(`Unsupported command: ${body.name}`);
   }
 
   // ---------------------------------------------------------------------------
@@ -158,9 +173,13 @@ export class V3Controller {
     return movies;
   }
 
-  @Get('movie/:id')
-  public async getMovie(@Param('id', ParseIntPipe) id: number) {
-    return this.sonarrRadarrService.getV3Movie(id);
+  // NOTE: static lookup routes must stay above `movie/:id`, otherwise
+  // `lookup` matches `:id` and ParseIntPipe rejects it with a 400.
+  @Get('movie/lookup')
+  public async lookupMovie(@Query('term') term?: string) {
+    const normalized = term?.trim();
+    if (!normalized) return [];
+    return this.sonarrRadarrService.searchV3Movies(normalized);
   }
 
   @Get('movie/lookup/tmdb')
@@ -168,6 +187,11 @@ export class V3Controller {
     @Query('tmdbId', ParseIntPipe) tmdbId: number,
   ) {
     return this.sonarrRadarrService.getV3MovieByTmdbId(tmdbId);
+  }
+
+  @Get('movie/:id')
+  public async getMovie(@Param('id', ParseIntPipe) id: number) {
+    return this.sonarrRadarrService.getV3Movie(id);
   }
 
   @Post('movie')

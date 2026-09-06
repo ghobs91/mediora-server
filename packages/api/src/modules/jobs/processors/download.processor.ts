@@ -58,18 +58,32 @@ export class DownloadProcessor extends WorkerHost {
     this.logger.info(`found ${missingMovies.length} missing movies`);
 
     await forEachSeries(missingMovies, (movie) =>
-      this.downloadQueue.add(DownloadQueueProcessors.DOWNLOAD_MOVIE, {
-        id: movie.id,
-      })
+      this.downloadQueue.add(
+        DownloadQueueProcessors.DOWNLOAD_MOVIE,
+        {
+          id: movie.id,
+        },
+        {
+          jobId: `${DownloadQueueProcessors.DOWNLOAD_MOVIE}-${movie.id}`,
+          deduplication: { id: `download-movie-${movie.id}` },
+        }
+      )
     );
 
     const missingEpisodes = await this.tvEpisodeDAO.findMissingFromLibrary();
     this.logger.info(`found ${missingEpisodes.length} missing tv episodes`);
 
     await forEachSeries(missingEpisodes, (episode) =>
-      this.downloadQueue.add(DownloadQueueProcessors.DOWNLOAD_EPISODE, {
-        id: episode.id,
-      })
+      this.downloadQueue.add(
+        DownloadQueueProcessors.DOWNLOAD_EPISODE,
+        {
+          id: episode.id,
+        },
+        {
+          jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,
+          deduplication: { id: `download-episode-${episode.id}` },
+        }
+      )
     );
 
     this.logger.info('finish try download missing files');
@@ -129,9 +143,16 @@ export class DownloadProcessor extends WorkerHost {
       // season can already be removed from library
       if (season) {
         await forEachSeries(season.episodes, (episode) =>
-          this.downloadQueue.add(DownloadQueueProcessors.DOWNLOAD_EPISODE, {
-            id: episode.id,
-          })
+          this.downloadQueue.add(
+            DownloadQueueProcessors.DOWNLOAD_EPISODE,
+            {
+              id: episode.id,
+            },
+            {
+              jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,
+              deduplication: { id: `download-episode-${episode.id}` },
+            }
+          )
         );
       }
 

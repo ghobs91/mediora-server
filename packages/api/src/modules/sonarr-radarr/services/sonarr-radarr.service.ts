@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { promises as fs } from 'fs';
 
-import { FileType } from 'src/app.dto';
+import { FileType, DownloadableMediaState } from 'src/app.dto';
 import { TMDBService } from 'src/modules/tmdb/tmdb.service';
 import { TransmissionService } from 'src/modules/transmission/transmission.service';
 import { LibraryQueryService } from 'src/modules/library/library-query.service';
@@ -333,10 +334,28 @@ export class SonarrRadarrService {
   }
 
   public async triggerSeriesSearch(id: string): Promise<void> {
-    await this.tvShowDAO.findOne({
+    const show = await this.tvShowDAO.findOne({
       where: { id: Number(id) },
       relations: [],
     });
+
+    if (!show) {
+      throw new NotFoundException('TV show not found');
+    }
+
+    const seasons = await this.seasonDAO.find({
+      where: { tvShowId: show.id },
+      relations: [],
+    });
+
+    for (const season of seasons) {
+      if (
+        season.state === DownloadableMediaState.MISSING ||
+        season.state === DownloadableMediaState.SEARCHING
+      ) {
+        await this.jobsService.startDownloadSeason(season.id);
+      }
+    }
   }
 
   public async triggerSeasonSearch(
@@ -623,7 +642,7 @@ export class SonarrRadarrService {
       seasonFolder: true,
       useSceneNumbering: false,
       runtime: tmdb.episode_run_time?.[0] ?? 0,
-      tvdbId: tmdb.id,
+      tvdbId,
       firstAired: tmdb.first_air_date ?? '',
       seriesType: 'standard',
       cleanTitle: this.v3TitleSlug(tmdb.name),
@@ -631,6 +650,105 @@ export class SonarrRadarrService {
       genres: tmdb.genres?.map((genre) => genre.name) ?? [],
       tags: [],
       ratings: { votes: 0, value: tmdb.vote_average ?? 0 },
+    };
+  }
+
+  public async searchV3Series(term: string): Promise<SonarrV3Series[]> {
+    const results = await this.tmdbService.searchTVShow(term);
+    return results.slice(0, 10).map((tmdb) => {
+      const poster = tmdb.posterPath
+        ? `${TMDB_IMG_BASE}${tmdb.posterPath}`
+        : null;
+      const year = Number(String(tmdb.releaseDate ?? '').slice(0, 4)) || 0;
+      const title = tmdb.title ?? '';
+      return {
+        id: 0,
+        title,
+        sortTitle: this.v3TitleSlug(title),
+        status: 'Unknown',
+        overview: tmdb.overview ?? '',
+        network: null,
+        airTime: '',
+        images: poster
+          ? [{ coverType: 'poster', url: poster, remoteUrl: poster }]
+          : [],
+        remotePoster: poster,
+        seasons: [],
+        year,
+        path: '',
+        monitored: true,
+        seasonFolder: true,
+        useSceneNumbering: false,
+        runtime: 0,
+        tvdbId: 0,
+        firstAired: tmdb.releaseDate ?? '',
+        seriesType: 'standard',
+        cleanTitle: this.v3TitleSlug(title),
+        titleSlug: this.v3TitleSlug(title),
+        genres: [],
+        tags: [],
+        ratings: { votes: 0, value: tmdb.voteAverage ?? 0 },
+      };
+    });
+  }
+
+  public async searchV3Movies(term: string): Promise<RadarrV3Movie[]> {
+    const imdbMatch = /^imdb:(tt\d+)$/i.exec(term);
+    if (imdbMatch) {
+      const found = await this.tmdbService.findMovieByImdbId(
+        imdbMatch[1].toLowerCase(),
+      );
+      if (!found) return [];
+      return [this.mapTmdbSearchToV3Movie(found)];
+    }
+
+    const results = await this.tmdbService.searchMovie(term);
+    return results
+      .slice(0, 10)
+      .map((movie) => this.mapTmdbSearchToV3Movie(movie));
+  }
+
+  private mapTmdbSearchToV3Movie(tmdb: {
+    id: number;
+    title: string;
+    originalTitle?: string;
+    overview?: string;
+    posterPath?: string | null;
+    releaseDate?: string;
+    runtime?: number;
+    voteAverage?: number;
+  }): RadarrV3Movie {
+    const poster = tmdb.posterPath
+      ? `${TMDB_IMG_BASE}${tmdb.posterPath}`
+      : null;
+    const title = tmdb.title ?? '';
+    const year = Number(String(tmdb.releaseDate ?? '').slice(0, 4)) || 0;
+    return {
+      id: 0,
+      title,
+      originalTitle: tmdb.originalTitle ?? '',
+      sortTitle: this.v3TitleSlug(title),
+      status: 'Unknown',
+      overview: tmdb.overview ?? '',
+      images: poster ? [{ coverType: 'poster', url: poster, remoteUrl: poster }] : [],
+      remotePoster: poster,
+      year,
+      path: '',
+      qualityProfileId: 1,
+      monitored: true,
+      minimumAvailability: 'released',
+      isAvailable: false,
+      runtime: tmdb.runtime ?? 0,
+      cleanTitle: this.v3TitleSlug(title),
+      imdbId: null,
+      tmdbId: tmdb.id,
+      titleSlug: this.v3TitleSlug(title),
+      rootFolderPath: '',
+      genres: [],
+      tags: [],
+      ratings: { votes: 0, value: tmdb.voteAverage ?? 0 },
+      hasFile: false,
+      sizeOnDisk: 0,
     };
   }
 
@@ -719,17 +837,25 @@ export class SonarrRadarrService {
       relations: ['tvEpisode'],
     });
 
-    return files.map((file) => ({
-      id: file.id,
-      seriesId,
-      seasonNumber: file.tvEpisode.seasonNumber,
-      relativePath: this.basename(file.path),
-      path: file.path,
-      size: 0,
-      sizeWhenDone: 0,
-      dateAdded: file.createdAt.toISOString(),
-      quality: { quality: { id: 1, name: 'Any' } },
-    }));
+    return Promise.all(
+      files.map(async (file) => {
+        const size = await fs
+          .stat(file.path)
+          .then((stat) => stat.size)
+          .catch(() => 0);
+        return {
+          id: file.id,
+          seriesId,
+          seasonNumber: file.tvEpisode.seasonNumber,
+          relativePath: this.basename(file.path),
+          path: file.path,
+          size,
+          sizeWhenDone: size,
+          dateAdded: file.createdAt.toISOString(),
+          quality: { quality: { id: 1, name: 'Any' } },
+        };
+      }),
+    );
   }
 
   private basename(path: string): string {

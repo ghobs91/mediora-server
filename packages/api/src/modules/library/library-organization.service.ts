@@ -3,7 +3,7 @@ import { forEachSeries, forEach, reduce } from "p-iteration";
 import { flatten, times, uniq } from "lodash";
 import { WINSTON_MODULE_PROVIDER } from "nest-winston";
 import { Logger } from "winston";
-import childCommand from "child-command";
+import { promises as fs } from "fs";
 import path from "path";
 import { DeepPartial, DataSource, EntityManager } from "typeorm";
 
@@ -44,6 +44,23 @@ export class LibraryOrganizationService {
     const movie = await this.movieDAO.save(movieAttributes);
     await this.jobsService.startDownloadMovie(movie.id);
     return movie;
+  }
+
+  // Guarded recursive delete: only inside /usr/* or /downloads/*, never a
+  // mount root itself. Replaces `rm -rf "<folder>"` shell strings.
+  private async safeRemoveFolder(folder: string) {
+    const normalized = path.normalize(folder);
+    const insideLibrary =
+      normalized.startsWith("/usr/") || normalized.startsWith("/downloads/");
+    const isRoot =
+      normalized === "/usr/library" ||
+      normalized === "/usr" ||
+      normalized === "/downloads" ||
+      normalized === "/";
+    if (!insideLibrary || isRoot || normalized.includes("..")) {
+      throw new Error(`refusing to delete outside library: ${folder}`);
+    }
+    await fs.rm(normalized, { recursive: true, force: true });
   }
 
   public async trackTVShow({
@@ -137,7 +154,7 @@ export class LibraryOrganizationService {
     }
     await forEachSeries(
       uniq(movie.files.map((file) => path.dirname(file.path))),
-      (folder) => childCommand(`rm -rf "${folder}"`),
+      (folder) => this.safeRemoveFolder(folder),
     );
     await fileDAO.remove(movie.files);
     if (softDelete)
@@ -194,7 +211,7 @@ export class LibraryOrganizationService {
       ),
     );
     await forEachSeries(folders, (folder) =>
-      childCommand(`rm -rf "${folder}"`),
+      this.safeRemoveFolder(folder),
     );
     await fileDAO.remove(
       flatten(tvShow.episodes.map((episode) => episode.files)),
@@ -265,7 +282,7 @@ export class LibraryOrganizationService {
         ),
       );
       await forEachSeries(folders, (folder) =>
-        childCommand(`rm -rf "${folder}"`),
+        this.safeRemoveFolder(folder),
       );
       await fileDAO.remove(
         flatten(tvSeason.episodes.map((episode) => episode.files)),

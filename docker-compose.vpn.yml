@@ -17,11 +17,15 @@ services:
     volumes:
       - /dev/net:/dev/net:z
       - ./packages/vpn:/vpn
-    entrypoint: "bash -c"
-    command: "exit 0"
-    restart: always
     entrypoint: ["/sbin/tini", "--", "/usr/bin/openvpn.sh"]
     command: '-p "51413" -p "51413;udp" -f ""'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ip route show default | grep -q tun || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     tty: true
   api:
     links:

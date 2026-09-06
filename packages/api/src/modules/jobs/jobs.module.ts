@@ -46,19 +46,39 @@ import { JobsResolver } from './jobs.resolver';
     BullModule.registerQueue(
       {
         name: JobsQueue.REFRESH_TORRENT,
-        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnFail: 500,
+          removeOnComplete: 100,
+        },
       },
       {
         name: JobsQueue.DOWNLOAD,
-        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 10000 },
+          removeOnFail: 500,
+          removeOnComplete: 100,
+        },
       },
       {
         name: JobsQueue.RENAME_AND_LINK,
-        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnFail: 500,
+          removeOnComplete: 100,
+        },
       },
       {
         name: JobsQueue.SCAN_LIBRARY,
-        defaultJobOptions: { removeOnFail: 100, removeOnComplete: 100 },
+        defaultJobOptions: {
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 30000 },
+          removeOnFail: 500,
+          removeOnComplete: 100,
+        },
       }
     ),
     JackettModule,
