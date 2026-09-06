@@ -17,6 +17,7 @@ services:
     build:
       context: ./packages/api
     image: mediora-server-api:latest
+    pull_policy: build
     command: yarn start:prod
     restart: unless-stopped
     depends_on:
@@ -51,6 +52,7 @@ services:
       args:
         WEB_UI_API_URL: ${WEB_UI_API_URL:-}
     image: mediora-server-web:latest
+    pull_policy: build
     command: yarn start
     restart: unless-stopped
     ports:
