@@ -1,8 +1,10 @@
 import { Resolver, Args, Query, Int } from '@nestjs/graphql';
-import { UseInterceptors } from '@nestjs/common';
+import { UseGuards, UseInterceptors } from '@nestjs/common';
 
 import { makeCacheInterceptor } from 'src/modules/redis/cache.interceptor';
 import { CacheKeys } from 'src/modules/redis/cache.dto';
+import { Public } from 'src/auth/public.decorator';
+import { ApiKeyOrJwtGuard } from 'src/auth/api-key-or-jwt.guard';
 
 import { TMDBService } from './tmdb.service';
 
@@ -37,6 +39,8 @@ export class TMDBResolver {
     return this.tmdbService.getTVShowSeasons(tmdbId);
   }
 
+  @Public()
+  @UseGuards(ApiKeyOrJwtGuard)
   @UseInterceptors(
     makeCacheInterceptor({
       key: CacheKeys.RECOMMENDED_TV_SHOWS,
@@ -48,6 +52,8 @@ export class TMDBResolver {
     return this.tmdbService.getRecommended('tvshow');
   }
 
+  @Public()
+  @UseGuards(ApiKeyOrJwtGuard)
   @UseInterceptors(
     makeCacheInterceptor({
       key: CacheKeys.RECOMMENDED_MOVIES,
