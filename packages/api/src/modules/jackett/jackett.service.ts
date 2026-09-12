@@ -13,6 +13,7 @@ import { sanitize } from "src/utils/sanitize";
 import {
   formatSearchResult,
   isDownloadable,
+  pickMostSeeded,
   RankedResult,
   sortByBest,
 } from "src/utils/torrent-ranking";
@@ -221,13 +222,19 @@ export class JackettService {
 
       const sortedByBest = sortByBest(flattenIndexers);
 
-      let results = opts.withoutFilter ? sortedByBest : [sortedByBest[0]];
+      const best = pickMostSeeded(sortedByBest);
+      let results = opts.withoutFilter ? sortedByBest : best ? [best] : [];
 
       if (opts.quality) {
         const byQuality = sortedByBest.filter(
           (result) => result.quality.label === opts.quality,
         );
-        results = opts.withoutFilter ? byQuality : [byQuality[0]];
+        const bestByQuality = pickMostSeeded(byQuality);
+        results = opts.withoutFilter
+          ? byQuality
+          : bestByQuality
+            ? [bestByQuality]
+            : [];
       }
 
       return results;

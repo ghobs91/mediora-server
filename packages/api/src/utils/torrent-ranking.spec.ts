@@ -5,6 +5,7 @@ import {
   isDownloadable,
   parseQuality,
   parseTag,
+  pickMostSeeded,
   sortByBest,
   RankedResult,
 } from './torrent-ranking';
@@ -148,6 +149,34 @@ describe('sortByBest', () => {
       [0, 5, 1],
       [0, 0, 99],
     ]);
+  });
+});
+
+describe('pickMostSeeded', () => {
+  it('picks the highest seeder count even when tag/quality scores are lower', () => {
+    const results = [
+      { tag: { score: 10 }, quality: { score: 10 }, seeders: 6 },
+      { tag: { score: 1 }, quality: { score: 1 }, seeders: 200 },
+      { tag: { score: 5 }, quality: { score: 5 }, seeders: 50 },
+    ].map((r) => ({ ...r } as unknown as RankedResult));
+
+    expect(pickMostSeeded(results)?.seeders).toEqual(200);
+  });
+
+  it('breaks seeder ties by tag score, then quality score', () => {
+    const results = [
+      { tag: { score: 1 }, quality: { score: 9 }, seeders: 50 },
+      { tag: { score: 9 }, quality: { score: 1 }, seeders: 50 },
+      { tag: { score: 9 }, quality: { score: 9 }, seeders: 50 },
+    ].map((r) => ({ ...r } as unknown as RankedResult));
+
+    const picked = pickMostSeeded(results);
+    expect(picked?.tag.score).toEqual(9);
+    expect(picked?.quality.score).toEqual(9);
+  });
+
+  it('returns undefined when there are no candidates', () => {
+    expect(pickMostSeeded([])).toBeUndefined();
   });
 });
 

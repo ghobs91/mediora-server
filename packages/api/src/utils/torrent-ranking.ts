@@ -89,6 +89,19 @@ export function sortByBest(results: RankedResult[]) {
   );
 }
 
+export function pickMostSeeded(
+  results: RankedResult[]
+): RankedResult | undefined {
+  // Automatic downloads: most seeders wins among the acceptable candidates
+  // (already filtered by isDownloadable). Tag/quality scores only break ties
+  // so a healthy swarm beats a dead one with a marginally better label.
+  return orderBy(
+    results,
+    ['seeders', 'tag.score', 'quality.score'],
+    ['desc', 'desc', 'desc']
+  )[0];
+}
+
 export function isDownloadable({
   result,
   maxSize = Infinity,
