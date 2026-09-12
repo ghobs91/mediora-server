@@ -49,7 +49,7 @@ function statusBadge(status: number) {
       </Badge>
     );
   }
-  if (status === 3 || status === 4) {
+  if (status === 5 || status === 6) {
     return (
       <Badge variant="outline" className="text-green-500">
         <CircleCheck className="mr-1 h-3 w-3" />
@@ -162,8 +162,8 @@ export function DownloadsComponent() {
           row.torrentStatus[0]?.status === 0;
         const isComplete =
           typeof row.torrentStatus[0]?.status === 'number' &&
-          (row.torrentStatus[0]?.status === 3 ||
-            row.torrentStatus[0]?.status === 4);
+          (row.torrentStatus[0]?.status === 5 ||
+            row.torrentStatus[0]?.status === 6);
 
         return {
           ...row,
