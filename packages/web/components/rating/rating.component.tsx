@@ -1,21 +1,18 @@
 import React from 'react';
+import { Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function RatingComponent({ rating }: { rating: number }) {
-  const isGreen = rating >= 70;
+  const rounded = Math.round(rating);
 
   return (
-    <div className="relative h-[38px] w-[38px] text-white">
-      <div
-        className={cn(
-          'h-full w-full rounded-full',
-          isGreen ? 'bg-[#21d07a]' : 'bg-[#d2d531]'
-        )}
-      />
-      <div className="absolute left-[2px] top-[2px] h-[34px] w-[34px] rounded-full bg-background" />
-      <div className="absolute inset-0 flex items-center justify-center text-[11px]">
-        {rating}%
-      </div>
+    <div
+      className={cn(
+        'flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-xs font-semibold text-white'
+      )}
+    >
+      <Star size={12} className="fill-yellow-400 text-yellow-400" />
+      <span>{rounded}%</span>
     </div>
   );
 }

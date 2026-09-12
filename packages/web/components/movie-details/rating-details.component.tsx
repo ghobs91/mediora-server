@@ -17,7 +17,7 @@ export const RatingDetailComponent = ({
   const ratings = data?.result.ratings;
 
   const allRatings = {
-    TMDB: `${entertainment.voteAverage * 10}%`,
+    TMDB: `${Math.round(entertainment.voteAverage * 10)}%`,
     IMDB: ratings?.IMDB,
     rottenTomatoes: ratings?.rottenTomatoes,
     metaCritic: ratings?.metaCritic,
