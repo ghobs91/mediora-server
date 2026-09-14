@@ -308,9 +308,10 @@ from it.
     `SONARR_URL=http://<host>:<port>/sonarr`. The client appends `/api/v3/`,
     yielding `/radarr/api/v3/movie` and `/sonarr/api/v3/series`.
 - **Auth**: mark routes `@Public()` (skip JWT) and add a local
-  `XApiKeyGuard` that validates the `X-Api-Key` header against a stored Mediora Server
-  API key (or, minimally, any non-empty key after the setup wizard completes).
-  Store the key in `ParameterKey.SONARR_RADARR_API_KEY` or `.env`.
+  `XApiKeyGuard` that validates the `X-Api-Key` header against the stored
+  Mediora Server API key. The key is generated on first launch and persisted as
+  `ParameterKey.SONARR_RADARR_API_KEY`, then shown on the web Settings page. A
+  `SONARR_RADARR_API_KEY` env value seeds it on first launch (legacy clients).
 
 ---
 

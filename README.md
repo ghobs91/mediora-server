@@ -151,6 +151,7 @@ exit / restart loop on boot means `TS_AUTHKEY` was rejected.
 
 * Complete the first-launch wizard at http://localhost:3000
 * Go to http://localhost:3000/settings after setup to configure tags and quality preferences
+* Copy the generated **Mediora client** API key from http://localhost:3000/settings and paste it into the Mediora client's Mediora Server settings
 * Create and order your preferred tags found in torrent file (ex: vost, multi, english...)
 * Order your preferred qualities to download
 

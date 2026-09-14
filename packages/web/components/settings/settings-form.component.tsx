@@ -66,6 +66,8 @@ const organizeLibraryStrategies = [
   },
 ];
 
+const CLIENT_API_KEY_PARAM = 'sonarr_radarr_api_key';
+
 export function SettingsFormComponent() {
   const { data, loading } = useGetParamsQuery();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -79,7 +81,7 @@ export function SettingsFormComponent() {
   });
 
   const fields = Object.keys(data?.params || {}).filter(
-    (key) => key !== '__typename'
+    (key) => key !== '__typename' && key !== CLIENT_API_KEY_PARAM
   );
 
   useEffect(() => {
@@ -87,7 +89,9 @@ export function SettingsFormComponent() {
     const params = data.params as unknown as Record<string, string>;
     setValues(
       Object.fromEntries(
-        Object.entries(params).filter(([key]) => key !== '__typename')
+        Object.entries(params).filter(
+          ([key]) => key !== '__typename' && key !== CLIENT_API_KEY_PARAM
+        )
       )
     );
   }, [data]);

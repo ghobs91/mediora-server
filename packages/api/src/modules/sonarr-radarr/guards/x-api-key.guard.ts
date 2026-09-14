@@ -6,11 +6,14 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
-import { env } from 'src/env';
+import { ParameterKey } from 'src/app.dto';
+import { ParamsService } from 'src/modules/params/params.service';
 
 @Injectable()
 export class XApiKeyGuard implements CanActivate {
-  public canActivate(context: ExecutionContext): boolean {
+  public constructor(private readonly paramsService: ParamsService) {}
+
+  public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const apiKey = request.headers['x-api-key'];
 
@@ -18,7 +21,11 @@ export class XApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('Missing X-Api-Key header');
     }
 
-    if (apiKey !== env.SONARR_RADARR_API_KEY) {
+    const expected = await this.paramsService.get(
+      ParameterKey.SONARR_RADARR_API_KEY
+    );
+
+    if (!expected || apiKey !== expected) {
       throw new UnauthorizedException('Invalid X-Api-Key header');
     }
 

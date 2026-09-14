@@ -8,11 +8,13 @@ import { GqlExecutionContext } from '@nestjs/graphql';
 import { verify } from 'jsonwebtoken';
 
 import { env } from '../env';
+import { ParameterKey } from '../app.dto';
+import { ParamsService } from '../modules/params/params.service';
 
 /**
  * Allows mediora-server GraphQL queries to be called either with the web UI
  * JWT (`Authorization: Bearer <token>`) or with the Sonarr/Radarr compatible
- * API key (`X-Api-Key: <SONARR_RADARR_API_KEY>`).
+ * API key (`X-Api-Key: <stored SONARR_RADARR_API_KEY>`).
  *
  * The native mediora client only stores the API key, so endpoints consumed by
  * it (currently the recommendations behind the /suggestions page) use this
@@ -20,15 +22,20 @@ import { env } from '../env';
  */
 @Injectable()
 export class ApiKeyOrJwtGuard implements CanActivate {
-  public canActivate(context: ExecutionContext): boolean {
+  public constructor(private readonly paramsService: ParamsService) {}
+
+  public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = this.getRequest(context);
     const headers = request?.headers ?? {};
 
     const apiKey = headers['x-api-key'];
+    const expected = await this.paramsService.get(
+      ParameterKey.SONARR_RADARR_API_KEY
+    );
     if (
-      env.SONARR_RADARR_API_KEY &&
+      expected &&
       typeof apiKey === 'string' &&
-      apiKey === env.SONARR_RADARR_API_KEY
+      apiKey === expected
     ) {
       return true;
     }

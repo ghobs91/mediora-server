@@ -19,6 +19,7 @@ import { TMDBModule } from 'src/modules/tmdb/tmdb.module';
 import { TransmissionModule } from 'src/modules/transmission/transmission.module';
 import { LibraryModule } from 'src/modules/library/library.module';
 import { JobsModule } from 'src/modules/jobs/jobs.module';
+import { ParamsModule } from 'src/modules/params/params.module';
 
 import { MediaMapper } from './mappers/media-mapper';
 import { SonarrRadarrService } from './services/sonarr-radarr.service';
@@ -40,6 +41,7 @@ import { V3Controller } from './controllers/v3.controller';
     TransmissionModule,
     LibraryModule,
     JobsModule,
+    ParamsModule,
   ],
   controllers: [RadarrController, SonarrController, V3Controller],
   providers: [

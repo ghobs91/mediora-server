@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 import { Injectable } from '@nestjs/common';
 import { map, forEachSeries } from 'p-iteration';
 
@@ -39,6 +41,7 @@ export class ParamsService {
       [ParameterKey.MAX_MOVIE_DOWNLOAD_SIZE, (20e9).toString()], // max file size 20gb
       [ParameterKey.MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE, (5e9).toString()], // max file size 5gb
       [ParameterKey.JACKETT_API_KEY, ''],
+      [ParameterKey.SONARR_RADARR_API_KEY, this.getInitialApiKey()],
       [ParameterKey.ORGANIZE_LIBRARY_STRATEGY, OrganizeLibraryStrategy.LINK],
       [ParameterKey.LIBRARY_MOVIES_FOLDER_NAME, env.LIBRARY_MOVIES_FOLDER_NAME],
       [ParameterKey.LIBRARY_TV_SHOWS_FOLDER_NAME, env.LIBRARY_TV_SHOWS_FOLDER_NAME],
@@ -116,6 +119,21 @@ export class ParamsService {
         await qualityDAO.save(quality);
       }
     });
+  }
+
+  /**
+   * The API key the Mediora client uses to talk to the Sonarr/Radarr compatible
+   * endpoints. It is generated once and persisted in the parameter store, so it
+   * survives restarts and can be shown in the web settings page. A legacy
+   * `SONARR_RADARR_API_KEY` env value seeds it on the first launch.
+   */
+  private getInitialApiKey() {
+    const configured = env.SONARR_RADARR_API_KEY?.trim();
+    if (configured && configured !== 'change-me') {
+      return configured;
+    }
+
+    return randomBytes(32).toString('hex');
   }
 
   public async get(key: ParameterKey) {

@@ -40,6 +40,7 @@ const envSchema = z.object({
   APP_PASSWORD: z.string().optional(),
   JWT_SECRET: z.string().default("mediora-server"),
 
+  // Legacy seed for the generated client API key (see ParameterKey.SONARR_RADARR_API_KEY).
   SONARR_RADARR_API_KEY: z.string().optional(),
 });
 
