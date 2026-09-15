@@ -29,6 +29,27 @@ export class TVEpisodeDAO extends BaseDAO<TVEpisode> {
     return match || (await this.save(episodeAttributes));
   }
 
+  public countDownloadedBySeason(
+    tvShowTMDBId: number,
+    seasonNumber: number
+  ) {
+    return this.createQueryBuilder('episode')
+      .innerJoin(
+        'episode.tvShow',
+        'tvShow',
+        'tvShow.tmdbId = :tvShowTMDBId',
+        { tvShowTMDBId }
+      )
+      .where('episode.seasonNumber = :seasonNumber', { seasonNumber })
+      .andWhere('episode.state IN (:...states)', {
+        states: [
+          DownloadableMediaState.DOWNLOADED,
+          DownloadableMediaState.PROCESSED,
+        ],
+      })
+      .getCount();
+  }
+
   public findMissingFromLibrary() {
     return this.createQueryBuilder('episode')
       .leftJoinAndSelect('episode.tvShow', 'tvShow')

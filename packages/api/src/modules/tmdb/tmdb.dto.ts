@@ -146,6 +146,7 @@ export class TMDBFormattedTVSeason {
   @Field({ nullable: true }) public overview!: string;
   @Field({ nullable: true }) public airDate!: string;
   @Field({ nullable: true }) public episodeCount!: number;
+  @Field() public episodesDownloaded!: number;
   @Field({ nullable: true }) public posterPath!: string;
   @Field((_type) => [TMDBFormattedTVEpisode], { nullable: true })
   public episodes!: TMDBFormattedTVEpisode[];

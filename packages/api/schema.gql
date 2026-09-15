@@ -57,6 +57,7 @@ type TMDBFormattedTVSeason {
   overview: String
   airDate: String
   episodeCount: Float
+  episodesDownloaded: Float!
   posterPath: String
   episodes: [TMDBFormattedTVEpisode!]
 }

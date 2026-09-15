@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { ChevronDown, ChevronRight, Search } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Search,
+} from 'lucide-react';
 
 import {
   useGetTvSeasonDetailsQuery,
@@ -11,11 +17,13 @@ import {
 } from '../../utils/graphql';
 
 import { availableIn } from '../../utils/available-in';
+import { formatNumber } from '../../utils/format-number';
 import { ManualSearchComponent } from '../manual-search/manual-search.component';
 import { Media } from '../manual-search/manual-search.helpers';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -29,30 +37,30 @@ interface TVSeasonDetailsProps {
   tvShowTMDBId: number;
   season: TmdbFormattedTvSeason;
   tvShowTitle: string;
+  selected: boolean;
+  onToggleSelect: (seasonNumber: number) => void;
 }
 
-function EpisodeStatus({ episode }: { episode: EnrichedTvEpisode }) {
-  if (
+function isDownloaded(episode: EnrichedTvEpisode) {
+  return (
     episode.state === DownloadableMediaState.Processed ||
     episode.state === DownloadableMediaState.Downloaded
-  ) {
-    return <Badge variant="secondary">Downloaded</Badge>;
-  }
+  );
+}
 
-  if (
+function isDownloading(episode: EnrichedTvEpisode) {
+  return (
     episode.state === DownloadableMediaState.Searching ||
     episode.state === DownloadableMediaState.Downloading
-  ) {
-    return <Badge variant="default">Downloading</Badge>;
-  }
-
-  return <Badge variant="outline">Missing</Badge>;
+  );
 }
 
 export function TVSeasonDetailsComponent({
   tvShowTMDBId,
   season,
   tvShowTitle,
+  selected,
+  onToggleSelect,
 }: TVSeasonDetailsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [manualSearch, setManualSearch] = useState<Media | null>(null);
@@ -60,12 +68,17 @@ export function TVSeasonDetailsComponent({
   const { data, loading } = useGetTvSeasonDetailsQuery({
     pollInterval: 5000,
     fetchPolicy: 'cache-and-network',
+    skip: !season.inLibrary || !isOpen,
     variables: { tvShowTMDBId, seasonNumber: season.seasonNumber },
   });
 
-  const toggle = () => {
-    setIsOpen(!isOpen);
-  };
+  const total = season.episodeCount ?? 0;
+  const downloaded = season.episodesDownloaded;
+  const progress = total > 0 ? (downloaded / total) * 100 : 0;
+  const isComplete = season.inLibrary && total > 0 && downloaded >= total;
+
+  const openManualSearch = () =>
+    setManualSearch({ ...season, tvShowTitle, tvShowTMDBId });
 
   return (
     <>
@@ -87,80 +100,161 @@ export function TVSeasonDetailsComponent({
 
       <div
         className={cn(
-          'rounded-md border border-border bg-card',
-          isOpen && season.seasonNumber !== 1 && 'mb-3'
+          'group transition-colors',
+          !season.inLibrary && 'cursor-pointer hover:bg-muted/40',
+          selected && 'bg-primary/10'
         )}
+        onClick={() => {
+          if (!season.inLibrary) onToggleSelect(season.seasonNumber);
+        }}
       >
-        <div className="flex items-center justify-between px-4 py-2">
+        <div className="flex items-center gap-3 px-4 py-2.5">
           <button
             type="button"
-            onClick={toggle}
-            className="flex items-center text-left"
+            onClick={(event) => {
+              if (!season.inLibrary) return;
+              event.stopPropagation();
+              setIsOpen(!isOpen);
+            }}
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
           >
-            <span className="mr-3 mt-1">
-              {isOpen ? (
-                <ChevronDown className="h-5 w-5" />
-              ) : (
-                <ChevronRight className="h-5 w-5" />
-              )}
+            <span className="flex w-5 shrink-0 justify-center text-muted-foreground">
+              {season.inLibrary &&
+                (isOpen ? (
+                  <ChevronDown className="h-5 w-5" />
+                ) : (
+                  <ChevronRight className="h-5 w-5" />
+                ))}
             </span>
-            <span className="mr-2 text-xl font-semibold">
+            <span className="truncate text-base font-semibold">
               Season {season.seasonNumber}
             </span>
             {season.airDate && (
-              <span className="font-light">
+              <span className="shrink-0 text-sm font-light text-muted-foreground">
                 ({dayjs(season.airDate).format('YYYY')})
               </span>
             )}
           </button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              setManualSearch({ ...season, tvShowTitle, tvShowTMDBId })
-            }
-          >
-            {season.inLibrary ? 'Replace' : 'Search'} season
-            <Search className="ml-2 h-4 w-4" />
-          </Button>
+
+          <div className="flex w-[200px] shrink-0 items-center justify-end gap-2">
+            {season.inLibrary ? (
+              <>
+                <Progress
+                  value={progress}
+                  className={cn(
+                    'h-1.5 w-[110px]',
+                    isComplete && '[&>div]:bg-emerald-500'
+                  )}
+                />
+                <span
+                  className={cn(
+                    'w-[52px] text-right text-xs tabular-nums',
+                    isComplete
+                      ? 'font-medium text-emerald-500'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  {downloaded}/{total}
+                </span>
+                {isComplete && <Check className="h-4 w-4 text-emerald-500" />}
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                {total} episodes
+              </span>
+            )}
+          </div>
+
+          <div className="flex w-[110px] shrink-0 justify-end">
+            {season.inLibrary ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openManualSearch();
+                }}
+              >
+                <Search className="h-4 w-4" />
+                Replace
+              </Button>
+            ) : (
+              <Checkbox
+                checked={selected}
+                onCheckedChange={() => onToggleSelect(season.seasonNumber)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`Select season ${season.seasonNumber}`}
+              />
+            )}
+          </div>
         </div>
 
         {isOpen &&
           (loading && !data ? (
-            <div className="space-y-2 p-4">
+            <div className="space-y-2 px-4 pb-4">
               <Skeleton className="h-6 w-full" />
               <Skeleton className="h-6 w-full" />
               <Skeleton className="h-6 w-full" />
             </div>
           ) : (
-            <Table>
+            <Table className="border-t border-border">
               <TableBody>
-                {(data?.episodes || []).map((episode) => (
-                  <TableRow key={episode.id}>
-                    <TableCell className="w-[100px]">
-                      Episode {episode.episodeNumber}
-                    </TableCell>
-                    <TableCell>
-                      {availableIn(dayjs(episode.releaseDate))}
-                    </TableCell>
-                    <TableCell className="w-[120px] text-right">
-                      <EpisodeStatus episode={episode} />
-                    </TableCell>
-                    <TableCell className="w-[160px] text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setManualSearch(episode)}
-                      >
-                        <Search className="h-4 w-4" />
-                        {episode.state !== DownloadableMediaState.Missing
-                          ? 'Replace'
-                          : 'Search'}{' '}
-                        episode
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {(data?.episodes || []).map((episode) => {
+                  const downloaded = isDownloaded(episode);
+                  const downloading = isDownloading(episode);
+
+                  return (
+                    <TableRow
+                      key={episode.id}
+                      className="group/episode hover:bg-muted/40"
+                    >
+                      <TableCell className="w-[80px] font-medium tabular-nums text-muted-foreground">
+                        E{formatNumber(episode.episodeNumber)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {availableIn(dayjs(episode.releaseDate))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {downloaded ? (
+                          <span
+                            className="inline-flex items-center text-emerald-500"
+                            title="Downloaded"
+                          >
+                            <Check className="h-4 w-4" />
+                            <span className="sr-only">Downloaded</span>
+                          </span>
+                        ) : downloading ? (
+                          <span
+                            className="inline-flex items-center text-primary"
+                            title="Downloading"
+                          >
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="sr-only">Downloading</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Missing
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="w-[120px] text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            downloaded &&
+                              'opacity-0 focus-visible:opacity-100 group-hover/episode:opacity-100'
+                          )}
+                          onClick={() => setManualSearch(episode)}
+                        >
+                          <Search className="h-4 w-4" />
+                          {downloaded ? 'Replace' : 'Search'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ))}

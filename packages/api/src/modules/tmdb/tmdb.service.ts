@@ -10,6 +10,7 @@ import { recursiveCamelCase } from 'src/utils/recursive-camel-case';
 import { ParamsService } from 'src/modules/params/params.service';
 import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
 import { TVShowDAO } from 'src/entities/dao/tvshow.dao';
+import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
 import { MovieDAO } from 'src/entities/dao/movie.dao';
 
 import {
@@ -36,6 +37,7 @@ export class TMDBService {
     private readonly paramsService: ParamsService,
     private readonly tvSeasonDAO: TVSeasonDAO,
     private readonly tvShowDAO: TVShowDAO,
+    private readonly tvEpisodeDAO: TVEpisodeDAO,
     private readonly movieDAO: MovieDAO,
     private readonly redisService: RedisService // required for @CacheMethod
   ) {
@@ -124,6 +126,10 @@ export class TMDBService {
       recursiveCamelCase<TMDBFormattedTVSeason>({
         ...season,
         inLibrary: await this.tvSeasonDAO.inLibrary(
+          tvShowTMDBId,
+          season.season_number
+        ),
+        episodesDownloaded: await this.tvEpisodeDAO.countDownloadedBySeason(
           tvShowTMDBId,
           season.season_number
         ),

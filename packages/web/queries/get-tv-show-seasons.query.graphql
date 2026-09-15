@@ -4,6 +4,7 @@ query getTVShowSeasons($tvShowTMDBId: Int!) {
     name
     seasonNumber
     episodeCount
+    episodesDownloaded
     overview
     posterPath
     airDate

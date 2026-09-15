@@ -13,6 +13,8 @@ import {
 
 export function useGetSeasons({ tmdbId }: { tmdbId: number }) {
   const { data, loading } = useGetTvShowSeasonsQuery({
+    pollInterval: 5000,
+    fetchPolicy: 'cache-and-network',
     variables: { tvShowTMDBId: tmdbId },
   });
 

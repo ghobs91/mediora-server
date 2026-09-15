@@ -12,7 +12,6 @@ import { TVSeasonDetailsComponent } from './tvseason-details.component';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
 
 interface TVShowSeasonsModalComponentProps {
   visible: boolean;
@@ -117,46 +116,16 @@ export function TVShowSeasonsModalComponent(
                 <div className="max-w-[780px] text-[1.2em]">
                   {tvShow.overview}
                 </div>
-                <div className="flex flex-col gap-1 pt-3">
-                  {seasons
-                    .filter((season) => season.inLibrary)
-                    .map((season) => (
-                      <TVSeasonDetailsComponent
-                        key={season.id}
-                        season={season}
-                        tvShowTMDBId={tvShow.tmdbId}
-                        tvShowTitle={tvShow.title}
-                      />
-                    ))}
-                </div>
-                <div className="mt-6 flex flex-wrap">
+                <div className="mt-4 overflow-hidden rounded-md border border-border bg-card divide-y divide-border">
                   {seasons.map((season) => (
-                    <button
+                    <TVSeasonDetailsComponent
                       key={season.id}
-                      type="button"
-                      disabled={season.inLibrary}
-                      onClick={() => handleSeasonClick(season.seasonNumber)}
-                      className={cn(
-                        'mb-2 mr-1 ml-1 flex max-w-[145px] items-center rounded border px-2.5 py-2 text-left transition',
-                        season.inLibrary
-                          ? 'cursor-not-allowed border-border text-muted-foreground opacity-60'
-                          : selectedSeasons.includes(season.seasonNumber)
-                            ? 'border-primary'
-                            : 'border-white/30 hover:border-white'
-                      )}
-                    >
-                      <div>
-                        <div className="text-[1.1em] font-semibold">
-                          Season {season.seasonNumber}
-                        </div>
-                        <div className="text-[0.9em]">
-                          {season.airDate && (
-                            <>{dayjs(season.airDate).format('YYYY')} | </>
-                          )}
-                          {season.episodeCount} Episodes
-                        </div>
-                      </div>
-                    </button>
+                      season={season}
+                      tvShowTMDBId={tvShow.tmdbId}
+                      tvShowTitle={tvShow.title}
+                      selected={selectedSeasons.includes(season.seasonNumber)}
+                      onToggleSelect={handleSeasonClick}
+                    />
                   ))}
                 </div>
                 <div className="mt-6 flex gap-3">

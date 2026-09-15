@@ -528,6 +528,7 @@ export type TmdbFormattedTvSeason = {
   airDate?: Maybe<Scalars['String']['output']>;
   episodeCount?: Maybe<Scalars['Float']['output']>;
   episodes?: Maybe<Array<TmdbFormattedTvEpisode>>;
+  episodesDownloaded: Scalars['Float']['output'];
   id: Scalars['Float']['output'];
   inLibrary: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
@@ -912,7 +913,7 @@ export type GetTvShowSeasonsQueryVariables = Exact<{
 }>;
 
 
-export type GetTvShowSeasonsQuery = { __typename?: 'Query', seasons: Array<{ __typename?: 'TMDBFormattedTVSeason', id: number, name: string, seasonNumber: number, episodeCount?: number | null, overview?: string | null, posterPath?: string | null, airDate?: string | null, inLibrary: boolean }> };
+export type GetTvShowSeasonsQuery = { __typename?: 'Query', seasons: Array<{ __typename?: 'TMDBFormattedTVSeason', id: number, name: string, seasonNumber: number, episodeCount?: number | null, episodesDownloaded: number, overview?: string | null, posterPath?: string | null, airDate?: string | null, inLibrary: boolean }> };
 
 export type OmdbSearchQueryVariables = Exact<{
   title: Scalars['String']['input'];
@@ -2045,6 +2046,7 @@ export const GetTvShowSeasonsDocument = gql`
     name
     seasonNumber
     episodeCount
+    episodesDownloaded
     overview
     posterPath
     airDate
