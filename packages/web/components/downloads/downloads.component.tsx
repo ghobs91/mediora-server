@@ -31,6 +31,7 @@ interface DownloadRow extends DownloadingMedia {
 }
 
 interface AggregatedRow extends DownloadingMedia {
+  torrentStatus: TorrentStatus[];
   isPaused: boolean;
   isComplete: boolean;
   percent: number;
@@ -40,7 +41,7 @@ interface AggregatedRow extends DownloadingMedia {
   totalSize: number;
 }
 
-function statusBadge(status: number) {
+function statusBadge(status: number | undefined) {
   if (status === 0) {
     return (
       <Badge variant="outline" className="text-amber-500">
@@ -351,7 +352,7 @@ export function DownloadsComponent() {
                   </div>
                 </td>
                 <td className="px-3 py-2.5">
-                  {statusBadge(row.isPaused ? 0 : row.isComplete ? 3 : 2)}
+                  {statusBadge(row.torrentStatus[0]?.status)}
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2">

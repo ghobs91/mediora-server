@@ -160,6 +160,10 @@ export class OrganizeProcessor extends WorkerHost {
       resourceType: FileType.MOVIE,
     });
 
+    if (!torrent) {
+      throw new Error(`No torrent found for movie ${movieId}`);
+    }
+
     const year = dayjs(movie.releaseDate).format('YYYY');
     const folderName = `${movie.title} (${year})`;
 
@@ -270,6 +274,10 @@ export class OrganizeProcessor extends WorkerHost {
       resourceType: FileType.EPISODE,
     });
 
+    if (!torrent) {
+      throw new Error(`No torrent found for episode ${episodeId}`);
+    }
+
     const seasonNb = formatNumber(episode.season.seasonNumber);
     const seasonFolder = path.join(
       await this.libraryFoldersService.getFolderPath('tvshows'),
@@ -352,6 +360,10 @@ export class OrganizeProcessor extends WorkerHost {
       resourceId: season.id,
       resourceType: FileType.SEASON,
     });
+
+    if (!torrent) {
+      throw new Error(`No torrent found for season ${seasonId}`);
+    }
 
     const seasonNb = formatNumber(season.seasonNumber);
     const seasonFolder = path.join(

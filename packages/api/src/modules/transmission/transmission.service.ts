@@ -55,9 +55,11 @@ export class TransmissionService {
   }
 
   public async getResourceTorrent(torrentAttributes: DeepPartial<Torrent>) {
-    const torrent = await this.torrentDAO.findOneOrFail({
+    const torrent = await this.torrentDAO.findOne({
       where: torrentAttributes as Torrent,
     });
+    if (!torrent) return null;
+
     const transmissionTorrent = await this.getTorrent(torrent.torrentHash);
     return { ...torrent, transmissionTorrent };
   }

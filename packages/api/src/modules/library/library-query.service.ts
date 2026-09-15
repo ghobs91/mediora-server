@@ -38,14 +38,26 @@ export class LibraryQueryService {
       where: { state: DownloadableMediaState.DOWNLOADING },
     });
     const withTorrentQuality = await map(downloading, async (resource) => {
-      const { tag, quality, transmissionTorrent } =
-        await this.transmissionService.getResourceTorrent({
+      try {
+        const resourceTorrent =
+          await this.transmissionService.getResourceTorrent({
+            resourceId: resource.resourceId,
+            resourceType: resource.resourceType,
+          });
+
+        if (!resourceTorrent?.transmissionTorrent) return null;
+
+        const { tag, quality, transmissionTorrent } = resourceTorrent;
+        return { ...resource, tag, quality, torrent: transmissionTorrent.name };
+      } catch (error) {
+        // A missing torrent row or a Transmission blip must not fail the whole list.
+        this.logger.warn('failed to resolve torrent for downloading media', {
           resourceId: resource.resourceId,
           resourceType: resource.resourceType,
+          error: error instanceof Error ? error.message : error,
         });
-      return transmissionTorrent
-        ? { ...resource, tag, quality, torrent: transmissionTorrent?.name }
-        : null;
+        return null;
+      }
     });
     return withTorrentQuality.filter(Boolean);
   }
