@@ -10,7 +10,7 @@ export interface RankedResult {
   normalizedTitleParts: string[];
   id: string;
   title: string;
-  quality: { label: string; score: number };
+  quality: { label: string; score: number; maxSize: number | null };
   size: number;
   seeders: number;
   peers: number;
@@ -38,15 +38,27 @@ export function parseQuality(
   normalizedTitle: string[],
   qualityParams: Quality[]
 ) {
+  // Each `match` entry is a space separated AND-group of keywords, and the
+  // entries themselves are OR-ed together. This keeps single-keyword profiles
+  // working as before while allowing codec aware profiles such as
+  // "1080p x265" (match: ['1080p x265', '1080p hevc']).
   const qualityMatch = qualityParams.find((quality) =>
-    quality.match.some((keyword) =>
-      normalizedTitle.find((part) => part === keyword.toLowerCase())
-    )
+    quality.match.some((keyword) => {
+      const tokens = keyword.toLowerCase().split(' ').filter(Boolean);
+      return (
+        tokens.length > 0 &&
+        tokens.every((token) => normalizedTitle.includes(token))
+      );
+    })
   );
 
   return qualityMatch
-    ? { label: qualityMatch.name, score: qualityMatch.score }
-    : { label: 'unknown', score: 0 };
+    ? {
+        label: qualityMatch.name,
+        score: qualityMatch.score,
+        maxSize: qualityMatch.maxSize ?? null,
+      }
+    : { label: 'unknown', score: 0, maxSize: null };
 }
 
 export function formatSearchResult({
@@ -92,7 +104,7 @@ export function sortByBest(results: RankedResult[]) {
 export function pickMostSeeded(
   results: RankedResult[]
 ): RankedResult | undefined {
-  // Automatic downloads: most seeders wins among the acceptable candidates
+  // Manual picks: most seeders wins among the acceptable candidates
   // (already filtered by isDownloadable). Tag/quality scores only break ties
   // so a healthy swarm beats a dead one with a marginally better label.
   return orderBy(
@@ -102,20 +114,36 @@ export function pickMostSeeded(
   )[0];
 }
 
+export function pickBest(
+  results: RankedResult[]
+): RankedResult | undefined {
+  // Automatic downloads honour the configured quality ordering: the best
+  // matching quality wins, and seeders only break ties between releases of
+  // the same quality. Per-quality size caps are enforced upstream.
+  return orderBy(
+    results,
+    ['quality.score', 'tag.score', 'seeders'],
+    ['desc', 'desc', 'desc']
+  )[0];
+}
+
 export function isDownloadable({
   result,
   maxSize = Infinity,
+  episodeCount = 1,
   isSeason = false,
   withoutFilter = false,
 }: {
   result: RankedResult;
   maxSize?: number;
+  episodeCount?: number;
   isSeason?: boolean;
   withoutFilter?: boolean;
 }) {
   if (withoutFilter) return true;
 
-  const hasAcceptableSize = result.size < maxSize;
+  const baseSizeLimit = result.quality.maxSize ?? maxSize;
+  const hasAcceptableSize = result.size < baseSizeLimit * episodeCount;
   const hasSeeders = result.seeders >= 5 && result.seeders > result.peers;
   const hasTag = result.tag.score > 0;
 

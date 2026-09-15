@@ -16,7 +16,7 @@ import { QualityDAO } from 'src/entities/dao/quality.dao';
 import { TagDAO } from 'src/entities/dao/tag.dao';
 import { Quality } from 'src/entities/quality.entity';
 
-import { TagInput } from './params.dto';
+import { TagInput, QualityInput } from './params.dto';
 
 @Injectable()
 export class ParamsService {
@@ -58,7 +58,9 @@ export class ParamsService {
   ) {
     const qualityDAO = QualityDAO.fromManager(manager!);
     const defaultQualities: Array<
-      Omit<Quality, 'id' | 'createdAt' | 'updatedAt'>
+      Omit<Quality, 'id' | 'createdAt' | 'updatedAt' | 'maxSize'> & {
+        maxSize?: number | null;
+      }
     > = [
       {
         type: Entertainment.Movie,
@@ -163,6 +165,33 @@ export class ParamsService {
     return type === Entertainment.Movie
       ? qualities.filter((q) => q.type === Entertainment.Movie)
       : qualities.filter((q) => q.type === Entertainment.TvShow);
+  }
+
+  @Transaction()
+  public async updateQualities(
+    type: Entertainment,
+    qualities: QualityInput[],
+    @TransactionManager() manager?: EntityManager
+  ) {
+    const qualityDAO = QualityDAO.fromManager(manager!);
+    const ids = qualities
+      .map((quality) => quality.id)
+      .filter((id): id is number => typeof id === 'number');
+
+    await qualityDAO.delete(
+      ids.length > 0 ? { type, id: Not(In(ids)) } : { type }
+    );
+
+    await forEachSeries(qualities, (quality) =>
+      qualityDAO.save({
+        ...(quality.id ? { id: quality.id } : {}),
+        name: quality.name,
+        match: quality.match,
+        maxSize: quality.maxSize ?? null,
+        score: quality.score,
+        type,
+      })
+    );
   }
 
   public getTags() {

@@ -5,6 +5,7 @@ import {
   isDownloadable,
   parseQuality,
   parseTag,
+  pickBest,
   pickMostSeeded,
   sortByBest,
   RankedResult,
@@ -17,8 +18,12 @@ import { Tag } from 'src/entities/tag.entity';
 const makeTag = (name: string, score: number) =>
   ({ name, score } as unknown as Tag);
 
-const makeQuality = (name: string, match: string[], score: number) =>
-  ({ name, match, score } as unknown as Quality);
+const makeQuality = (
+  name: string,
+  match: string[],
+  score: number,
+  maxSize: number | null = null
+) => ({ name, match, score, maxSize } as unknown as Quality);
 
 const makeResult = (
   title: string,
@@ -85,6 +90,7 @@ describe('parseQuality', () => {
     expect(parseQuality(['movie', '1080p', 'x264'], qualities)).toEqual({
       label: '1080p',
       score: 5,
+      maxSize: null,
     });
   });
 
@@ -93,6 +99,32 @@ describe('parseQuality', () => {
     expect(parseQuality(['movie', 'bluray'], qualities)).toEqual({
       label: '1080p',
       score: 5,
+      maxSize: null,
+    });
+  });
+
+  it('requires every keyword in an AND-group', () => {
+    const qualities = [
+      makeQuality('1080p x265', ['1080p x265', '1080p hevc'], 5),
+    ];
+    expect(parseQuality(['movie', '1080p', 'x265'], qualities)).toEqual({
+      label: '1080p x265',
+      score: 5,
+      maxSize: null,
+    });
+    expect(parseQuality(['movie', '1080p', 'x264'], qualities)).toEqual({
+      label: 'unknown',
+      score: 0,
+      maxSize: null,
+    });
+  });
+
+  it('returns the quality maxSize when set', () => {
+    const qualities = [makeQuality('1080p', ['1080p'], 5, 8e9)];
+    expect(parseQuality(['movie', '1080p'], qualities)).toEqual({
+      label: '1080p',
+      score: 5,
+      maxSize: 8e9,
     });
   });
 
@@ -101,6 +133,7 @@ describe('parseQuality', () => {
     expect(parseQuality(['movie', '720p'], qualities)).toEqual({
       label: 'unknown',
       score: 0,
+      maxSize: null,
     });
   });
 });
@@ -180,12 +213,45 @@ describe('pickMostSeeded', () => {
   });
 });
 
+describe('pickBest', () => {
+  it('picks the highest quality even when a lower one is more seeded', () => {
+    const results = [
+      { tag: { score: 5 }, quality: { score: 1 }, seeders: 500 },
+      { tag: { score: 5 }, quality: { score: 5 }, seeders: 6 },
+    ].map((r) => ({ ...r } as unknown as RankedResult));
+
+    expect(pickBest(results)?.quality.score).toEqual(5);
+  });
+
+  it('breaks quality ties by tag score, then seeders', () => {
+    const results = [
+      { tag: { score: 1 }, quality: { score: 5 }, seeders: 500 },
+      { tag: { score: 9 }, quality: { score: 5 }, seeders: 5 },
+    ].map((r) => ({ ...r } as unknown as RankedResult));
+
+    const picked = pickBest(results);
+    expect(picked?.tag.score).toEqual(9);
+
+    const tieResults = [
+      { tag: { score: 5 }, quality: { score: 5 }, seeders: 5 },
+      { tag: { score: 5 }, quality: { score: 5 }, seeders: 50 },
+    ].map((r) => ({ ...r } as unknown as RankedResult));
+
+    expect(pickBest(tieResults)?.seeders).toEqual(50);
+  });
+
+  it('returns undefined when there are no candidates', () => {
+    expect(pickBest([])).toBeUndefined();
+  });
+});
+
 describe('isDownloadable', () => {
   const downloadable = {
     size: 100,
     seeders: 10,
     peers: 2,
     tag: { label: 'multi', score: 3 },
+    quality: { label: 'unknown', score: 0, maxSize: null },
     normalizedTitleParts: ['movie', '2020'],
   } as unknown as RankedResult;
 
@@ -197,6 +263,37 @@ describe('isDownloadable', () => {
     expect(
       isDownloadable({ result: { ...downloadable, size: 2000 }, maxSize: 1000 })
     ).toBe(false);
+  });
+
+  it('uses the quality maxSize cap when set', () => {
+    const withCap = {
+      ...downloadable,
+      size: 5000,
+      quality: { label: '1080p', score: 2, maxSize: 4000 },
+    } as unknown as RankedResult;
+
+    expect(isDownloadable({ result: withCap, maxSize: 10000 })).toBe(false);
+    expect(
+      isDownloadable({
+        result: {
+          ...withCap,
+          quality: { ...withCap.quality, maxSize: null },
+        },
+        maxSize: 10000,
+      })
+    ).toBe(true);
+  });
+
+  it('scales the quality maxSize cap by episode count for season packs', () => {
+    const seasonPack = {
+      ...downloadable,
+      size: 25000,
+      quality: { label: '1080p', score: 2, maxSize: 3000 },
+    } as unknown as RankedResult;
+
+    // 3GB per episode: a 10 episode pack may be up to 30GB, a 5 episode one 15GB
+    expect(isDownloadable({ result: seasonPack, episodeCount: 10 })).toBe(true);
+    expect(isDownloadable({ result: seasonPack, episodeCount: 5 })).toBe(false);
   });
 
   it('rejects results with less than 5 seeders', () => {
@@ -372,6 +469,7 @@ describe('torrent-ranking properties', () => {
             seeders: input.seeders,
             peers: input.peers,
             tag: { score: input.tagScore },
+            quality: { label: 'unknown', score: 0, maxSize: null },
             normalizedTitleParts: ['movie'],
           } as unknown as RankedResult;
 

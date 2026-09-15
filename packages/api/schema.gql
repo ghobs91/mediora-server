@@ -105,6 +105,7 @@ type Quality {
   name: String!
   match: [String!]!
   score: Float!
+  maxSize: Float
   createdAt: DateTime!
   updatedAt: DateTime!
   type: Entertainment!
@@ -349,7 +350,7 @@ input GetTorrentStatusInput {
 }
 
 type Mutation {
-  saveQualityParams(qualities: [QualityInput!]!): GraphQLCommonResponse!
+  saveQualityParams(type: Entertainment!, qualities: [QualityInput!]!): GraphQLCommonResponse!
   saveTags(tags: [TagInput!]!): GraphQLCommonResponse!
   clearRedisCache: GraphQLCommonResponse!
   updateParams(params: [UpdateParamsInput!]!): GraphQLCommonResponse!
@@ -377,8 +378,11 @@ type Mutation {
 }
 
 input QualityInput {
-  id: Float!
-  score: Float!
+  id: Int
+  name: String!
+  match: [String!]!
+  maxSize: Float
+  score: Int!
 }
 
 input TagInput {

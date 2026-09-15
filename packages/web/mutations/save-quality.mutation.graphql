@@ -1,5 +1,5 @@
-mutation saveQuality($qualities: [QualityInput!]!) {
-  result: saveQualityParams(qualities: $qualities) {
+mutation saveQuality($type: Entertainment!, $qualities: [QualityInput!]!) {
+  result: saveQualityParams(type: $type, qualities: $qualities) {
     success
     message
   }

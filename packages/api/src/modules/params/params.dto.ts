@@ -1,4 +1,4 @@
-import { ObjectType, Field, InputType } from '@nestjs/graphql';
+import { ObjectType, Field, InputType, Float, Int } from '@nestjs/graphql';
 
 @ObjectType()
 export class ParamsHash {
@@ -20,8 +20,11 @@ export class UpdateParamsInput {
 
 @InputType()
 export class QualityInput {
-  @Field() public id!: number;
-  @Field() public score!: number;
+  @Field((_type) => Int, { nullable: true }) public id?: number;
+  @Field() public name!: string;
+  @Field((_type) => [String]) public match!: string[];
+  @Field((_type) => Float, { nullable: true }) public maxSize?: number;
+  @Field((_type) => Int) public score!: number;
 }
 
 @InputType()

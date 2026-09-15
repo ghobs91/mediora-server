@@ -403,6 +403,7 @@ export type Quality = {
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['Float']['output'];
   match: Array<Scalars['String']['output']>;
+  maxSize?: Maybe<Scalars['Float']['output']>;
   name: Scalars['String']['output'];
   score: Scalars['Float']['output'];
   type: Entertainment;
@@ -410,8 +411,11 @@ export type Quality = {
 };
 
 export type QualityInput = {
-  id: Scalars['Float']['input'];
-  score: Scalars['Float']['input'];
+  id?: InputMaybe<Scalars['Int']['input']>;
+  match: Array<Scalars['String']['input']>;
+  maxSize?: InputMaybe<Scalars['Float']['input']>;
+  name: Scalars['String']['input'];
+  score: Scalars['Int']['input'];
 };
 
 export type Query = {
@@ -753,6 +757,7 @@ export type ResetLibraryMutationVariables = Exact<{
 export type ResetLibraryMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
 
 export type SaveQualityMutationVariables = Exact<{
+  type: Entertainment;
   qualities: Array<QualityInput>;
 }>;
 
@@ -881,7 +886,7 @@ export type GetQualityQueryVariables = Exact<{
 }>;
 
 
-export type GetQualityQuery = { __typename?: 'Query', qualities: Array<{ __typename?: 'Quality', id: number, name: string, match: Array<string>, score: number, updatedAt: any, createdAt: any, type: Entertainment }> };
+export type GetQualityQuery = { __typename?: 'Query', qualities: Array<{ __typename?: 'Quality', id: number, name: string, match: Array<string>, score: number, maxSize?: number | null, updatedAt: any, createdAt: any, type: Entertainment }> };
 
 export type GetRecommendedQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1235,8 +1240,8 @@ export type ResetLibraryMutationHookResult = ReturnType<typeof useResetLibraryMu
 export type ResetLibraryMutationResult = Apollo.MutationResult<ResetLibraryMutation>;
 export type ResetLibraryMutationOptions = Apollo.BaseMutationOptions<ResetLibraryMutation, ResetLibraryMutationVariables>;
 export const SaveQualityDocument = gql`
-    mutation saveQuality($qualities: [QualityInput!]!) {
-  result: saveQualityParams(qualities: $qualities) {
+    mutation saveQuality($type: Entertainment!, $qualities: [QualityInput!]!) {
+  result: saveQualityParams(type: $type, qualities: $qualities) {
     success
     message
   }
@@ -1863,6 +1868,7 @@ export const GetQualityDocument = gql`
     name
     match
     score
+    maxSize
     updatedAt
     createdAt
     type

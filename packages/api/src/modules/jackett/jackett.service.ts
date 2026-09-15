@@ -13,6 +13,7 @@ import { sanitize } from "src/utils/sanitize";
 import {
   formatSearchResult,
   isDownloadable,
+  pickBest,
   pickMostSeeded,
   RankedResult,
   sortByBest,
@@ -144,7 +145,8 @@ export class JackettService {
       .flat();
 
     return this.search(queries, {
-      maxSize: maxSize * tvSeason.episodes.length,
+      maxSize,
+      episodeCount: tvSeason.episodes.length,
       isSeason: true,
       type: Entertainment.TvShow,
       quality,
@@ -191,6 +193,7 @@ export class JackettService {
     queries: string[],
     opts: {
       maxSize?: number;
+      episodeCount?: number;
       isSeason?: boolean;
       withoutFilter?: boolean;
       quality?: string;
@@ -222,7 +225,7 @@ export class JackettService {
 
       const sortedByBest = sortByBest(flattenIndexers);
 
-      const best = pickMostSeeded(sortedByBest);
+      const best = pickBest(flattenIndexers);
       let results = opts.withoutFilter ? sortedByBest : best ? [best] : [];
 
       if (opts.quality) {
@@ -258,6 +261,7 @@ export class JackettService {
     queries,
     indexer,
     maxSize = Infinity,
+    episodeCount = 1,
     isSeason = false,
     withoutFilter = false,
     type,
@@ -266,6 +270,7 @@ export class JackettService {
     queries: string[];
     indexer?: JackettIndexer;
     maxSize?: number;
+    episodeCount?: number;
     isSeason?: boolean;
     withoutFilter?: boolean;
     type?: Entertainment;
@@ -310,7 +315,7 @@ export class JackettService {
         formatSearchResult({ result, qualityParams, preferredTags }),
       )
       .filter((result) =>
-        isDownloadable({ result, maxSize, isSeason, withoutFilter }),
+        isDownloadable({ result, maxSize, episodeCount, isSeason, withoutFilter }),
       );
 
     this.logger.info(`found ${results.length} downloadable results`);

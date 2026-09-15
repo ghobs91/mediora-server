@@ -1,4 +1,4 @@
-import { ObjectType, Field } from '@nestjs/graphql';
+import { ObjectType, Field, Float } from '@nestjs/graphql';
 
 import {
   Entity,
@@ -27,6 +27,18 @@ export class Quality {
   @Field()
   @Column('int')
   public score!: number;
+
+  @Field((_type) => Float, { nullable: true })
+  @Column({
+    type: 'bigint',
+    nullable: true,
+    transformer: {
+      to: (value?: number | null) => value ?? null,
+      from: (value?: string | null) =>
+        value === null || value === undefined ? null : Number(value),
+    },
+  })
+  public maxSize!: number | null;
 
   @Field()
   @CreateDateColumn()

@@ -4,6 +4,7 @@ query getQuality($type: Entertainment!) {
     name
     match
     score
+    maxSize
     updatedAt
     createdAt
     type
