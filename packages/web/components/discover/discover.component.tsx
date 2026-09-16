@@ -72,7 +72,7 @@ export function DiscoverComponent() {
   return (
     <div>
       <div className="bg-primary py-10 text-primary-foreground">
-        <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <div className="text-3xl font-semibold">What are we watching next?</div>
           <div className="text-2xl font-medium">
             Dive deeper to discover next entertainment
@@ -80,7 +80,7 @@ export function DiscoverComponent() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1200px] px-6">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mt-12">
           <div className="mb-4 flex items-center gap-4 text-lg font-medium">
             Discover by filter
@@ -89,8 +89,8 @@ export function DiscoverComponent() {
             )}
           </div>
 
-          <div className="flex gap-6">
-            <div className="w-64 shrink-0">
+          <div className="flex flex-col gap-6 lg:flex-row">
+            <div className="w-full shrink-0 lg:w-64">
               <Card>
                 <CardHeader>
                   <CardTitle>Filters</CardTitle>
@@ -105,14 +105,14 @@ export function DiscoverComponent() {
             </div>
 
             <div className="min-w-0 flex-1">
-              <Card className="max-h-[794px] min-h-[794px] overflow-y-auto">
-                <CardContent className="p-6">
+              <Card className="lg:max-h-[794px] lg:min-h-[794px] lg:overflow-y-auto">
+                <CardContent className="p-4 sm:p-6">
                   {!data || loading ? (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-6">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-6">
                       {Array.from({ length: 6 }).map((_, index) => (
                         <Skeleton
                           key={index}
-                          className="aspect-[2/3] w-[220px] rounded-xl"
+                          className="aspect-[2/3] w-full rounded-xl"
                         />
                       ))}
                     </div>
@@ -121,7 +121,7 @@ export function DiscoverComponent() {
                       No results... 😔
                     </div>
                   ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-6">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-6">
                       {TMDBResults?.results
                         ?.filter((item) => !tmdbIds.includes(item.tmdbId))
                         ?.map((res) => (
@@ -142,7 +142,7 @@ export function DiscoverComponent() {
               </Card>
 
               {totalPages > 1 && (
-                <div className="mt-5 flex items-center justify-center gap-2">
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"

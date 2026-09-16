@@ -29,6 +29,10 @@ export class TVShow {
   @Column('varchar')
   public title!: string;
 
+  @Field((_type) => Number, { nullable: true })
+  @Column('int', { nullable: true })
+  public qualityId: number | null = null;
+
   @OneToMany((_type) => TVSeason, (season) => season.tvShow)
   public seasons!: TVSeason[];
 

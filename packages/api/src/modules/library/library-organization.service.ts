@@ -42,8 +42,17 @@ export class LibraryOrganizationService {
   public async trackMovie(movieAttributes: DeepPartial<Movie>) {
     this.logger.info("track movie", { tmdbId: movieAttributes.tmdbId });
     const movie = await this.movieDAO.save(movieAttributes);
-    await this.jobsService.startDownloadMovie(movie.id);
+    const quality = await this.resolveQualityName(movie.qualityId);
+    await this.jobsService.startDownloadMovie(movie.id, quality);
     return movie;
+  }
+
+  private async resolveQualityName(
+    qualityId?: number | null,
+  ): Promise<string | undefined> {
+    if (!qualityId) return undefined;
+    const quality = await this.paramsService.getQualityById(qualityId);
+    return quality?.name;
   }
 
   // Guarded recursive delete: only inside /usr/* or /downloads/*, never a
@@ -66,23 +75,35 @@ export class LibraryOrganizationService {
   public async trackTVShow({
     tmdbId,
     seasonNumbers,
+    qualityId,
   }: {
     tmdbId: number;
     seasonNumbers: number[];
+    qualityId?: number | null;
   }) {
     const { tvShow, missingSeasons } = await this.trackMissingSeasons({
       tmdbId,
       seasonNumbers,
+      qualityId,
     });
+    const quality = await this.resolveQualityName(qualityId);
     await forEachSeries(missingSeasons, (season) =>
-      this.jobsService.startDownloadSeason(season.id),
+      this.jobsService.startDownloadSeason(season.id, quality),
     );
     return tvShow;
   }
 
   @LazyTransaction()
   private async trackMissingSeasons(
-    { tmdbId, seasonNumbers }: { tmdbId: number; seasonNumbers: number[] },
+    {
+      tmdbId,
+      seasonNumbers,
+      qualityId,
+    }: {
+      tmdbId: number;
+      seasonNumbers: number[];
+      qualityId?: number | null;
+    },
     @TransactionManager() manager?: EntityManager,
   ) {
     this.logger.info("track missing seasons", { seasonNumbers });
@@ -93,6 +114,7 @@ export class LibraryOrganizationService {
     const tvShow = await tvShowDAO.findOrCreate({
       tmdbId,
       title: tmdbTVShow.name,
+      qualityId: qualityId ?? null,
     });
     const missingSeasons = await reduce(
       seasonNumbers,

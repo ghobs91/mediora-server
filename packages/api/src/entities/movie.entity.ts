@@ -34,6 +34,10 @@ export class Movie {
   @Column('varchar', { default: DownloadableMediaState.SEARCHING })
   public state: DownloadableMediaState = DownloadableMediaState.SEARCHING;
 
+  @Field((_type) => Number, { nullable: true })
+  @Column('int', { nullable: true })
+  public qualityId: number | null = null;
+
   @OneToMany((_type) => File, (file) => file.movie)
   public files!: File[];
 

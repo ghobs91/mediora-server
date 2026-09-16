@@ -17,6 +17,7 @@ import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
 
 import { JackettService } from 'src/modules/jackett/jackett.service';
 import { LibraryDownloadService } from 'src/modules/library/library-download.service';
+import { ParamsService } from 'src/modules/params/params.service';
 
 @Processor(JobsQueue.DOWNLOAD)
 export class DownloadProcessor extends WorkerHost {
@@ -27,10 +28,19 @@ export class DownloadProcessor extends WorkerHost {
     private readonly tvSeasonDAO: TVSeasonDAO,
     private readonly tvEpisodeDAO: TVEpisodeDAO,
     private readonly jackettService: JackettService,
-    private readonly libraryService: LibraryDownloadService
+    private readonly libraryService: LibraryDownloadService,
+    private readonly paramsService: ParamsService
   ) {
     super();
     this.logger = logger.child({ context: 'DownloadProcessor' });
+  }
+
+  private async resolveQualityName(
+    qualityId?: number | null,
+  ): Promise<string | undefined> {
+    if (!qualityId) return undefined;
+    const quality = await this.paramsService.getQualityById(qualityId);
+    return quality?.name;
   }
 
   public async process(job: Job) {
@@ -57,34 +67,38 @@ export class DownloadProcessor extends WorkerHost {
 
     this.logger.info(`found ${missingMovies.length} missing movies`);
 
-    await forEachSeries(missingMovies, (movie) =>
-      this.downloadQueue.add(
+    await forEachSeries(missingMovies, async (movie) => {
+      const quality = await this.resolveQualityName(movie.qualityId);
+      return this.downloadQueue.add(
         DownloadQueueProcessors.DOWNLOAD_MOVIE,
         {
           id: movie.id,
+          quality,
         },
         {
           jobId: `${DownloadQueueProcessors.DOWNLOAD_MOVIE}-${movie.id}`,
           deduplication: { id: `download-movie-${movie.id}` },
         }
-      )
-    );
+      );
+    });
 
     const missingEpisodes = await this.tvEpisodeDAO.findMissingFromLibrary();
     this.logger.info(`found ${missingEpisodes.length} missing tv episodes`);
 
-    await forEachSeries(missingEpisodes, (episode) =>
-      this.downloadQueue.add(
+    await forEachSeries(missingEpisodes, async (episode) => {
+      const quality = await this.resolveQualityName(episode.tvShow?.qualityId);
+      return this.downloadQueue.add(
         DownloadQueueProcessors.DOWNLOAD_EPISODE,
         {
           id: episode.id,
+          quality,
         },
         {
           jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,
           deduplication: { id: `download-episode-${episode.id}` },
         }
-      )
-    );
+      );
+    });
 
     this.logger.info('finish try download missing files');
   }
@@ -137,16 +151,18 @@ export class DownloadProcessor extends WorkerHost {
 
       const season = await this.tvSeasonDAO.findOne({
         where: { id: seasonId },
-        relations: ['episodes'],
+        relations: ['episodes', 'tvShow'],
       });
 
       // season can already be removed from library
       if (season) {
+        const quality = await this.resolveQualityName(season.tvShow?.qualityId);
         await forEachSeries(season.episodes, (episode) =>
           this.downloadQueue.add(
             DownloadQueueProcessors.DOWNLOAD_EPISODE,
             {
               id: episode.id,
+              quality,
             },
             {
               jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,

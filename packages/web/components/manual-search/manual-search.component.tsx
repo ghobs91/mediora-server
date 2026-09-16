@@ -170,8 +170,8 @@ export function ManualSearchComponent(props: ManualSearchProps) {
         <DialogHeader>
           <DialogTitle>{defaultSearchQuery}</DialogTitle>
         </DialogHeader>
-        <div className="flex items-center gap-3">
-          <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <form onSubmit={handleSearch} className="flex min-w-[200px] flex-1 gap-2">
             <Input
               value={searchQuery}
               onChange={({ target }) => setSearchQuery(target.value)}
@@ -182,7 +182,7 @@ export function ManualSearchComponent(props: ManualSearchProps) {
           </form>
           {qualities.length > 0 && (
             <Select value={quality} onValueChange={setQuality}>
-              <SelectTrigger className="w-[180px] shrink-0">
+              <SelectTrigger className="w-[140px] shrink-0 sm:w-[180px]">
                 <SelectValue placeholder="Any quality" />
               </SelectTrigger>
               <SelectContent>

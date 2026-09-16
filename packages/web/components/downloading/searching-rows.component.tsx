@@ -40,7 +40,9 @@ export function SearchingRowsComponent({ rows }: { rows: SearchingMedia[] }) {
               Searching <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin" />
             </Badge>
           </div>
-          <div className="truncate font-semibold uppercase">{row.title}</div>
+          <div className="min-w-0 flex-1 truncate font-semibold uppercase">
+            {row.title}
+          </div>
         </div>
       ))}
     </>

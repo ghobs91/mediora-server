@@ -48,7 +48,7 @@ export default function LoginPage() {
       <Head>
         <title>Mediora Server - Login</title>
       </Head>
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-center font-mono text-3xl">

@@ -108,7 +108,7 @@ export function TVSeasonDetailsComponent({
           if (!season.inLibrary) onToggleSelect(season.seasonNumber);
         }}
       >
-        <div className="flex items-center gap-3 px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
           <button
             type="button"
             onClick={(event) => {
@@ -136,13 +136,13 @@ export function TVSeasonDetailsComponent({
             )}
           </button>
 
-          <div className="flex w-[200px] shrink-0 items-center justify-end gap-2">
+          <div className="flex shrink-0 items-center justify-end gap-2 sm:w-[200px]">
             {season.inLibrary ? (
               <>
                 <Progress
                   value={progress}
                   className={cn(
-                    'h-1.5 w-[110px]',
+                    'h-1.5 w-[70px] sm:w-[110px]',
                     isComplete && '[&>div]:bg-emerald-500'
                   )}
                 />
@@ -165,12 +165,12 @@ export function TVSeasonDetailsComponent({
             )}
           </div>
 
-          <div className="flex w-[110px] shrink-0 justify-end">
+          <div className="flex shrink-0 justify-end sm:w-[110px]">
             {season.inLibrary ? (
               <Button
                 variant="ghost"
                 size="sm"
-                className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                className="opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                 onClick={(event) => {
                   event.stopPropagation();
                   openManualSearch();

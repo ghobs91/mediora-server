@@ -167,6 +167,10 @@ export class ParamsService {
       : qualities.filter((q) => q.type === Entertainment.TvShow);
   }
 
+  public async getQualityById(id: number) {
+    return this.qualityDAO.findOne({ where: { id } });
+  }
+
   @Transaction()
   public async updateQualities(
     type: Entertainment,

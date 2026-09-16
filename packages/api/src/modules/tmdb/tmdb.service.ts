@@ -141,15 +141,25 @@ export class TMDBService {
     this.logger.info('start search tvshow by tvdbId', { tvdbId });
 
     const data = await this.request<{
-      results: Array<{ id: number; name: string; api_id?: number }>;
-    }>('/tv/search', { tvdb_id: String(tvdbId) });
+      tv_results: Array<{ id: number; name: string }>;
+    }>(`/find/${tvdbId}`, { external_source: 'tvdb_id' });
 
-    const result = data.results?.[0];
-    const tmdbId = result?.id ?? result?.api_id;
+    const result = data.tv_results?.[0];
+    const tmdbId = result?.id;
 
     this.logger.info('finish search tvshow by tvdbId', { tvdbId, tmdbId });
 
     return tmdbId ? { id: tmdbId, name: result?.name } : null;
+  }
+
+  @CacheMethod({
+    key: CacheKeys.TMDB_GET_TV_SHOW_EXTERNAL_IDS,
+    ttl: 6.048e8, // seven days
+  })
+  public getTVShowExternalIds(tvShowTMDBId: number) {
+    return this.request<{ tvdb_id?: number; imdb_id?: string }>(
+      `/tv/${tvShowTMDBId}/external_ids`,
+    );
   }
 
   public async searchMovie(query: string, params = {}) {

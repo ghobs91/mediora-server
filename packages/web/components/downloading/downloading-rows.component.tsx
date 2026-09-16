@@ -100,7 +100,7 @@ export function DownloadingRowsComponent({
       {displayedRows.map((row) => (
         <div
           key={row.id}
-          className="flex items-center gap-3 border-b border-border px-2 py-1.5 text-sm hover:bg-muted/50"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-2 py-1.5 text-sm hover:bg-muted/50"
         >
           <div className="shrink-0">
             {row.torrentStatus.isStopped ? (
@@ -114,18 +114,20 @@ export function DownloadingRowsComponent({
               </Badge>
             )}
           </div>
-          <div className="truncate font-semibold uppercase">{row.title}</div>
+          <div className="min-w-0 flex-1 truncate font-semibold uppercase">
+            {row.title}
+          </div>
           <div className="shrink-0 truncate text-xs uppercase text-muted-foreground">
             ({row.torrent})
           </div>
-          <div className="ml-auto shrink-0 text-xs text-muted-foreground">
+          <div className="shrink-0 text-xs text-muted-foreground sm:ml-auto">
             ({row.torrentStatus.percent}%
             {row.torrentStatus.downloadSpeed ? (
               <> - {formatBytes(row.torrentStatus.downloadSpeed)}/s</>
             ) : null}
             )
           </div>
-          <div className="w-[250px] shrink-0">
+          <div className="w-full shrink-0 sm:w-[250px]">
             <Progress value={row.torrentStatus.percent} />
           </div>
         </div>

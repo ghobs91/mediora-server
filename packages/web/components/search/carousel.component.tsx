@@ -31,11 +31,14 @@ export function CarouselComponent({
   }, [results, emblaApi]);
 
   return (
-    <div className="relative px-10">
+    <div className="relative px-4 sm:px-10">
       <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex gap-6">
+        <div className="flex gap-4 sm:gap-6">
           {results.map((result) => (
-            <div key={result.id} className="min-w-0 flex-[0_0_220px]">
+            <div
+              key={result.id}
+              className="min-w-0 flex-[0_0_160px] sm:flex-[0_0_220px]"
+            >
               <TMDBCardComponent
                 type={type}
                 result={result}
@@ -52,7 +55,7 @@ export function CarouselComponent({
             type="button"
             aria-label="Previous"
             onClick={() => emblaApi?.scrollPrev()}
-            className="absolute left-0 top-[175px] rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground"
+            className="absolute left-0 top-[175px] hidden rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground sm:block"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -60,7 +63,7 @@ export function CarouselComponent({
             type="button"
             aria-label="Next"
             onClick={() => emblaApi?.scrollNext()}
-            className="absolute right-0 top-[175px] rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground"
+            className="absolute right-0 top-[175px] hidden rounded-full border border-border bg-background/80 p-2 text-muted-foreground transition-colors hover:text-foreground sm:block"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

@@ -3,6 +3,8 @@ import { promises as fs } from 'fs';
 
 import { FileType, DownloadableMediaState } from 'src/app.dto';
 import { TMDBService } from 'src/modules/tmdb/tmdb.service';
+import { Entertainment } from 'src/modules/tmdb/tmdb.dto';
+import { ParamsService } from 'src/modules/params/params.service';
 import { TransmissionService } from 'src/modules/transmission/transmission.service';
 import { LibraryQueryService } from 'src/modules/library/library-query.service';
 import { EnrichedMovie, EnrichedTVShow } from 'src/modules/library/library.dto';
@@ -63,6 +65,7 @@ export class SonarrRadarrService {
     private readonly libraryOrganizationService: LibraryOrganizationService,
     private readonly mediaMountsService: MediaMountsService,
     private readonly jobsService: JobsService,
+    private readonly paramsService: ParamsService,
     private readonly mapper: MediaMapper,
     private readonly torrentDAO: TorrentDAO,
     private readonly movieDAO: MovieDAO,
@@ -473,8 +476,28 @@ export class SonarrRadarrService {
     );
   }
 
-  public getV3QualityProfiles(): SonarrV3QualityProfile[] {
-    return [{ id: 1, name: 'Any' }];
+  public async getV3QualityProfiles(
+    type?: Entertainment,
+  ): Promise<SonarrV3QualityProfile[]> {
+    if (type) {
+      const qualities = await this.paramsService.getQualities(type);
+      return qualities.map((quality) => ({ id: quality.id, name: quality.name }));
+    }
+
+    // Legacy callers omit the type; return both lists deduped by name so the
+    // client still sees meaningful choices.
+    const [movieQualities, tvQualities] = await Promise.all([
+      this.paramsService.getQualities(Entertainment.Movie),
+      this.paramsService.getQualities(Entertainment.TvShow),
+    ]);
+    const seen = new Set<string>();
+    return [...movieQualities, ...tvQualities]
+      .filter((quality) => {
+        if (seen.has(quality.name)) return false;
+        seen.add(quality.name);
+        return true;
+      })
+      .map((quality) => ({ id: quality.id, name: quality.name }));
   }
 
   public getV3SystemStatus(): SonarrV3SystemStatus {
@@ -488,6 +511,14 @@ export class SonarrRadarrService {
       startupPath: '',
       appData: '',
     };
+  }
+
+  private async resolveQualityName(
+    qualityId?: number | null,
+  ): Promise<string | undefined> {
+    if (!qualityId) return undefined;
+    const quality = await this.paramsService.getQualityById(qualityId);
+    return quality?.name;
   }
 
   private v3SortTitle(title: string): string {
@@ -526,6 +557,7 @@ export class SonarrRadarrService {
     tvShowId: number,
   ): Promise<SonarrV3Series> {
     const tmdb = await this.tmdbService.getTVShow(show.tmdbId);
+    const externalIds = await this.tmdbService.getTVShowExternalIds(show.tmdbId);
     const seasons = await this.buildV3Seasons(tvShowId);
     const rootFolders = await this.getRootFoldersV3();
     const poster = tmdb.poster_path ? `${TMDB_IMG_BASE}${tmdb.poster_path}` : null;
@@ -546,12 +578,12 @@ export class SonarrRadarrService {
       seasons,
       year,
       path: rootFolders[0]?.path ?? '',
-      qualityProfileId: 1,
+      qualityProfileId: show.qualityId ?? 1,
       seasonFolder: true,
       monitored: seasons.length > 0 && seasons.every((season) => season.monitored),
       useSceneNumbering: false,
       runtime: tmdb.episode_run_time?.[0] ?? 0,
-      tvdbId: tmdb.id,
+      tvdbId: externalIds.tvdb_id ?? tmdb.id,
       firstAired: tmdb.first_air_date ?? '',
       seriesType: 'standard',
       cleanTitle: this.v3TitleSlug(show.title),
@@ -584,7 +616,7 @@ export class SonarrRadarrService {
       remotePoster: poster,
       year,
       path: rootFolders[0]?.path ?? '',
-      qualityProfileId: 1,
+      qualityProfileId: movie.qualityId ?? 1,
       monitored: true,
       minimumAvailability: 'released',
       isAvailable: isAvailable(movie.state),
@@ -635,7 +667,12 @@ export class SonarrRadarrService {
         ? [{ coverType: 'poster', url: `${TMDB_IMG_BASE}${tmdb.poster_path}`, remoteUrl: poster }]
         : [],
       remotePoster: poster,
-      seasons: [],
+      seasons: (tmdb.seasons ?? []).map((season) => ({
+        id: 0,
+        seasonNumber: season.season_number,
+        monitored: true,
+        hasAllEpisodes: false,
+      })),
       year,
       path: '',
       monitored: true,
@@ -759,10 +796,17 @@ export class SonarrRadarrService {
       throw new NotFoundException('TV show not found');
     }
 
+    const requestedSeasons =
+      payload.seasons?.filter((season) => season.seasonNumber >= 1) ?? [];
+    const monitoredSeasonNumbers = requestedSeasons
+      .filter((season) => season.monitored !== false)
+      .map((season) => season.seasonNumber);
+    // When a client explicitly de-selects seasons (monitored === false), only
+    // request the monitored ones; otherwise request every season.
     const seasonNumbers =
-      payload.seasons
-        ?.map((season) => season.seasonNumber)
-        .filter((seasonNumber) => seasonNumber >= 1) ?? [];
+      monitoredSeasonNumbers.length > 0
+        ? monitoredSeasonNumbers
+        : requestedSeasons.map((season) => season.seasonNumber);
 
     if (seasonNumbers.length === 0) {
       throw new NotFoundException('Seasons not found');
@@ -771,6 +815,7 @@ export class SonarrRadarrService {
     const { id } = await this.libraryOrganizationService.trackTVShow({
       tmdbId: resolved.id,
       seasonNumbers,
+      qualityId: payload.qualityProfileId ?? null,
     });
 
     const show = await this.libraryQueryService.getTVShow(id);
@@ -863,11 +908,12 @@ export class SonarrRadarrService {
   }
 
   public async addV3Movie(
-    payload: { tmdbId: number; title?: string },
+    payload: { tmdbId: number; title?: string; qualityProfileId?: number },
   ): Promise<RadarrV3Movie> {
     const { id } = await this.libraryOrganizationService.trackMovie({
       tmdbId: Number(payload.tmdbId),
       title: payload.title,
+      qualityId: payload.qualityProfileId ?? null,
     });
 
     const movie = await this.libraryQueryService.getMovie(id);
@@ -934,7 +980,13 @@ export class SonarrRadarrService {
       throw new NotFoundException('Season not found');
     }
 
-    this.jobsService.startDownloadSeason(season.id);
+    const show = await this.tvShowDAO.findOne({
+      where: { id: showId },
+      relations: [],
+    });
+    const quality = await this.resolveQualityName(show?.qualityId);
+
+    this.jobsService.startDownloadSeason(season.id, quality);
   }
 
   private async mapV3SonarrQueueItem(

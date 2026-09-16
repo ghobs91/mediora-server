@@ -26,7 +26,7 @@ export function TMDBCardComponent(props: TMDBCardComponentProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <div className="relative w-[220px] shrink-0">
+    <div className="relative w-full shrink-0 sm:w-[220px]">
       {/* display season picker modal when it's tvshow */}
       {type === 'tvshow' && isModalOpen && (
         <TVShowSeasonsModalComponent
@@ -48,7 +48,7 @@ export function TMDBCardComponent(props: TMDBCardComponentProps) {
       )}
 
       <div
-        className="group relative mb-6 aspect-[2/3] w-[220px] cursor-pointer overflow-hidden rounded-xl bg-muted"
+        className="group relative mb-6 aspect-[2/3] w-full cursor-pointer overflow-hidden rounded-xl bg-muted"
         onClick={() => setIsModalOpen(true)}
       >
         <div
@@ -65,20 +65,18 @@ export function TMDBCardComponent(props: TMDBCardComponentProps) {
             See details
           </div>
         </div>
-      </div>
 
-      {type === 'tvshow' && 'episodesTotal' in result ? (
-        <div className="absolute left-[14px] top-[310px]">
-          <EpisodeProgressComponent
-            downloaded={result.episodesDownloaded ?? 0}
-            total={result.episodesTotal ?? 0}
-          />
+        <div className="absolute bottom-3 left-3">
+          {type === 'tvshow' && 'episodesTotal' in result ? (
+            <EpisodeProgressComponent
+              downloaded={result.episodesDownloaded ?? 0}
+              total={result.episodesTotal ?? 0}
+            />
+          ) : (
+            <RatingComponent rating={result.voteAverage * 10} />
+          )}
         </div>
-      ) : (
-        <div className="absolute left-[14px] top-[310px]">
-          <RatingComponent rating={result.voteAverage * 10} />
-        </div>
-      )}
+      </div>
 
       <div className="font-bold">{result.title}</div>
       {result.releaseDate && (

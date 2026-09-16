@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 
 import { Public } from 'src/auth/public.decorator';
+import { Entertainment } from 'src/modules/tmdb/tmdb.dto';
 import { XApiKeyGuard } from '../guards/x-api-key.guard';
 import { SonarrRadarrService } from '../services/sonarr-radarr.service';
 import { SonarrV3Series } from '../dto/v3.dto';
@@ -38,6 +39,22 @@ interface SeriesUpdateBody {
 export class V3Controller {
   public constructor(private readonly sonarrRadarrService: SonarrRadarrService) {}
 
+  private parseEntertainment(type?: string): Entertainment | undefined {
+    if (!type) return undefined;
+    switch (type.toLowerCase()) {
+      case 'movie':
+      case 'movies':
+        return Entertainment.Movie;
+      case 'tv':
+      case 'tvshow':
+      case 'tvshows':
+      case 'series':
+        return Entertainment.TvShow;
+      default:
+        return undefined;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Shared
   // ---------------------------------------------------------------------------
@@ -53,8 +70,10 @@ export class V3Controller {
   }
 
   @Get('qualityprofile')
-  public async getQualityProfiles() {
-    return this.sonarrRadarrService.getV3QualityProfiles();
+  public async getQualityProfiles(@Query('type') type?: string) {
+    return this.sonarrRadarrService.getV3QualityProfiles(
+      this.parseEntertainment(type),
+    );
   }
 
   @Get('queue')
@@ -195,7 +214,10 @@ export class V3Controller {
   }
 
   @Post('movie')
-  public async addMovie(@Body() body: { tmdbId: number; title?: string }) {
+  public async addMovie(
+    @Body()
+    body: { tmdbId: number; title?: string; qualityProfileId?: number },
+  ) {
     return this.sonarrRadarrService.addV3Movie(body);
   }
 

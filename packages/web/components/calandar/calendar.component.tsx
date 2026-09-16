@@ -42,7 +42,7 @@ export function CalendarComponent() {
   };
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 pt-10">
+    <div className="mx-auto max-w-[1200px] px-4 pt-10 sm:px-6">
       {error && (
         <div className="mb-4 rounded-md border border-destructive bg-destructive/10 p-4 text-sm text-destructive-foreground">
           <pre>{JSON.stringify(error, null, 4)}</pre>
@@ -93,7 +93,7 @@ export function CalendarComponent() {
             {WEEKDAYS.map((weekday) => (
               <div
                 key={weekday}
-                className="border-b border-border p-2 text-center text-xs font-medium text-muted-foreground"
+                className="border-b border-border p-1 text-center text-xs font-medium text-muted-foreground sm:p-2"
               >
                 {weekday}
               </div>
@@ -104,7 +104,7 @@ export function CalendarComponent() {
             {cells.map((day, index) => (
               <div
                 key={index}
-                className="min-h-[100px] border-b border-r border-border p-2 text-sm"
+                className="min-h-[72px] border-b border-r border-border p-1 text-sm sm:min-h-[100px] sm:p-2"
               >
                 {day && (
                   <>

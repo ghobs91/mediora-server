@@ -45,7 +45,7 @@ export function SearchComponent() {
   return (
     <div>
       <div className="bg-primary py-10 text-primary-foreground">
-        <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <div className="text-3xl font-semibold">What are we watching next?</div>
           <div className="mb-12 text-2xl font-medium">Search anything...</div>
           <form onSubmit={handleSearch} className="flex gap-2">
@@ -67,7 +67,7 @@ export function SearchComponent() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1200px] px-6">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mt-12">
           {isLoading ? (
             <>
@@ -128,9 +128,9 @@ function CategorySkeleton() {
   return (
     <div className="mb-8">
       <Skeleton className="mb-4 h-6 w-40" />
-      <div className="flex gap-6 overflow-hidden">
+      <div className="flex gap-4 overflow-hidden sm:gap-6">
         {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton key={index} className="aspect-[2/3] w-[220px] rounded-xl" />
+          <Skeleton key={index} className="aspect-[2/3] w-[160px] rounded-xl sm:w-[220px]" />
         ))}
       </div>
     </div>

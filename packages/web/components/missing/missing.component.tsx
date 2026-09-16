@@ -123,7 +123,7 @@ export function MissingComponent() {
           />
         )}
 
-        <div className="mx-auto w-full max-w-[1200px] px-6">
+        <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
           {qualities.length > 0 && (
             <div className="mb-3 flex items-center gap-3">
               <label className="text-sm text-muted-foreground">
@@ -147,11 +147,11 @@ export function MissingComponent() {
           {missing.map((row) => (
             <div
               key={row.id}
-              className="mb-2 flex w-full items-center rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+              className="mb-2 flex w-full items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-sm"
             >
               {/* missing movie */}
               {row.__typename === 'EnrichedMovie' && (
-                <div>
+                <div className="min-w-0 flex-1">
                   <span className="mr-1 font-bold">{row.title}</span>
                   <span className="text-muted-foreground">
                     ({row.date.format('YYYY')})
@@ -161,7 +161,7 @@ export function MissingComponent() {
 
               {/* missing tv episode */}
               {row.__typename === 'EnrichedTVEpisode' && (
-                <div>
+                <div className="min-w-0 flex-1">
                   <span className="mr-1 font-bold">{row.tvShow?.title}</span>
                   <span className="text-muted-foreground">
                     S{formatNumber(row.seasonNumber!)}E
@@ -172,7 +172,7 @@ export function MissingComponent() {
 
               <Badge
                 variant="secondary"
-                className="mr-2 cursor-pointer"
+                className="ml-auto shrink-0 cursor-pointer"
                 onClick={() => setManualSearch(row)}
               >
                 <Search className="mr-1 h-3 w-3" />
@@ -192,11 +192,11 @@ export function MissingComponent() {
           {notAired.map((row) => (
             <div
               key={row.id}
-              className="mb-2 flex w-full items-center rounded-md border border-border bg-card px-2 py-1.5 text-sm"
+              className="mb-2 flex w-full items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-sm"
             >
               {/* not released movie */}
               {row.__typename === 'EnrichedMovie' && (
-                <div>
+                <div className="min-w-0 flex-1">
                   <span className="mr-1 font-bold">{row.title}</span>
                   <span className="text-muted-foreground">
                     ({row.date.format('YYYY')})
@@ -206,7 +206,7 @@ export function MissingComponent() {
 
               {/* not aired tv episode */}
               {row.__typename === 'EnrichedTVEpisode' && (
-                <div>
+                <div className="min-w-0 flex-1">
                   <span className="mr-1 font-bold">{row.tvShow?.title}</span>
                   <span className="text-muted-foreground">
                     S{formatNumber(row.seasonNumber!)}E
@@ -215,7 +215,7 @@ export function MissingComponent() {
                 </div>
               )}
 
-              <Badge variant="outline" className="ml-auto">
+              <Badge variant="outline" className="ml-auto shrink-0">
                 {availableIn(row.date)}
               </Badge>
             </div>

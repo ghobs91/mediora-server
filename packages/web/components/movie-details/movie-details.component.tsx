@@ -60,7 +60,7 @@ export function MovieDetailsComponent(props: MovieDetailsProps) {
       {removeConfirmDialog}
 
       <Dialog open={visible} onOpenChange={(open) => !open && onRequestClose()}>
-        <DialogContent className="w-[80vw] max-w-[1280px] gap-0 overflow-hidden p-0 [&>button]:hidden">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[1280px] gap-0 overflow-hidden p-0 sm:w-[80vw] [&>button]:hidden">
           <DialogTitle className="sr-only">{movie.title}</DialogTitle>
           <DialogDescription className="sr-only">
             {movie.overview}
@@ -95,11 +95,11 @@ export function MovieDetailsComponent(props: MovieDetailsProps) {
                   />
                 </div>
 
-                <div className="flex-1 text-white">
-                  <div className="flex items-center text-4xl font-bold">
+                <div className="flex flex-1 flex-col text-white">
+                  <div className="flex flex-wrap items-center text-2xl font-bold sm:text-4xl">
                     {movie.title}
                     {movie.releaseDate && (
-                      <span className="ml-1 text-2xl font-light">
+                      <span className="ml-1 text-xl font-light sm:text-2xl">
                         ({dayjs(movie.releaseDate).format('YYYY')})
                       </span>
                     )}

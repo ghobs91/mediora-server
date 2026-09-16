@@ -260,7 +260,7 @@ export function DownloadsComponent() {
 
   return (
     <div className="mx-auto max-w-[1200px] p-4">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">Downloads</h1>
         <div className="flex items-center gap-2">
           <Button
@@ -294,8 +294,8 @@ export function DownloadsComponent() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="min-w-full divide-y divide-border">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="min-w-[760px] divide-y divide-border">
           <thead className="bg-muted/30">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
@@ -381,7 +381,7 @@ export function DownloadsComponent() {
                   {formatBytes(row.totalSize)}
                 </td>
                 <td className="px-3 py-2.5">
-                  <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                     <Button
                       variant="ghost"
                       className="h-6 w-6"

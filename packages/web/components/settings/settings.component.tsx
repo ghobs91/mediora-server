@@ -9,7 +9,7 @@ import { ClientApiKeyComponent } from './client-api-key.component';
 
 export function SettingsComponent() {
   return (
-    <div className="pt-12">
+    <div className="px-4 pt-12 sm:px-6">
       <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-col gap-6 lg:flex-row lg:justify-evenly">
           <div className="w-full max-w-[500px]">

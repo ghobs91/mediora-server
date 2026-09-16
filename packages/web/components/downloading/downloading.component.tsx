@@ -20,7 +20,7 @@ export function DownloadingComponent({ types }: { types: string[] }) {
   );
 
   return (
-    <div className="mx-auto max-w-[1200px]">
+    <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
       <SearchingRowsComponent rows={searching || []} />
       {/* dont mount downloading rows when it's not needed */}
       {/* this component does request polling */}

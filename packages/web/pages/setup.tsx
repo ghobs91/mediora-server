@@ -227,7 +227,7 @@ export default function SetupPage() {
       <Head>
         <title>Mediora Server - Setup</title>
       </Head>
-      <main className="min-h-screen px-6 py-12 sm:py-20">
+      <main className="min-h-screen px-4 py-12 sm:px-6 sm:py-20">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
           <header className="flex items-start justify-between gap-6">
             <div>

@@ -49,7 +49,7 @@ export function JackettResultsTable({
 }: JackettResultTableProps) {
   return (
     <TooltipProvider>
-      <Table>
+      <Table className="min-w-[600px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[75px]">Age</TableHead>

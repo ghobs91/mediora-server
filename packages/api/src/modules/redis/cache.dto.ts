@@ -4,6 +4,7 @@ export enum CacheKeys {
   RECOMMENDED_MOVIES = 'recommended_movies',
   TMDB_GET_MOVIE = 'tmdb_get_movie',
   TMDB_GET_TV_SHOW = 'tmdb_get_tv_show',
+  TMDB_GET_TV_SHOW_EXTERNAL_IDS = 'tmdb_get_tv_show_external_ids',
   TMDB_GET_ENGLISH_TV_SHOW_NAME = 'tmdb_get_english_tv_show_name',
   TMDB_GET_TV_EPISODE = 'tmdb_get_tv_episode',
   TMDB_GET_RECOMMENDATIONS = 'tmdb_get_recommendation',

@@ -45,8 +45,8 @@ export function useSortable<TEntity>(props: UseSortableProps<TEntity>) {
 
   const renderSortable = () => (
     <>
-      <div className="mb-6 flex items-center">
-        <div className="flex items-center gap-2">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center gap-2">
           {sortAttributes.map((sortAttr) => (
             <Button
               key={sortAttr.key}
@@ -62,7 +62,7 @@ export function useSortable<TEntity>(props: UseSortableProps<TEntity>) {
             </Button>
           ))}
         </div>
-        <div className="ml-auto w-[300px]">
+        <div className="w-full sm:ml-auto sm:w-[300px]">
           <Input
             value={searchQuery}
             placeholder="Search..."

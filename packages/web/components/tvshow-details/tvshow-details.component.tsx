@@ -76,7 +76,7 @@ export function TVShowSeasonsModalComponent(
           if (!open) handleClose();
         }}
       >
-        <DialogContent className="max-h-[80vh] w-[80vw] max-w-[1280px] overflow-y-auto p-[3px]">
+        <DialogContent className="max-h-[80vh] w-[calc(100vw-1.5rem)] max-w-[1280px] overflow-y-auto p-[3px] sm:w-[80vw]">
           <div className="relative isolate overflow-hidden rounded-md">
             <div
               className="absolute inset-0 z-0 bg-cover bg-center"
@@ -87,7 +87,7 @@ export function TVShowSeasonsModalComponent(
               }}
             />
             <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#21263a] to-[#343a4a]/85" />
-            <div className="relative z-20 flex px-9 py-6">
+            <div className="relative z-20 flex flex-col gap-6 px-4 py-5 sm:flex-row sm:gap-0 sm:px-9 sm:py-6">
               <div className="w-[200px] shrink-0">
                 <img
                   src={getImageURL(`w300_and_h450_bestv2${tvShow.posterPath}`)}
@@ -95,8 +95,8 @@ export function TVShowSeasonsModalComponent(
                   alt={tvShow.title}
                 />
               </div>
-              <div className="ml-9 flex-1">
-                <div className="flex items-center text-[2.2em] font-bold">
+              <div className="flex-1 sm:ml-9">
+                <div className="flex flex-wrap items-center text-2xl font-bold sm:text-[2.2em]">
                   {tvShow.title}
                   {tvShow.releaseDate && (
                     <span className="ml-1 text-[0.8em] font-light">
@@ -104,9 +104,9 @@ export function TVShowSeasonsModalComponent(
                     </span>
                   )}
                 </div>
-                <div className="my-2 flex items-center">
+                <div className="my-2 flex flex-wrap items-center gap-2">
                   <RatingDetailComponent entertainment={tvShow} />
-                  <Button asChild variant="ghost" className="ml-6">
+                  <Button asChild variant="ghost" className="sm:ml-6">
                     <a href={youtubeSearchURL} target="_default">
                       <Play className="h-4 w-4" />
                       Watch trailer on youtube
@@ -128,7 +128,7 @@ export function TVShowSeasonsModalComponent(
                     />
                   ))}
                 </div>
-                <div className="mt-6 flex gap-3">
+                <div className="mt-6 flex flex-wrap gap-3">
                   {inLibrary && (
                     <Button
                       variant="outline"

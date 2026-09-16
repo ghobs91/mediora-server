@@ -25,9 +25,9 @@ export function MoviesComponent() {
 
   return (
     <>
-      <div className="mx-auto w-full max-w-[1200px] px-6 pt-8">
+      <div className="mx-auto w-full max-w-[1200px] px-4 pt-8 sm:px-6">
         {loading ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] sm:gap-6">
             {Array.from({ length: 12 }).map((_, index) => (
               <Skeleton key={index} className="aspect-[2/3] w-full" />
             ))}
@@ -44,7 +44,7 @@ export function MoviesComponent() {
         ) : (
           <>
             {renderSortable()}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] sm:gap-6">
               {results.map((movie) => (
                 <TMDBCardComponent
                   key={movie.id}
