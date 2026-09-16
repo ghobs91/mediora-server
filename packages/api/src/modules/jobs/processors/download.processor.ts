@@ -1,5 +1,6 @@
 import { Processor, InjectQueue, WorkerHost } from '@nestjs/bullmq';
 import { forEachSeries } from 'p-iteration';
+import { groupBy } from 'lodash';
 import { Job, Queue } from 'bullmq';
 import { Inject } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -85,18 +86,53 @@ export class DownloadProcessor extends WorkerHost {
     const missingEpisodes = await this.tvEpisodeDAO.findMissingFromLibrary();
     this.logger.info(`found ${missingEpisodes.length} missing tv episodes`);
 
-    await forEachSeries(missingEpisodes, async (episode) => {
-      const quality = await this.resolveQualityName(episode.tvShow?.qualityId);
-      return this.downloadQueue.add(
-        DownloadQueueProcessors.DOWNLOAD_EPISODE,
-        {
-          id: episode.id,
-          quality,
-        },
-        {
-          jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,
-          deduplication: { id: `download-episode-${episode.id}` },
-        }
+    const episodesBySeason = groupBy(
+      missingEpisodes,
+      (episode) => episode.seasonId
+    );
+
+    await forEachSeries(Object.values(episodesBySeason), async (episodes) => {
+      const { seasonId } = episodes[0];
+      const quality = await this.resolveQualityName(
+        episodes[0].tvShow?.qualityId
+      );
+      const season = await this.tvSeasonDAO.findOne({ where: { id: seasonId } });
+
+      // Prefer a single well-seeded season pack over many weak single-episode
+      // torrents. `downloadSeason` falls back to per-episode downloads when no
+      // acceptable pack exists and marks the season PROCESSED, so we only try a
+      // pack while the season has not been started yet (SEARCHING/MISSING).
+      const shouldTrySeasonPack =
+        season?.state === DownloadableMediaState.SEARCHING ||
+        season?.state === DownloadableMediaState.MISSING;
+
+      if (shouldTrySeasonPack) {
+        await this.downloadQueue.add(
+          DownloadQueueProcessors.DOWNLOAD_SEASON,
+          {
+            id: seasonId,
+            quality,
+          },
+          {
+            jobId: `${DownloadQueueProcessors.DOWNLOAD_SEASON}-${seasonId}`,
+            deduplication: { id: `download-season-${seasonId}` },
+          }
+        );
+        return;
+      }
+
+      await forEachSeries(episodes, (episode) =>
+        this.downloadQueue.add(
+          DownloadQueueProcessors.DOWNLOAD_EPISODE,
+          {
+            id: episode.id,
+            quality,
+          },
+          {
+            jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,
+            deduplication: { id: `download-episode-${episode.id}` },
+          }
+        )
       );
     });
 
