@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Transmission } from 'transmission-client';
+import type { Torrent as TransmissionTorrent } from 'transmission-client/typings/interface';
 import { DataSource, DeepPartial, EntityManager } from 'typeorm';
 
 import { FileType } from 'src/app.dto';
@@ -13,6 +14,35 @@ import { env } from 'src/env';
 
 const TORRENT_FILE_TIMEOUT_MS = 15000;
 const TORRENT_FILE_MAX_BYTES = 10 * 1024 * 1024;
+
+// Only the fields the Downloads tab renders. The client's default `all()` pulls
+// `files`, `peers`, `trackerStats` and `pieces` too, which is a lot to ship to
+// the browser every poll.
+const TORRENT_LIST_FIELDS = [
+  'hashString',
+  'id',
+  'name',
+  'status',
+  'error',
+  'errorString',
+  'percentDone',
+  'rateDownload',
+  'rateUpload',
+  'uploadRatio',
+  'downloadedEver',
+  'uploadedEver',
+  'totalSize',
+  'sizeWhenDone',
+  'leftUntilDone',
+  'eta',
+  'addedDate',
+  'doneDate',
+  'isFinished',
+  'peersConnected',
+  'peersSendingToUs',
+  'peersGettingFromUs',
+  'downloadDir',
+];
 
 @Injectable()
 export class TransmissionService {
@@ -68,6 +98,36 @@ export class TransmissionService {
     return this.client
       .get(torrentHash)
       .then(({ torrents: [torrent] }) => torrent);
+  }
+
+  // Every torrent in Transmission, independent of mediora's own tracking.
+  public async getAllTorrents(): Promise<TransmissionTorrent[]> {
+    const { torrents } = await this.client.callServer({
+      arguments: { fields: TORRENT_LIST_FIELDS },
+      method: 'torrent-get',
+      tag: 'mediora-list-torrents',
+    });
+    return torrents;
+  }
+
+  public pauseTorrentsByHash(hashes: string[]) {
+    return this.client.stop(hashes);
+  }
+
+  public resumeTorrentsByHash(hashes: string[]) {
+    return this.client.start(hashes);
+  }
+
+  public removeTorrentsByHash(hashes: string[], deleteData: boolean) {
+    return this.client.remove(hashes, deleteData);
+  }
+
+  public pauseAllTorrents() {
+    return this.client.stopAll();
+  }
+
+  public resumeAllTorrents() {
+    return this.client.startAll();
   }
 
   @LazyTransaction()

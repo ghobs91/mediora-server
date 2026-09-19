@@ -129,6 +129,7 @@ type ParamsHash {
   language: String!
   tmdb_api_key: String!
   jackett_api_key: String!
+  sonarr_radarr_api_key: String!
   max_movie_download_size: String!
   max_tvshow_episode_download_size: String!
   organize_library_strategy: String!
@@ -161,6 +162,8 @@ type EnrichedTVShow {
   originalTitle: String
   posterPath: String
   runtime: Float
+  episodesDownloaded: Float
+  episodesTotal: Float
 }
 
 type EnrichedTVEpisode {
@@ -305,6 +308,32 @@ type TorrentStatus {
   status: Int!
 }
 
+type TransmissionTorrent {
+  hashString: String!
+  id: Int!
+  name: String!
+  status: Int!
+  error: Int!
+  errorString: String
+  percentDone: Float!
+  rateDownload: Int!
+  rateUpload: Int!
+  uploadRatio: Float!
+  downloadedEver: BigInt!
+  uploadedEver: BigInt!
+  totalSize: BigInt!
+  sizeWhenDone: BigInt!
+  leftUntilDone: BigInt!
+  eta: Int!
+  addedDate: Int!
+  doneDate: Int!
+  isFinished: Boolean!
+  peersConnected: Int!
+  peersSendingToUs: Int!
+  peersGettingFromUs: Int!
+  downloadDir: String!
+}
+
 type Ratings {
   IMDB: String
   rottenTomatoes: String
@@ -329,6 +358,7 @@ type Query {
   getGenres: TMDBGenresResults!
   searchJackett(query: String!, quality: String): [JackettFormattedResult!]!
   getTorrentStatus(torrents: [GetTorrentStatusInput!]!): [TorrentStatus!]!
+  getTransmissionTorrents: [TransmissionTorrent!]!
   getDownloadingMedias: [DownloadingMedia!]!
   getSearchingMedias: [SearchingMedia!]!
   getMovies: [EnrichedMovie!]!
@@ -345,6 +375,11 @@ type Query {
 }
 
 input GetTorrentStatusInput {
+  resourceId: Int!
+  resourceType: FileType!
+}
+
+input ControlTorrentInput {
   resourceId: Int!
   resourceType: FileType!
 }
@@ -375,6 +410,15 @@ type Mutation {
   updateMediaMountLabel(id: Int!, label: String!): GraphQLCommonResponse!
   updateMediaMountAccessType(id: Int!, accessType: MediaMountAccessType!): GraphQLCommonResponse!
   refreshMediaMountState(id: Int!): GraphQLCommonResponse!
+  pauseTorrents(torrents: [ControlTorrentInput!]!): GraphQLCommonResponse!
+  resumeTorrents(torrents: [ControlTorrentInput!]!): GraphQLCommonResponse!
+  removeTorrents(torrents: [ControlTorrentInput!]!): GraphQLCommonResponse!
+  removeTorrentsAndFiles(torrents: [ControlTorrentInput!]!): GraphQLCommonResponse!
+  pauseTransmissionTorrents(hashes: [String!]!): GraphQLCommonResponse!
+  resumeTransmissionTorrents(hashes: [String!]!): GraphQLCommonResponse!
+  removeTransmissionTorrents(hashes: [String!]!, deleteData: Boolean!): GraphQLCommonResponse!
+  pauseAllTransmissionTorrents: GraphQLCommonResponse!
+  resumeAllTransmissionTorrents: GraphQLCommonResponse!
 }
 
 input QualityInput {

@@ -1,0 +1,27 @@
+query getTransmissionTorrents {
+  torrents: getTransmissionTorrents {
+    hashString
+    id
+    name
+    status
+    error
+    errorString
+    percentDone
+    rateDownload
+    rateUpload
+    uploadRatio
+    downloadedEver
+    uploadedEver
+    totalSize
+    sizeWhenDone
+    leftUntilDone
+    eta
+    addedDate
+    doneDate
+    isFinished
+    peersConnected
+    peersSendingToUs
+    peersGettingFromUs
+    downloadDir
+  }
+}

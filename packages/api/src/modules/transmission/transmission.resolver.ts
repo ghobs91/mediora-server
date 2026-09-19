@@ -9,6 +9,7 @@ import {
   TorrentStatus,
   GetTorrentStatusInput,
   ControlTorrentInput,
+  TransmissionTorrent,
 } from './transmission.dto';
 import { TransmissionService } from './transmission.service';
 
@@ -35,6 +36,48 @@ export class TransmissionResolver {
 
       return { ...torrentStatus, resourceId, resourceType };
     });
+  }
+
+  @Query((_returns) => [TransmissionTorrent])
+  public getTransmissionTorrents() {
+    return this.transmissionService.getAllTorrents();
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async pauseTransmissionTorrents(
+    @Args('hashes', { type: () => [String] }) hashes: string[]
+  ) {
+    await this.transmissionService.pauseTorrentsByHash(hashes);
+    return { success: true, message: 'DOWNLOADS_PAUSED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async resumeTransmissionTorrents(
+    @Args('hashes', { type: () => [String] }) hashes: string[]
+  ) {
+    await this.transmissionService.resumeTorrentsByHash(hashes);
+    return { success: true, message: 'DOWNLOADS_RESUMED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async removeTransmissionTorrents(
+    @Args('hashes', { type: () => [String] }) hashes: string[],
+    @Args('deleteData', { type: () => Boolean }) deleteData: boolean
+  ) {
+    await this.transmissionService.removeTorrentsByHash(hashes, deleteData);
+    return { success: true, message: 'DOWNLOADS_REMOVED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async pauseAllTransmissionTorrents() {
+    await this.transmissionService.pauseAllTorrents();
+    return { success: true, message: 'DOWNLOADS_PAUSED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async resumeAllTransmissionTorrents() {
+    await this.transmissionService.resumeAllTorrents();
+    return { success: true, message: 'DOWNLOADS_RESUMED' };
   }
 
   @Mutation((_returns) => GraphQLCommonResponse)

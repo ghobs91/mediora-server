@@ -1,48 +1,71 @@
 import React, { useMemo, useState } from 'react';
-import { reduce, map, add } from 'lodash';
-import {
-  Loader2,
-  Pause,
-  Play,
-  Trash2,
-  CircleCheck,
-} from 'lucide-react';
+import { Loader2, Pause, Play, Trash2, CircleCheck, AlertTriangle } from 'lucide-react';
 
 import {
-  DownloadingMedia,
-  TorrentStatus,
-  FileType,
-  GetDownloadingDocument,
-  useGetDownloadingQuery,
-  useGetTorrentStatusQuery,
-  usePauseTorrentsMutation,
-  useResumeTorrentsMutation,
-  useRemoveTorrentsMutation,
+  TransmissionTorrent,
+  GetTransmissionTorrentsDocument,
+  useGetTransmissionTorrentsQuery,
+  usePauseTransmissionTorrentsMutation,
+  useResumeTransmissionTorrentsMutation,
+  useRemoveTransmissionTorrentsMutation,
+  usePauseAllTransmissionTorrentsMutation,
+  useResumeAllTransmissionTorrentsMutation,
 } from '../../utils/graphql';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { formatBytes } from '@/utils/format-bytes';
 
-interface DownloadRow extends DownloadingMedia {
-  torrentStatus: TorrentStatus[];
+type TorrentState =
+  | 'error'
+  | 'stopped'
+  | 'checking'
+  | 'queued'
+  | 'downloading'
+  | 'seeding'
+  | 'unknown';
+
+function torrentState(torrent: TransmissionTorrent): TorrentState {
+  if (torrent.error && torrent.error !== 0) return 'error';
+  switch (torrent.status) {
+    case 0:
+      return 'stopped';
+    case 1:
+    case 2:
+      return 'checking';
+    case 3:
+      return 'queued';
+    case 4:
+      return 'downloading';
+    case 5:
+    case 6:
+      return 'seeding';
+    default:
+      return 'unknown';
+  }
 }
 
-interface AggregatedRow extends DownloadingMedia {
-  torrentStatus: TorrentStatus[];
-  isPaused: boolean;
-  isComplete: boolean;
-  percent: number;
-  downloadSpeed: number;
-  uploadSpeed: number;
-  ratio: number;
-  totalSize: number;
-}
-
-function statusBadge(status: number | undefined) {
-  if (status === 0) {
+function StatusBadge({ torrent }: { torrent: TransmissionTorrent }) {
+  const state = torrentState(torrent);
+  if (state === 'error') {
+    return (
+      <Badge variant="outline" className="text-red-500">
+        <AlertTriangle className="mr-1 h-3 w-3" />
+        Error
+      </Badge>
+    );
+  }
+  if (state === 'stopped') {
     return (
       <Badge variant="outline" className="text-amber-500">
         <Pause className="mr-1 h-3 w-3" />
@@ -50,11 +73,26 @@ function statusBadge(status: number | undefined) {
       </Badge>
     );
   }
-  if (status === 5 || status === 6) {
+  if (state === 'seeding') {
     return (
       <Badge variant="outline" className="text-green-500">
         <CircleCheck className="mr-1 h-3 w-3" />
         Seeding
+      </Badge>
+    );
+  }
+  if (state === 'queued') {
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        Queued
+      </Badge>
+    );
+  }
+  if (state === 'checking') {
+    return (
+      <Badge variant="outline" className="text-blue-500">
+        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+        Checking
       </Badge>
     );
   }
@@ -66,218 +104,118 @@ function statusBadge(status: number | undefined) {
   );
 }
 
+function formatEta(seconds: number) {
+  if (typeof seconds !== 'number' || seconds < 0) return '—';
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}
+
 export function DownloadsComponent() {
-  const { data } = useGetDownloadingQuery({
+  const { data } = useGetTransmissionTorrentsQuery({
     fetchPolicy: 'cache-and-network',
     pollInterval: 2500,
   });
 
-  const downloading = data?.downloading ?? [];
+  const torrents = useMemo(() => data?.torrents ?? [], [data]);
 
-  const { data: statusData } = useGetTorrentStatusQuery({
-    pollInterval: 2000,
-    variables: {
-      torrents: downloading.map(({ resourceId, resourceType }) => ({
-        resourceId,
-        resourceType,
-      })),
-    },
-  });
-
-  const [pauseTorrents] = usePauseTorrentsMutation({
+  const refetchQueries = [GetTransmissionTorrentsDocument];
+  const mutationOptions = {
     awaitRefetchQueries: true,
-    refetchQueries: [{ query: GetDownloadingDocument }],
-    onError: ({ message }) => alert(message),
-  });
+    refetchQueries,
+    onError: ({ message }: { message: string }) => alert(message),
+  };
 
-  const [resumeTorrents] = useResumeTorrentsMutation({
-    awaitRefetchQueries: true,
-    refetchQueries: [{ query: GetDownloadingDocument }],
-    onError: ({ message }) => alert(message),
-  });
+  const [pauseTorrents] = usePauseTransmissionTorrentsMutation(mutationOptions);
+  const [resumeTorrents] = useResumeTransmissionTorrentsMutation(mutationOptions);
+  const [removeTorrents] = useRemoveTransmissionTorrentsMutation(mutationOptions);
+  const [pauseAllTorrents] = usePauseAllTransmissionTorrentsMutation(mutationOptions);
+  const [resumeAllTorrents] = useResumeAllTransmissionTorrentsMutation(mutationOptions);
 
-  const [removeTorrents] = useRemoveTorrentsMutation({
-    awaitRefetchQueries: true,
-    refetchQueries: [{ query: GetDownloadingDocument }],
-    onError: ({ message }) => alert(message),
-  });
+  const [selected, setSelected] = useState<string[]>([]);
+  const [removeTargets, setRemoveTargets] = useState<string[] | null>(null);
+  const [deleteData, setDeleteData] = useState(false);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
-
-  const aggregated = useMemo(() => {
-    return downloading
-      .map((row) => {
-        const match = statusData?.torrents.find(
-          ({ resourceId }) => row.resourceId === resourceId,
-        );
-        return { ...row, torrentStatus: match ? [match] : [] };
-      })
-      .reduce((results: DownloadRow[], curr) => {
-        const isStopped =
-          typeof curr.torrentStatus[0]?.status === 'number' &&
-          curr.torrentStatus[0]?.status === 0;
-
-        if (curr.resourceType === FileType.Episode && !isStopped) {
-          const match = results.find((row) =>
-            row.title
-              .toUpperCase()
-              .includes(curr.title.toUpperCase().replace(/ - EPISODE.+/, '')),
-          );
-
-          if (match) {
-            const [, episode] =
-              /EPISODE (\d+)/.exec(curr.title.toUpperCase()) || [];
-
-            return results.map((row) =>
-              row.id === match.id
-                ? {
-                    ...row,
-                    torrentStatus: [
-                      ...row.torrentStatus,
-                      ...curr.torrentStatus,
-                    ],
-                    title: `${match.title}, ${episode}`,
-                  }
-                : row,
-            );
-          }
-        }
-        return [...results, curr];
-      }, [])
-      .map((row) => {
-        const totalPercent =
-          reduce(map(row.torrentStatus, 'percentDone'), add, 0) /
-          row.torrentStatus.length;
-
-        const percent = Math.round(totalPercent * 10000) / 100;
-        const downloadSpeed = reduce(map(row.torrentStatus, 'rateDownload'), add, 0);
-        const uploadSpeed = reduce(map(row.torrentStatus, 'rateUpload'), add, 0);
-        const ratio =
-          reduce(map(row.torrentStatus, 'uploadRatio'), add, 0) /
-          row.torrentStatus.length;
-        const totalSize = reduce(map(row.torrentStatus, 'totalSize'), add, 0);
-
-        const isPaused =
-          typeof row.torrentStatus[0]?.status === 'number' &&
-          row.torrentStatus[0]?.status === 0;
-        const isComplete =
-          typeof row.torrentStatus[0]?.status === 'number' &&
-          (row.torrentStatus[0]?.status === 5 ||
-            row.torrentStatus[0]?.status === 6);
-
-        return {
-          ...row,
-          percent,
-          downloadSpeed,
-          uploadSpeed,
-          ratio,
-          totalSize,
-          isPaused,
-          isComplete,
-        } as unknown as AggregatedRow;
-      });
-  }, [downloading, statusData]);
-
-  const toggleRow = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((rowId) => rowId !== id)
-        : [...prev, id],
+  const toggleRow = (hash: string) => {
+    setSelected((prev) =>
+      prev.includes(hash) ? prev.filter((h) => h !== hash) : [...prev, hash]
     );
   };
 
   const toggleAll = () => {
-    setSelectedIds(
-      selectedIds.length === aggregated.length ? [] : aggregated.map((row) => row.id),
+    setSelected(
+      selected.length === torrents.length
+        ? []
+        : torrents.map((torrent) => torrent.hashString)
     );
   };
 
-  const handlePauseAll = async () => {
-    await pauseTorrents({
-      variables: {
-        torrents: aggregated.map(({ resourceId, resourceType }) => ({
-          resourceId,
-          resourceType,
-        })),
-      },
-    });
+  const openRemove = (hashes: string[]) => {
+    setDeleteData(false);
+    setRemoveTargets(hashes);
   };
 
-  const handleResumeAll = async () => {
-    await resumeTorrents({
-      variables: {
-        torrents: aggregated.map(({ resourceId, resourceType }) => ({
-          resourceId,
-          resourceType,
-        })),
-      },
-    });
-  };
-
-  const handleRemoveAll = async () => {
+  const confirmRemove = async () => {
+    if (!removeTargets) return;
     await removeTorrents({
-      variables: {
-        torrents: aggregated.map(({ resourceId, resourceType }) => ({
-          resourceId,
-          resourceType,
-        })),
-      },
+      variables: { hashes: removeTargets, deleteData },
     });
-    setSelectedIds([]);
-    setRemoveConfirmOpen(false);
+    setSelected([]);
+    setRemoveTargets(null);
   };
 
-  const handleRemoveRow = async (row: AggregatedRow) => {
-    await removeTorrents({
-      variables: {
-        torrents: [
-          { resourceId: row.resourceId, resourceType: row.resourceType },
-        ],
-      },
-    });
-  };
-
-  const handleToggleRow = async (row: AggregatedRow) => {
-    if (row.isPaused) {
-      await resumeTorrents({
-        variables: {
-          torrents: [
-            { resourceId: row.resourceId, resourceType: row.resourceType },
-          ],
-        },
-      });
+  const handleToggleRow = async (torrent: TransmissionTorrent) => {
+    const hashes = [torrent.hashString];
+    if (torrent.status === 0) {
+      await resumeTorrents({ variables: { hashes } });
     } else {
-      await pauseTorrents({
-        variables: {
-          torrents: [
-            { resourceId: row.resourceId, resourceType: row.resourceType },
-          ],
-        },
-      });
+      await pauseTorrents({ variables: { hashes } });
     }
   };
 
   return (
     <div className="mx-auto max-w-[1200px] p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">Downloads</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePauseAll}
-            disabled={aggregated.length === 0}
-          >
+        <h1 className="text-lg font-semibold">
+          Downloads
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            {torrents.length} torrents
+          </span>
+        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          {selected.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  pauseTorrents({ variables: { hashes: selected } })
+                }
+              >
+                <Pause className="mr-1.5 h-4 w-4" />
+                Pause {selected.length}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  resumeTorrents({ variables: { hashes: selected } })
+                }
+              >
+                <Play className="mr-1.5 h-4 w-4" />
+                Resume {selected.length}
+              </Button>
+            </>
+          )}
+          <Button variant="outline" size="sm" onClick={() => pauseAllTorrents()}>
             <Pause className="mr-1.5 h-4 w-4" />
             Pause all
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleResumeAll}
-            disabled={aggregated.length === 0}
-          >
+          <Button variant="outline" size="sm" onClick={() => resumeAllTorrents()}>
             <Play className="mr-1.5 h-4 w-4" />
             Resume all
           </Button>
@@ -285,8 +223,8 @@ export function DownloadsComponent() {
             variant="outline"
             size="sm"
             className="text-red-500 hover:text-red-400"
-            onClick={() => setRemoveConfirmOpen(true)}
-            disabled={aggregated.length === 0}
+            disabled={selected.length === 0}
+            onClick={() => openRemove(selected)}
           >
             <Trash2 className="mr-1.5 h-4 w-4" />
             Delete
@@ -295,131 +233,172 @@ export function DownloadsComponent() {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="min-w-[760px] divide-y divide-border">
+        <table className="w-full min-w-[960px] divide-y divide-border">
           <thead className="bg-muted/30">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                <button onClick={toggleAll}>
-                  {selectedIds.length === aggregated.length && aggregated.length > 0
-                    ? '✓'
-                    : ''}
-                </button>
+              <th className="w-10 px-3 py-2">
+                <Checkbox
+                  checked={torrents.length > 0 && selected.length === torrents.length}
+                  onCheckedChange={toggleAll}
+                  aria-label="Select all torrents"
+                />
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                Name
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                Status
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                Progress
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                Download
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                Upload
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                Ratio
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                Size
-              </th>
+              {['Name', 'Status', 'Progress', 'Download', 'Upload', 'Ratio', 'Size', 'ETA'].map(
+                (column) => (
+                  <th
+                    key={column}
+                    className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground"
+                  >
+                    {column}
+                  </th>
+                )
+              )}
               <th className="px-3 py-2 text-right text-xs font-medium uppercase text-muted-foreground">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {aggregated.map((row) => (
-              <tr
-                key={row.id}
-                className="group hover:bg-muted/30"
-              >
-                <td className="px-3 py-2.5">
-                  <button
-                    onClick={() => toggleRow(row.id)}
-                    className="h-4 w-4"
-                  >
-                    {selectedIds.includes(row.id) ? '✓' : ''}
-                  </button>
-                </td>
-                <td className="px-3 py-2.5">
-                  <div className="truncate font-medium">{row.title}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {row.torrent}
-                  </div>
-                </td>
-                <td className="px-3 py-2.5">
-                  {statusBadge(row.torrentStatus[0]?.status)}
-                </td>
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-32">
-                      <Progress value={row.percent} />
+            {torrents.map((torrent) => {
+              const percent = Math.round(torrent.percentDone * 10000) / 100;
+              const state = torrentState(torrent);
+              const isSeeding = state === 'seeding';
+              const isPaused = state === 'stopped';
+
+              return (
+                <tr key={torrent.hashString} className="group hover:bg-muted/30">
+                  <td className="px-3 py-2.5">
+                    <Checkbox
+                      checked={selected.includes(torrent.hashString)}
+                      onCheckedChange={() => toggleRow(torrent.hashString)}
+                      aria-label={`Select ${torrent.name}`}
+                    />
+                  </td>
+                  <td className="max-w-[320px] px-3 py-2.5">
+                    <div className="truncate font-medium" title={torrent.name}>
+                      {torrent.name}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {Math.round(row.percent)}%
-                    </span>
-                  </div>
-                </td>
-                <td className="px-3 py-2.5 text-xs">
-                  {row.downloadSpeed > 0
-                    ? `${formatBytes(row.downloadSpeed)}/s`
-                    : '—'}
-                </td>
-                <td className="px-3 py-2.5 text-xs">
-                  {row.uploadSpeed > 0
-                    ? `${formatBytes(row.uploadSpeed)}/s`
-                    : '—'}
-                </td>
-                <td className="px-3 py-2.5 text-xs">
-                  {row.ratio > 0 ? row.ratio.toFixed(2) : '—'}
-                </td>
-                <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                  {formatBytes(row.totalSize)}
-                </td>
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                    <Button
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={() => handleToggleRow(row)}
-                      title={row.isPaused ? 'Resume' : 'Pause'}
-                    >
-                      {row.isPaused ? (
-                        <Play className="h-4 w-4" />
-                      ) : (
-                        <Pause className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="h-6 w-6 text-red-500 hover:text-red-400"
-                      onClick={() => handleRemoveRow(row)}
-                      title="Remove"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {state === 'error' && torrent.errorString
+                        ? torrent.errorString
+                        : torrent.downloadDir}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <StatusBadge torrent={torrent} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-28">
+                        <Progress
+                          value={percent}
+                          className={isSeeding ? '[&>div]:bg-emerald-500' : undefined}
+                        />
+                      </div>
+                      <span className="w-12 text-xs tabular-nums text-muted-foreground">
+                        {percent.toFixed(1)}%
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {torrent.rateDownload > 0
+                      ? `${formatBytes(torrent.rateDownload)}/s`
+                      : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {torrent.rateUpload > 0
+                      ? `${formatBytes(torrent.rateUpload)}/s`
+                      : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {torrent.uploadRatio < 0
+                      ? '∞'
+                      : torrent.uploadRatio > 0
+                        ? torrent.uploadRatio.toFixed(2)
+                        : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                    {formatBytes(torrent.totalSize)}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                    {isSeeding ? '—' : formatEta(torrent.eta)}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                      <Button
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => handleToggleRow(torrent)}
+                        title={isPaused ? 'Resume' : 'Pause'}
+                      >
+                        {isPaused ? (
+                          <Play className="h-4 w-4" />
+                        ) : (
+                          <Pause className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="h-6 w-6 text-red-500 hover:text-red-400"
+                        onClick={() => openRemove([torrent.hashString])}
+                        title="Remove"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {torrents.length === 0 && (
+              <tr>
+                <td
+                  colSpan={10}
+                  className="px-3 py-10 text-center text-sm text-muted-foreground"
+                >
+                  No torrents in Transmission.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
-      <ConfirmDialog
-        open={removeConfirmOpen}
-        onOpenChange={setRemoveConfirmOpen}
-        title="Remove all downloads?"
-        description="This will remove all torrents and their associated files."
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
-        destructive
-        onConfirm={handleRemoveAll}
-      />
+      <Dialog
+        open={removeTargets !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTargets(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Remove {removeTargets?.length ?? 0} torrent
+              {removeTargets && removeTargets.length > 1 ? 's' : ''}?
+            </DialogTitle>
+            <DialogDescription>
+              The torrent{removeTargets && removeTargets.length > 1 ? 's' : ''} will
+              be removed from Transmission. Downloaded files are only deleted if you
+              check the box below.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={deleteData}
+              onCheckedChange={(checked) => setDeleteData(checked === true)}
+            />
+            Also delete downloaded files from disk
+          </label>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveTargets(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmRemove}>
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

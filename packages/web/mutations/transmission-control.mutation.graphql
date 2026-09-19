@@ -1,0 +1,34 @@
+mutation pauseTransmissionTorrents($hashes: [String!]!) {
+  result: pauseTransmissionTorrents(hashes: $hashes) {
+    success
+    message
+  }
+}
+
+mutation resumeTransmissionTorrents($hashes: [String!]!) {
+  result: resumeTransmissionTorrents(hashes: $hashes) {
+    success
+    message
+  }
+}
+
+mutation removeTransmissionTorrents($hashes: [String!]!, $deleteData: Boolean!) {
+  result: removeTransmissionTorrents(hashes: $hashes, deleteData: $deleteData) {
+    success
+    message
+  }
+}
+
+mutation pauseAllTransmissionTorrents {
+  result: pauseAllTransmissionTorrents {
+    success
+    message
+  }
+}
+
+mutation resumeAllTransmissionTorrents {
+  result: resumeAllTransmissionTorrents {
+    success
+    message
+  }
+}

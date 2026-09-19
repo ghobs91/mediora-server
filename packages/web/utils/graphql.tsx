@@ -17,7 +17,9 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  /** The `BigInt` scalar type represents non-fractional signed whole numeric values. BigInt can represent values between -(2^53) + 1 and 2^53 - 1.  */
   BigInt: { input: any; output: any; }
+  /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: any; output: any; }
 };
 
@@ -77,14 +79,14 @@ export type EnrichedTvEpisode = {
 export type EnrichedTvShow = {
   __typename?: 'EnrichedTVShow';
   createdAt: Scalars['DateTime']['output'];
+  episodesDownloaded?: Maybe<Scalars['Float']['output']>;
+  episodesTotal?: Maybe<Scalars['Float']['output']>;
   id: Scalars['Float']['output'];
   originalTitle?: Maybe<Scalars['String']['output']>;
   overview: Scalars['String']['output'];
   posterPath?: Maybe<Scalars['String']['output']>;
   releaseDate: Scalars['String']['output'];
   runtime?: Maybe<Scalars['Float']['output']>;
-  episodesDownloaded?: Maybe<Scalars['Float']['output']>;
-  episodesTotal?: Maybe<Scalars['Float']['output']>;
   title: Scalars['String']['output'];
   tmdbId: Scalars['Float']['output'];
   updatedAt: Scalars['DateTime']['output'];
@@ -182,8 +184,8 @@ export type LibraryFolderStatus = {
 export type LibraryFoldersStatus = {
   __typename?: 'LibraryFoldersStatus';
   folders: Array<LibraryFolderStatus>;
-  moviesMountId?: Maybe<Scalars['Int']['output']>;
   mount?: Maybe<LibraryFolderStatus>;
+  moviesMountId?: Maybe<Scalars['Int']['output']>;
   processGid?: Maybe<Scalars['Int']['output']>;
   processRunsAsRoot: Scalars['Boolean']['output'];
   processUid?: Maybe<Scalars['Int']['output']>;
@@ -229,19 +231,27 @@ export type Mutation = {
   __typename?: 'Mutation';
   addMediaMount: GraphQlCommonResponse;
   clearRedisCache: GraphQlCommonResponse;
+  downloadEpisodeWithQuality: GraphQlCommonResponse;
   downloadMovie: GraphQlCommonResponse;
+  downloadMovieWithQuality: GraphQlCommonResponse;
   downloadOwnTorrent: GraphQlCommonResponse;
   downloadSeason: GraphQlCommonResponse;
+  downloadSeasonWithQuality: GraphQlCommonResponse;
   downloadTVEpisode: GraphQlCommonResponse;
+  pauseAllTransmissionTorrents: GraphQlCommonResponse;
   pauseTorrents: GraphQlCommonResponse;
+  pauseTransmissionTorrents: GraphQlCommonResponse;
   refreshMediaMountState: GraphQlCommonResponse;
   removeMediaMount: GraphQlCommonResponse;
   removeMovie: GraphQlCommonResponse;
   removeTVShow: GraphQlCommonResponse;
   removeTorrents: GraphQlCommonResponse;
   removeTorrentsAndFiles: GraphQlCommonResponse;
+  removeTransmissionTorrents: GraphQlCommonResponse;
   resetLibrary: GraphQlCommonResponse;
+  resumeAllTransmissionTorrents: GraphQlCommonResponse;
   resumeTorrents: GraphQlCommonResponse;
+  resumeTransmissionTorrents: GraphQlCommonResponse;
   saveQualityParams: GraphQlCommonResponse;
   saveTags: GraphQlCommonResponse;
   startDownloadMissingJob: GraphQlCommonResponse;
@@ -263,9 +273,21 @@ export type MutationAddMediaMountArgs = {
 };
 
 
+export type MutationDownloadEpisodeWithQualityArgs = {
+  episodeId: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDownloadMovieArgs = {
   jackettResult: JackettInput;
   movieId: Scalars['Int']['input'];
+};
+
+
+export type MutationDownloadMovieWithQualityArgs = {
+  movieId: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -283,6 +305,13 @@ export type MutationDownloadSeasonArgs = {
 };
 
 
+export type MutationDownloadSeasonWithQualityArgs = {
+  quality?: InputMaybe<Scalars['String']['input']>;
+  seasonNumber: Scalars['Int']['input'];
+  tvShowTMDBId: Scalars['Int']['input'];
+};
+
+
 export type MutationDownloadTvEpisodeArgs = {
   episodeId: Scalars['Int']['input'];
   jackettResult: JackettInput;
@@ -291,6 +320,11 @@ export type MutationDownloadTvEpisodeArgs = {
 
 export type MutationPauseTorrentsArgs = {
   torrents: Array<ControlTorrentInput>;
+};
+
+
+export type MutationPauseTransmissionTorrentsArgs = {
+  hashes: Array<Scalars['String']['input']>;
 };
 
 
@@ -324,6 +358,12 @@ export type MutationRemoveTorrentsAndFilesArgs = {
 };
 
 
+export type MutationRemoveTransmissionTorrentsArgs = {
+  deleteData: Scalars['Boolean']['input'];
+  hashes: Array<Scalars['String']['input']>;
+};
+
+
 export type MutationResetLibraryArgs = {
   deleteFiles: Scalars['Boolean']['input'];
   resetSettings: Scalars['Boolean']['input'];
@@ -335,8 +375,14 @@ export type MutationResumeTorrentsArgs = {
 };
 
 
+export type MutationResumeTransmissionTorrentsArgs = {
+  hashes: Array<Scalars['String']['input']>;
+};
+
+
 export type MutationSaveQualityParamsArgs = {
   qualities: Array<QualityInput>;
+  type: Entertainment;
 };
 
 
@@ -442,6 +488,7 @@ export type Query = {
   getTVShows: Array<EnrichedTvShow>;
   getTags: Array<Tag>;
   getTorrentStatus: Array<TorrentStatus>;
+  getTransmissionTorrents: Array<TransmissionTorrent>;
   getWritableMediaMounts: Array<MediaMount>;
   omdbSearch: OmdbInfo;
   search: TmdbSearchResults;
@@ -450,7 +497,7 @@ export type Query = {
 
 
 export type QueryDiscoverArgs = {
-  entertainment?: Entertainment;
+  entertainment?: InputMaybe<Entertainment>;
   genres?: InputMaybe<Array<Scalars['Float']['input']>>;
   originLanguage?: InputMaybe<Scalars['String']['input']>;
   page?: InputMaybe<Scalars['Float']['input']>;
@@ -496,6 +543,7 @@ export type QuerySearchArgs = {
 
 
 export type QuerySearchJackettArgs = {
+  quality?: InputMaybe<Scalars['String']['input']>;
   query: Scalars['String']['input'];
 };
 
@@ -622,6 +670,33 @@ export type TorrentStatus = {
   uploadedEver: Scalars['BigInt']['output'];
 };
 
+export type TransmissionTorrent = {
+  __typename?: 'TransmissionTorrent';
+  addedDate: Scalars['Int']['output'];
+  doneDate: Scalars['Int']['output'];
+  downloadDir: Scalars['String']['output'];
+  downloadedEver: Scalars['BigInt']['output'];
+  error: Scalars['Int']['output'];
+  errorString?: Maybe<Scalars['String']['output']>;
+  eta: Scalars['Int']['output'];
+  hashString: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  isFinished: Scalars['Boolean']['output'];
+  leftUntilDone: Scalars['BigInt']['output'];
+  name: Scalars['String']['output'];
+  peersConnected: Scalars['Int']['output'];
+  peersGettingFromUs: Scalars['Int']['output'];
+  peersSendingToUs: Scalars['Int']['output'];
+  percentDone: Scalars['Float']['output'];
+  rateDownload: Scalars['Int']['output'];
+  rateUpload: Scalars['Int']['output'];
+  sizeWhenDone: Scalars['BigInt']['output'];
+  status: Scalars['Int']['output'];
+  totalSize: Scalars['BigInt']['output'];
+  uploadRatio: Scalars['Float']['output'];
+  uploadedEver: Scalars['BigInt']['output'];
+};
+
 export type UpdateParamsInput = {
   key: Scalars['String']['input'];
   value: Scalars['String']['input'];
@@ -640,6 +715,31 @@ export type DownloadOwnTorrentMutationVariables = Exact<{
 
 
 export type DownloadOwnTorrentMutation = { __typename?: 'Mutation', downloadOwnTorrent: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type DownloadMovieWithQualityMutationVariables = Exact<{
+  movieId: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DownloadMovieWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type DownloadEpisodeWithQualityMutationVariables = Exact<{
+  episodeId: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DownloadEpisodeWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type DownloadSeasonWithQualityMutationVariables = Exact<{
+  tvShowTMDBId: Scalars['Int']['input'];
+  seasonNumber: Scalars['Int']['input'];
+  quality?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DownloadSeasonWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
 
 export type PauseTorrentsMutationVariables = Exact<{
   torrents: Array<ControlTorrentInput>;
@@ -691,31 +791,6 @@ export type DownloadMovieMutationVariables = Exact<{
 
 
 export type DownloadMovieMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
-
-export type DownloadMovieWithQualityMutationVariables = Exact<{
-  movieId: Scalars['Int']['input'];
-  quality?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type DownloadMovieWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
-
-export type DownloadEpisodeWithQualityMutationVariables = Exact<{
-  episodeId: Scalars['Int']['input'];
-  quality?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type DownloadEpisodeWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
-
-export type DownloadSeasonWithQualityMutationVariables = Exact<{
-  tvShowTMDBId: Scalars['Int']['input'];
-  seasonNumber: Scalars['Int']['input'];
-  quality?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type DownloadSeasonWithQualityMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
 
 export type DownloadTvEpisodeMutationVariables = Exact<{
   episodeId: Scalars['Int']['input'];
@@ -787,10 +862,42 @@ export type TrackTvShowMutationVariables = Exact<{
 
 export type TrackTvShowMutation = { __typename?: 'Mutation', tvShow: { __typename?: 'TVShow', id: number } };
 
+export type PauseTransmissionTorrentsMutationVariables = Exact<{
+  hashes: Array<Scalars['String']['input']>;
+}>;
+
+
+export type PauseTransmissionTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type ResumeTransmissionTorrentsMutationVariables = Exact<{
+  hashes: Array<Scalars['String']['input']>;
+}>;
+
+
+export type ResumeTransmissionTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type RemoveTransmissionTorrentsMutationVariables = Exact<{
+  hashes: Array<Scalars['String']['input']>;
+  deleteData: Scalars['Boolean']['input'];
+}>;
+
+
+export type RemoveTransmissionTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type PauseAllTransmissionTorrentsMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type PauseAllTransmissionTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type ResumeAllTransmissionTorrentsMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ResumeAllTransmissionTorrentsMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
 export type UpdateLibraryFoldersMutationVariables = Exact<{
   moviesFolderName: Scalars['String']['input'];
-  moviesMountId?: InputMaybe<Scalars['Int']['input']>;
   tvShowsFolderName: Scalars['String']['input'];
+  moviesMountId?: InputMaybe<Scalars['Int']['input']>;
   tvShowsMountId?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
@@ -840,10 +947,6 @@ export type GetLibraryFoldersQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetLibraryFoldersQuery = { __typename?: 'Query', libraryFolders: { __typename?: 'LibraryFoldersStatus', moviesMountId?: number | null, tvShowsMountId?: number | null, processUid?: number | null, processGid?: number | null, processRunsAsRoot: boolean, mount?: { __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null } | null, folders: Array<{ __typename?: 'LibraryFolderStatus', type: string, name: string, path: string, state: LibraryFolderState, exists: boolean, isDirectory: boolean, canRead: boolean, canWrite: boolean, canTraverse: boolean, canCreate: boolean, mode?: string | null, ownerUid?: number | null, ownerGid?: number | null, message: string, remedy?: string | null }> } };
-
-export type GetWritableMediaMountsQueryVariables = Exact<{ [key: string]: never; }>;
-
-export type GetWritableMediaMountsQuery = { __typename?: 'Query', getWritableMediaMounts: Array<{ __typename?: 'MediaMount', id: number, label?: string | null, path: string, state: MediaMountState, accessType: MediaMountAccessType }> };
 
 export type GetLibraryMoviesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -905,6 +1008,11 @@ export type GetTorrentStatusQueryVariables = Exact<{
 
 export type GetTorrentStatusQuery = { __typename?: 'Query', torrents: Array<{ __typename?: 'TorrentStatus', id: number, resourceId: number, resourceType: FileType, percentDone: number, rateDownload: number, rateUpload: number, uploadRatio: number, uploadedEver: any, totalSize: any, status: number }> };
 
+export type GetTransmissionTorrentsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetTransmissionTorrentsQuery = { __typename?: 'Query', torrents: Array<{ __typename?: 'TransmissionTorrent', hashString: string, id: number, name: string, status: number, error: number, errorString?: string | null, percentDone: number, rateDownload: number, rateUpload: number, uploadRatio: number, downloadedEver: any, uploadedEver: any, totalSize: any, sizeWhenDone: any, leftUntilDone: any, eta: number, addedDate: number, doneDate: number, isFinished: boolean, peersConnected: number, peersSendingToUs: number, peersGettingFromUs: number, downloadDir: string }> };
+
 export type GetTvSeasonDetailsQueryVariables = Exact<{
   tvShowTMDBId: Scalars['Int']['input'];
   seasonNumber: Scalars['Int']['input'];
@@ -919,6 +1027,11 @@ export type GetTvShowSeasonsQueryVariables = Exact<{
 
 
 export type GetTvShowSeasonsQuery = { __typename?: 'Query', seasons: Array<{ __typename?: 'TMDBFormattedTVSeason', id: number, name: string, seasonNumber: number, episodeCount?: number | null, episodesDownloaded: number, overview?: string | null, posterPath?: string | null, airDate?: string | null, inLibrary: boolean }> };
+
+export type GetWritableMediaMountsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetWritableMediaMountsQuery = { __typename?: 'Query', getWritableMediaMounts: Array<{ __typename?: 'MediaMount', id: number, label?: string | null, path: string, state: MediaMountState, accessType: MediaMountAccessType }> };
 
 export type OmdbSearchQueryVariables = Exact<{
   title: Scalars['String']['input'];
@@ -991,6 +1104,55 @@ export function useDownloadOwnTorrentMutation(baseOptions?: Apollo.MutationHookO
 export type DownloadOwnTorrentMutationHookResult = ReturnType<typeof useDownloadOwnTorrentMutation>;
 export type DownloadOwnTorrentMutationResult = Apollo.MutationResult<DownloadOwnTorrentMutation>;
 export type DownloadOwnTorrentMutationOptions = Apollo.BaseMutationOptions<DownloadOwnTorrentMutation, DownloadOwnTorrentMutationVariables>;
+export const DownloadMovieWithQualityDocument = gql`
+    mutation downloadMovieWithQuality($movieId: Int!, $quality: String) {
+  result: downloadMovieWithQuality(movieId: $movieId, quality: $quality) {
+    success
+    message
+  }
+}
+    `;
+export function useDownloadMovieWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>(DownloadMovieWithQualityDocument, options);
+      }
+export type DownloadMovieWithQualityMutationHookResult = ReturnType<typeof useDownloadMovieWithQualityMutation>;
+export type DownloadMovieWithQualityMutationResult = Apollo.MutationResult<DownloadMovieWithQualityMutation>;
+export type DownloadMovieWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>;
+export const DownloadEpisodeWithQualityDocument = gql`
+    mutation downloadEpisodeWithQuality($episodeId: Int!, $quality: String) {
+  result: downloadEpisodeWithQuality(episodeId: $episodeId, quality: $quality) {
+    success
+    message
+  }
+}
+    `;
+export function useDownloadEpisodeWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>(DownloadEpisodeWithQualityDocument, options);
+      }
+export type DownloadEpisodeWithQualityMutationHookResult = ReturnType<typeof useDownloadEpisodeWithQualityMutation>;
+export type DownloadEpisodeWithQualityMutationResult = Apollo.MutationResult<DownloadEpisodeWithQualityMutation>;
+export type DownloadEpisodeWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>;
+export const DownloadSeasonWithQualityDocument = gql`
+    mutation downloadSeasonWithQuality($tvShowTMDBId: Int!, $seasonNumber: Int!, $quality: String) {
+  result: downloadSeasonWithQuality(
+    tvShowTMDBId: $tvShowTMDBId
+    seasonNumber: $seasonNumber
+    quality: $quality
+  ) {
+    success
+    message
+  }
+}
+    `;
+export function useDownloadSeasonWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>(DownloadSeasonWithQualityDocument, options);
+      }
+export type DownloadSeasonWithQualityMutationHookResult = ReturnType<typeof useDownloadSeasonWithQualityMutation>;
+export type DownloadSeasonWithQualityMutationResult = Apollo.MutationResult<DownloadSeasonWithQualityMutation>;
+export type DownloadSeasonWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>;
 export const PauseTorrentsDocument = gql`
     mutation pauseTorrents($torrents: [ControlTorrentInput!]!) {
   result: pauseTorrents(torrents: $torrents) {
@@ -1145,55 +1307,6 @@ export function useDownloadSeasonMutation(baseOptions?: Apollo.MutationHookOptio
 export type DownloadSeasonMutationHookResult = ReturnType<typeof useDownloadSeasonMutation>;
 export type DownloadSeasonMutationResult = Apollo.MutationResult<DownloadSeasonMutation>;
 export type DownloadSeasonMutationOptions = Apollo.BaseMutationOptions<DownloadSeasonMutation, DownloadSeasonMutationVariables>;
-export const DownloadMovieWithQualityDocument = gql`
-    mutation downloadMovieWithQuality($movieId: Int!, $quality: String) {
-  result: downloadMovieWithQuality(movieId: $movieId, quality: $quality) {
-    success
-    message
-  }
-}
-    `;
-export function useDownloadMovieWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useMutation<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>(DownloadMovieWithQualityDocument, options);
-      }
-export type DownloadMovieWithQualityMutationHookResult = ReturnType<typeof useDownloadMovieWithQualityMutation>;
-export type DownloadMovieWithQualityMutationResult = Apollo.MutationResult<DownloadMovieWithQualityMutation>;
-export type DownloadMovieWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadMovieWithQualityMutation, DownloadMovieWithQualityMutationVariables>;
-export const DownloadEpisodeWithQualityDocument = gql`
-    mutation downloadEpisodeWithQuality($episodeId: Int!, $quality: String) {
-  result: downloadEpisodeWithQuality(episodeId: $episodeId, quality: $quality) {
-    success
-    message
-  }
-}
-    `;
-export function useDownloadEpisodeWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useMutation<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>(DownloadEpisodeWithQualityDocument, options);
-      }
-export type DownloadEpisodeWithQualityMutationHookResult = ReturnType<typeof useDownloadEpisodeWithQualityMutation>;
-export type DownloadEpisodeWithQualityMutationResult = Apollo.MutationResult<DownloadEpisodeWithQualityMutation>;
-export type DownloadEpisodeWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadEpisodeWithQualityMutation, DownloadEpisodeWithQualityMutationVariables>;
-export const DownloadSeasonWithQualityDocument = gql`
-    mutation downloadSeasonWithQuality($tvShowTMDBId: Int!, $seasonNumber: Int!, $quality: String) {
-  result: downloadSeasonWithQuality(
-    tvShowTMDBId: $tvShowTMDBId
-    seasonNumber: $seasonNumber
-    quality: $quality
-  ) {
-    success
-    message
-  }
-}
-    `;
-export function useDownloadSeasonWithQualityMutation(baseOptions?: Apollo.MutationHookOptions<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useMutation<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>(DownloadSeasonWithQualityDocument, options);
-      }
-export type DownloadSeasonWithQualityMutationHookResult = ReturnType<typeof useDownloadSeasonWithQualityMutation>;
-export type DownloadSeasonWithQualityMutationResult = Apollo.MutationResult<DownloadSeasonWithQualityMutation>;
-export type DownloadSeasonWithQualityMutationOptions = Apollo.BaseMutationOptions<DownloadSeasonWithQualityMutation, DownloadSeasonWithQualityMutationVariables>;
 export const RemoveMovieDocument = gql`
     mutation removeMovie($tmdbId: Int!) {
   result: removeMovie(tmdbId: $tmdbId) {
@@ -1297,6 +1410,81 @@ export function useTrackTvShowMutation(baseOptions?: Apollo.MutationHookOptions<
 export type TrackTvShowMutationHookResult = ReturnType<typeof useTrackTvShowMutation>;
 export type TrackTvShowMutationResult = Apollo.MutationResult<TrackTvShowMutation>;
 export type TrackTvShowMutationOptions = Apollo.BaseMutationOptions<TrackTvShowMutation, TrackTvShowMutationVariables>;
+export const PauseTransmissionTorrentsDocument = gql`
+    mutation pauseTransmissionTorrents($hashes: [String!]!) {
+  result: pauseTransmissionTorrents(hashes: $hashes) {
+    success
+    message
+  }
+}
+    `;
+export function usePauseTransmissionTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<PauseTransmissionTorrentsMutation, PauseTransmissionTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<PauseTransmissionTorrentsMutation, PauseTransmissionTorrentsMutationVariables>(PauseTransmissionTorrentsDocument, options);
+      }
+export type PauseTransmissionTorrentsMutationHookResult = ReturnType<typeof usePauseTransmissionTorrentsMutation>;
+export type PauseTransmissionTorrentsMutationResult = Apollo.MutationResult<PauseTransmissionTorrentsMutation>;
+export type PauseTransmissionTorrentsMutationOptions = Apollo.BaseMutationOptions<PauseTransmissionTorrentsMutation, PauseTransmissionTorrentsMutationVariables>;
+export const ResumeTransmissionTorrentsDocument = gql`
+    mutation resumeTransmissionTorrents($hashes: [String!]!) {
+  result: resumeTransmissionTorrents(hashes: $hashes) {
+    success
+    message
+  }
+}
+    `;
+export function useResumeTransmissionTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<ResumeTransmissionTorrentsMutation, ResumeTransmissionTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ResumeTransmissionTorrentsMutation, ResumeTransmissionTorrentsMutationVariables>(ResumeTransmissionTorrentsDocument, options);
+      }
+export type ResumeTransmissionTorrentsMutationHookResult = ReturnType<typeof useResumeTransmissionTorrentsMutation>;
+export type ResumeTransmissionTorrentsMutationResult = Apollo.MutationResult<ResumeTransmissionTorrentsMutation>;
+export type ResumeTransmissionTorrentsMutationOptions = Apollo.BaseMutationOptions<ResumeTransmissionTorrentsMutation, ResumeTransmissionTorrentsMutationVariables>;
+export const RemoveTransmissionTorrentsDocument = gql`
+    mutation removeTransmissionTorrents($hashes: [String!]!, $deleteData: Boolean!) {
+  result: removeTransmissionTorrents(hashes: $hashes, deleteData: $deleteData) {
+    success
+    message
+  }
+}
+    `;
+export function useRemoveTransmissionTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<RemoveTransmissionTorrentsMutation, RemoveTransmissionTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<RemoveTransmissionTorrentsMutation, RemoveTransmissionTorrentsMutationVariables>(RemoveTransmissionTorrentsDocument, options);
+      }
+export type RemoveTransmissionTorrentsMutationHookResult = ReturnType<typeof useRemoveTransmissionTorrentsMutation>;
+export type RemoveTransmissionTorrentsMutationResult = Apollo.MutationResult<RemoveTransmissionTorrentsMutation>;
+export type RemoveTransmissionTorrentsMutationOptions = Apollo.BaseMutationOptions<RemoveTransmissionTorrentsMutation, RemoveTransmissionTorrentsMutationVariables>;
+export const PauseAllTransmissionTorrentsDocument = gql`
+    mutation pauseAllTransmissionTorrents {
+  result: pauseAllTransmissionTorrents {
+    success
+    message
+  }
+}
+    `;
+export function usePauseAllTransmissionTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<PauseAllTransmissionTorrentsMutation, PauseAllTransmissionTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<PauseAllTransmissionTorrentsMutation, PauseAllTransmissionTorrentsMutationVariables>(PauseAllTransmissionTorrentsDocument, options);
+      }
+export type PauseAllTransmissionTorrentsMutationHookResult = ReturnType<typeof usePauseAllTransmissionTorrentsMutation>;
+export type PauseAllTransmissionTorrentsMutationResult = Apollo.MutationResult<PauseAllTransmissionTorrentsMutation>;
+export type PauseAllTransmissionTorrentsMutationOptions = Apollo.BaseMutationOptions<PauseAllTransmissionTorrentsMutation, PauseAllTransmissionTorrentsMutationVariables>;
+export const ResumeAllTransmissionTorrentsDocument = gql`
+    mutation resumeAllTransmissionTorrents {
+  result: resumeAllTransmissionTorrents {
+    success
+    message
+  }
+}
+    `;
+export function useResumeAllTransmissionTorrentsMutation(baseOptions?: Apollo.MutationHookOptions<ResumeAllTransmissionTorrentsMutation, ResumeAllTransmissionTorrentsMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ResumeAllTransmissionTorrentsMutation, ResumeAllTransmissionTorrentsMutationVariables>(ResumeAllTransmissionTorrentsDocument, options);
+      }
+export type ResumeAllTransmissionTorrentsMutationHookResult = ReturnType<typeof useResumeAllTransmissionTorrentsMutation>;
+export type ResumeAllTransmissionTorrentsMutationResult = Apollo.MutationResult<ResumeAllTransmissionTorrentsMutation>;
+export type ResumeAllTransmissionTorrentsMutationOptions = Apollo.BaseMutationOptions<ResumeAllTransmissionTorrentsMutation, ResumeAllTransmissionTorrentsMutationVariables>;
 export const UpdateLibraryFoldersDocument = gql`
     mutation updateLibraryFolders($moviesFolderName: String!, $tvShowsFolderName: String!, $moviesMountId: Int, $tvShowsMountId: Int) {
   libraryFolders: updateLibraryFolders(
@@ -1618,37 +1806,6 @@ export type GetLibraryFoldersQueryHookResult = ReturnType<typeof useGetLibraryFo
 export type GetLibraryFoldersLazyQueryHookResult = ReturnType<typeof useGetLibraryFoldersLazyQuery>;
 export type GetLibraryFoldersSuspenseQueryHookResult = ReturnType<typeof useGetLibraryFoldersSuspenseQuery>;
 export type GetLibraryFoldersQueryResult = Apollo.QueryResult<GetLibraryFoldersQuery, GetLibraryFoldersQueryVariables>;
-
-export const GetWritableMediaMountsDocument = gql`
-    query getWritableMediaMounts {
-  getWritableMediaMounts {
-    id
-    label
-    path
-    state
-    accessType
-  }
-}
-    `;
-export function useGetWritableMediaMountsQuery(baseOptions?: Apollo.QueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
-      }
-export function useGetWritableMediaMountsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
-        }
-// @ts-ignore
-export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>): Apollo.UseSuspenseQueryResult<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>;
-export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>): Apollo.UseSuspenseQueryResult<GetWritableMediaMountsQuery | undefined, GetWritableMediaMountsQueryVariables>;
-export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
-          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return Apollo.useSuspenseQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
-        }
-export type GetWritableMediaMountsQueryHookResult = ReturnType<typeof useGetWritableMediaMountsQuery>;
-export type GetWritableMediaMountsLazyQueryHookResult = ReturnType<typeof useGetWritableMediaMountsLazyQuery>;
-export type GetWritableMediaMountsSuspenseQueryHookResult = ReturnType<typeof useGetWritableMediaMountsSuspenseQuery>;
-export type GetWritableMediaMountsQueryResult = Apollo.QueryResult<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>;
 export const GetLibraryMoviesDocument = gql`
     query getLibraryMovies {
   movies: getMovies {
@@ -2002,6 +2159,54 @@ export type GetTorrentStatusQueryHookResult = ReturnType<typeof useGetTorrentSta
 export type GetTorrentStatusLazyQueryHookResult = ReturnType<typeof useGetTorrentStatusLazyQuery>;
 export type GetTorrentStatusSuspenseQueryHookResult = ReturnType<typeof useGetTorrentStatusSuspenseQuery>;
 export type GetTorrentStatusQueryResult = Apollo.QueryResult<GetTorrentStatusQuery, GetTorrentStatusQueryVariables>;
+export const GetTransmissionTorrentsDocument = gql`
+    query getTransmissionTorrents {
+  torrents: getTransmissionTorrents {
+    hashString
+    id
+    name
+    status
+    error
+    errorString
+    percentDone
+    rateDownload
+    rateUpload
+    uploadRatio
+    downloadedEver
+    uploadedEver
+    totalSize
+    sizeWhenDone
+    leftUntilDone
+    eta
+    addedDate
+    doneDate
+    isFinished
+    peersConnected
+    peersSendingToUs
+    peersGettingFromUs
+    downloadDir
+  }
+}
+    `;
+export function useGetTransmissionTorrentsQuery(baseOptions?: Apollo.QueryHookOptions<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>(GetTransmissionTorrentsDocument, options);
+      }
+export function useGetTransmissionTorrentsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>(GetTransmissionTorrentsDocument, options);
+        }
+// @ts-ignore
+export function useGetTransmissionTorrentsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>): Apollo.UseSuspenseQueryResult<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>;
+export function useGetTransmissionTorrentsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>): Apollo.UseSuspenseQueryResult<GetTransmissionTorrentsQuery | undefined, GetTransmissionTorrentsQueryVariables>;
+export function useGetTransmissionTorrentsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>(GetTransmissionTorrentsDocument, options);
+        }
+export type GetTransmissionTorrentsQueryHookResult = ReturnType<typeof useGetTransmissionTorrentsQuery>;
+export type GetTransmissionTorrentsLazyQueryHookResult = ReturnType<typeof useGetTransmissionTorrentsLazyQuery>;
+export type GetTransmissionTorrentsSuspenseQueryHookResult = ReturnType<typeof useGetTransmissionTorrentsSuspenseQuery>;
+export type GetTransmissionTorrentsQueryResult = Apollo.QueryResult<GetTransmissionTorrentsQuery, GetTransmissionTorrentsQueryVariables>;
 export const GetTvSeasonDetailsDocument = gql`
     query getTVSeasonDetails($tvShowTMDBId: Int!, $seasonNumber: Int!) {
   episodes: getTVSeasonDetails(
@@ -2079,6 +2284,36 @@ export type GetTvShowSeasonsQueryHookResult = ReturnType<typeof useGetTvShowSeas
 export type GetTvShowSeasonsLazyQueryHookResult = ReturnType<typeof useGetTvShowSeasonsLazyQuery>;
 export type GetTvShowSeasonsSuspenseQueryHookResult = ReturnType<typeof useGetTvShowSeasonsSuspenseQuery>;
 export type GetTvShowSeasonsQueryResult = Apollo.QueryResult<GetTvShowSeasonsQuery, GetTvShowSeasonsQueryVariables>;
+export const GetWritableMediaMountsDocument = gql`
+    query getWritableMediaMounts {
+  getWritableMediaMounts {
+    id
+    label
+    path
+    state
+    accessType
+  }
+}
+    `;
+export function useGetWritableMediaMountsQuery(baseOptions?: Apollo.QueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
+      }
+export function useGetWritableMediaMountsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
+        }
+// @ts-ignore
+export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>): Apollo.UseSuspenseQueryResult<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>;
+export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>): Apollo.UseSuspenseQueryResult<GetWritableMediaMountsQuery | undefined, GetWritableMediaMountsQueryVariables>;
+export function useGetWritableMediaMountsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>(GetWritableMediaMountsDocument, options);
+        }
+export type GetWritableMediaMountsQueryHookResult = ReturnType<typeof useGetWritableMediaMountsQuery>;
+export type GetWritableMediaMountsLazyQueryHookResult = ReturnType<typeof useGetWritableMediaMountsLazyQuery>;
+export type GetWritableMediaMountsSuspenseQueryHookResult = ReturnType<typeof useGetWritableMediaMountsSuspenseQuery>;
+export type GetWritableMediaMountsQueryResult = Apollo.QueryResult<GetWritableMediaMountsQuery, GetWritableMediaMountsQueryVariables>;
 export const OmdbSearchDocument = gql`
     query omdbSearch($title: String!) {
   result: omdbSearch(title: $title) {
