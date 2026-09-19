@@ -79,13 +79,13 @@ export class JobsService {
         DownloadQueueProcessors.DOWNLOAD_MOVIE,
         { id: movieId, quality },
         {
-          jobId: `${DownloadQueueProcessors.DOWNLOAD_MOVIE}-${movieId}`,
           deduplication: { id: `download-movie-${movieId}` },
         }
       )
       .catch((error: unknown) => {
-        // Stable jobId means a retry / double-tap returns the existing job
-        // instead of piling up duplicates.
+        // Deduplication means a retry / double-tap is ignored while a job for
+        // this media is still pending, but a previously failed job does not
+        // block future attempts.
         this.logger.warn('download movie job already queued', {
           movieId,
           error: error instanceof Error ? error.message : error,
@@ -101,7 +101,6 @@ export class JobsService {
         DownloadQueueProcessors.DOWNLOAD_SEASON,
         { id: seasonId, quality },
         {
-          jobId: `${DownloadQueueProcessors.DOWNLOAD_SEASON}-${seasonId}`,
           deduplication: { id: `download-season-${seasonId}` },
         }
       )
@@ -121,7 +120,6 @@ export class JobsService {
         DownloadQueueProcessors.DOWNLOAD_EPISODE,
         { id: episodeId, quality },
         {
-          jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episodeId}`,
           deduplication: { id: `download-episode-${episodeId}` },
         }
       )

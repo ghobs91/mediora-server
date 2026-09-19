@@ -77,7 +77,6 @@ export class DownloadProcessor extends WorkerHost {
           quality,
         },
         {
-          jobId: `${DownloadQueueProcessors.DOWNLOAD_MOVIE}-${movie.id}`,
           deduplication: { id: `download-movie-${movie.id}` },
         }
       );
@@ -114,7 +113,6 @@ export class DownloadProcessor extends WorkerHost {
             quality,
           },
           {
-            jobId: `${DownloadQueueProcessors.DOWNLOAD_SEASON}-${seasonId}`,
             deduplication: { id: `download-season-${seasonId}` },
           }
         );
@@ -129,7 +127,6 @@ export class DownloadProcessor extends WorkerHost {
             quality,
           },
           {
-            jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,
             deduplication: { id: `download-episode-${episode.id}` },
           }
         )
@@ -201,7 +198,6 @@ export class DownloadProcessor extends WorkerHost {
               quality,
             },
             {
-              jobId: `${DownloadQueueProcessors.DOWNLOAD_EPISODE}-${episode.id}`,
               deduplication: { id: `download-episode-${episode.id}` },
             }
           )

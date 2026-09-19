@@ -78,7 +78,62 @@ export class RefreshTorrentProcessor extends WorkerHost {
       })
     );
 
+    // Organizing (rename + link) is the last step of a download. If its job
+    // crashed, media would sit in DOWNLOADED forever with every episode stuck
+    // in DOWNLOADING, while the torrent is long finished in Transmission. Since
+    // nothing else transitions DOWNLOADED -> PROCESSED, re-enqueue the organize
+    // job every tick until it succeeds; deduplication keeps it to one pending
+    // job per resource.
+    await this.retryStuckOrganize();
+
     this.logger.info('finish refresh torrent status');
+  }
+
+  private async retryStuckOrganize() {
+    const downloadedMovies = await this.movieDAO.find({
+      where: { state: DownloadableMediaState.DOWNLOADED },
+    });
+    await mapConcurrent(downloadedMovies, REFRESH_CONCURRENCY, (movie) =>
+      this.enqueueOrganizeMovie(movie.id)
+    );
+
+    const downloadedSeasons = await this.tvSeasonDAO.find({
+      where: { state: DownloadableMediaState.DOWNLOADED },
+    });
+    await mapConcurrent(downloadedSeasons, REFRESH_CONCURRENCY, (season) =>
+      this.enqueueOrganizeSeason(season.id)
+    );
+
+    const downloadedEpisodes = await this.tvEpisodeDAO.find({
+      where: { state: DownloadableMediaState.DOWNLOADED },
+    });
+    await mapConcurrent(downloadedEpisodes, REFRESH_CONCURRENCY, (episode) =>
+      this.enqueueOrganizeEpisode(episode.id)
+    );
+  }
+
+  private enqueueOrganizeMovie(movieId: number) {
+    return this.renameAndLinkQueue.add(
+      OrganizeQueueProcessors.HANDLE_MOVIE,
+      { movieId },
+      { deduplication: { id: `handle-movie-${movieId}` } }
+    );
+  }
+
+  private enqueueOrganizeSeason(seasonId: number) {
+    return this.renameAndLinkQueue.add(
+      OrganizeQueueProcessors.HANDLE_SEASON,
+      { seasonId },
+      { deduplication: { id: `handle-season-${seasonId}` } }
+    );
+  }
+
+  private enqueueOrganizeEpisode(episodeId: number) {
+    return this.renameAndLinkQueue.add(
+      OrganizeQueueProcessors.HANDLE_EPISODE,
+      { episodeId },
+      { deduplication: { id: `handle-episode-${episodeId}` } }
+    );
   }
 
   private async checkTorrentSafe(args: {
@@ -163,14 +218,7 @@ export class RefreshTorrentProcessor extends WorkerHost {
           id: resourceId,
           state: DownloadableMediaState.DOWNLOADED,
         });
-        await this.renameAndLinkQueue.add(
-          OrganizeQueueProcessors.HANDLE_MOVIE,
-          { movieId: resourceId },
-          {
-            jobId: `${OrganizeQueueProcessors.HANDLE_MOVIE}-${resourceId}`,
-            deduplication: { id: `handle-movie-${resourceId}` },
-          }
-        );
+        await this.enqueueOrganizeMovie(resourceId);
       }
 
       if (resourceType === FileType.SEASON) {
@@ -178,14 +226,7 @@ export class RefreshTorrentProcessor extends WorkerHost {
           id: resourceId,
           state: DownloadableMediaState.DOWNLOADED,
         });
-        await this.renameAndLinkQueue.add(
-          OrganizeQueueProcessors.HANDLE_SEASON,
-          { seasonId: resourceId },
-          {
-            jobId: `${OrganizeQueueProcessors.HANDLE_SEASON}-${resourceId}`,
-            deduplication: { id: `handle-season-${resourceId}` },
-          }
-        );
+        await this.enqueueOrganizeSeason(resourceId);
       }
 
       if (resourceType === FileType.EPISODE) {
@@ -193,14 +234,7 @@ export class RefreshTorrentProcessor extends WorkerHost {
           id: resourceId,
           state: DownloadableMediaState.DOWNLOADED,
         });
-        await this.renameAndLinkQueue.add(
-          OrganizeQueueProcessors.HANDLE_EPISODE,
-          { episodeId: resourceId },
-          {
-            jobId: `${OrganizeQueueProcessors.HANDLE_EPISODE}-${resourceId}`,
-            deduplication: { id: `handle-episode-${resourceId}` },
-          }
-        );
+        await this.enqueueOrganizeEpisode(resourceId);
       }
     }
   }
