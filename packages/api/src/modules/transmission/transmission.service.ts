@@ -97,12 +97,66 @@ export class TransmissionService {
 
     this.logger.info('torrent download started', torrentAttributes);
 
-    const torrentEntity = await torrentDAO.save({
-      ...torrentAttributes,
-      torrentHash: transmissionTorrent.hashString,
-    });
+    const torrentHash = transmissionTorrent.hashString.toLowerCase();
+    const resourceType = torrentAttributes.resourceType as Torrent['resourceType'];
+    const resourceId = torrentAttributes.resourceId as Torrent['resourceId'];
 
-    return torrentEntity;
+    // Idempotent insert: a previous attempt (or a stale row left behind when
+    // Transmission lost the torrent) may already hold this hash. The
+    // `torrentHash` column is globally unique, so a blind insert would raise
+    // `duplicate key value violates unique constraint "UQ_..."`. Reuse the
+    // existing row instead, re-pointing it at the current resource.
+    const existingByHash = await torrentDAO.findOne({
+      where: { torrentHash },
+    });
+    if (existingByHash) {
+      return torrentDAO.save({
+        ...existingByHash,
+        ...torrentAttributes,
+        torrentHash,
+      });
+    }
+
+    // Clean up stale rows for the same resource (e.g. retry with a different
+    // hash after the refresh tick reset the media to MISSING without
+    // deleting the old row), so they can never collide on a later retry.
+    if (resourceType !== undefined && resourceId !== undefined) {
+      const stale = await torrentDAO.find({
+        where: { resourceType, resourceId } as Partial<Torrent>,
+      });
+      if (stale.length > 0) {
+        await torrentDAO.remove(stale);
+      }
+    }
+
+    try {
+      return await torrentDAO.save({
+        ...torrentAttributes,
+        torrentHash,
+      });
+    } catch (error) {
+      // Race guard: two concurrent downloads of the same torrent both passed
+      // the `findOne` above. On unique violation, fetch the winner and reuse
+      // it instead of surfacing a raw QueryFailedError.
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as { code?: string }).code === '23505'
+      ) {
+        const winner = await torrentDAO.findOne({ where: { torrentHash } });
+        if (winner) {
+          this.logger.warn('torrent already tracked, reusing existing row', {
+            torrentHash,
+          });
+          return torrentDAO.save({
+            ...winner,
+            ...torrentAttributes,
+            torrentHash,
+          });
+        }
+      }
+      throw error;
+    }
   }
 
   private async addURL(url: string) {

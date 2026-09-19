@@ -206,6 +206,19 @@ export class RefreshTorrentProcessor extends WorkerHost {
   }
 
   private async markMissing(resourceId: number, resourceType: FileType) {
+    // The DB row holds a globally-unique torrentHash. If we flip the media
+    // back to MISSING without deleting it, the next download of the same
+    // Jackett result will hit `duplicate key ... UQ_4e1186fc9ab3a13490f0712c2d1`.
+    const stale = await this.torrentDAO.find({
+      where: { resourceId, resourceType },
+    });
+    if (stale.length > 0) {
+      this.logger.info('removing stale torrent row', {
+        resourceId,
+        resourceType,
+      });
+      await this.torrentDAO.remove(stale);
+    }
     if (resourceType === FileType.MOVIE) {
       await this.movieDAO.save({
         id: resourceId,
