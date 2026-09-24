@@ -29,6 +29,10 @@ packages/vpn/*
 # library
 library/downloads/*
 !library/downloads/.gitkeep
+!library/downloads/complete/
+!library/downloads/complete/.gitkeep
+!library/downloads/incomplete/
+!library/downloads/incomplete/.gitkeep
 library/movies/*
 !library/movies/.gitkeep
 library/tvshows/*

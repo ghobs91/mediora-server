@@ -25,7 +25,8 @@ fi
 
 echo "downloading mediora-server into directory"
 
-mkdir -p library/downloads
+mkdir -p library/downloads/complete
+mkdir -p library/downloads/incomplete
 mkdir -p library/movies
 mkdir -p library/tvshows
 

@@ -36,7 +36,7 @@ services:
       retries: 3
       start_period: 60s
     volumes:
-      - ./library/downloads:/downloads
+      - ${DOWNLOADS_HOST_PATH:-./library/downloads}:/downloads
       - ./library:/usr/library
       # Set these host paths when movies and TV shows live on separate disks.
       - ${MOVIES_LIBRARY_HOST_PATH:-./library}:/usr/drive4tb
@@ -126,7 +126,7 @@ services:
       retries: 3
       start_period: 60s
     volumes:
-      - ./library/downloads:/downloads
+      - ${DOWNLOADS_HOST_PATH:-./library/downloads}:/downloads
       - ./packages/transmission/config:/config
       - ./packages/transmission/watch:/watch
 

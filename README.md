@@ -82,6 +82,26 @@ After recreating the stack, open Settings > Library folders and select the
 4TB mount for Movies and the 6TB mount for TV shows. The selected mounts are
 stored in the database and used for scans and organization.
 
+### Downloads on a scratch drive
+
+By default active downloads are staged inside the repo. Point them at a large
+disk instead, so torrents never fill the disk running the stack:
+
+```
+DOWNLOADS_HOST_PATH=/Volumes/6tb-seagate/downloads
+```
+
+Create the staging folders once:
+
+```
+mkdir -p /Volumes/6tb-seagate/downloads/complete /Volumes/6tb-seagate/downloads/incomplete
+```
+
+The compose file mounts this path as `/downloads` for both Transmission (which
+writes here) and the API (which organizes from `/downloads/complete`). Then set
+Settings > "Organize completed downloads" to **Move** so finished files are
+relocated into the Movies/TV disks instead of being copied or linked.
+
 
 ## How to start
 
