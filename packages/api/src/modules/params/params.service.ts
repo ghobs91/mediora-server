@@ -40,6 +40,7 @@ export class ParamsService {
       [ParameterKey.TMDB_API_KEY, ''],
       [ParameterKey.MAX_MOVIE_DOWNLOAD_SIZE, (20e9).toString()], // max file size 20gb
       [ParameterKey.MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE, (5e9).toString()], // max file size 5gb
+      [ParameterKey.BLOCKED_TORRENT_KEYWORDS, ''], // comma separated release name keywords to exclude
       [ParameterKey.JACKETT_API_KEY, ''],
       [ParameterKey.SONARR_RADARR_API_KEY, this.getInitialApiKey()],
       [ParameterKey.ORGANIZE_LIBRARY_STRATEGY, OrganizeLibraryStrategy.LINK],

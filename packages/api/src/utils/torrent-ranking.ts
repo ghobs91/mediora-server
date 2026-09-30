@@ -127,6 +127,29 @@ export function pickBest(
   )[0];
 }
 
+/**
+ * Returns true when the release title contains any of the configured blocked
+ * keywords. Keywords are matched as whole token sequences so "ai upscaled"
+ * matches "Movie.AI-Upscaled.2020" but a lone "ai" does not match "air" or
+ * "trailer". Keywords are sanitized the same way titles are, so punctuation
+ * and casing in the settings do not matter.
+ */
+export function matchesBlockedKeyword(
+  normalizedTitleParts: string[],
+  blockedKeywords: string[]
+): boolean {
+  return blockedKeywords.some((keyword) => {
+    const tokens = sanitize(keyword).split(' ').filter(Boolean);
+    if (tokens.length === 0) return false;
+
+    return normalizedTitleParts.some((_, index) =>
+      tokens.every(
+        (token, offset) => normalizedTitleParts[index + offset] === token
+      )
+    );
+  });
+}
+
 export function isDownloadable({
   result,
   maxSize = Infinity,

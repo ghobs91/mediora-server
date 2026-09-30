@@ -7,6 +7,7 @@ query getParams {
     sonarr_radarr_api_key
     max_movie_download_size
     max_tvshow_episode_download_size
+    blocked_torrent_keywords
     organize_library_strategy
   }
 }

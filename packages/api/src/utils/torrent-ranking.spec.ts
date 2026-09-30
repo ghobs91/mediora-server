@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import {
   formatSearchResult,
   isDownloadable,
+  matchesBlockedKeyword,
   parseQuality,
   parseTag,
   pickBest,
@@ -160,6 +161,49 @@ describe('formatSearchResult', () => {
     ]);
     expect(result.downloadLink).toEqual('magnet:?xt=urn:btih:abc');
     expect(result.tag).toEqual({ label: 'multi', score: 3 });
+  });
+});
+
+describe('matchesBlockedKeyword', () => {
+  it('matches a multi-word keyword across a hyphenated title', () => {
+    const parts = 'Movie.AI-Upscaled.2020.1080p'.toLowerCase().split(/[.\-\s]/);
+    expect(matchesBlockedKeyword(parts, ['ai upscaled'])).toBe(true);
+  });
+
+  it('matches a multi-word keyword regardless of settings casing', () => {
+    expect(
+      matchesBlockedKeyword(['movie', 'ai', 'enhanced', '2020'], ['AI Enhanced'])
+    ).toBe(true);
+  });
+
+  it('matches a single keyword', () => {
+    expect(matchesBlockedKeyword(['movie', '2020', 'upscaled'], ['upscaled'])).toBe(
+      true
+    );
+  });
+
+  it('matches whole tokens only, not substrings', () => {
+    expect(
+      matchesBlockedKeyword(['air', 'upscaled', '2020'], ['ai upscaled'])
+    ).toBe(false);
+    expect(matchesBlockedKeyword(['trailer', '2020'], ['ai'])).toBe(false);
+  });
+
+  it('requires the keyword tokens to be consecutive', () => {
+    expect(
+      matchesBlockedKeyword(['ai', 'good', 'upscaled'], ['ai upscaled'])
+    ).toBe(false);
+  });
+
+  it('tolerates extra whitespace in the configured keyword', () => {
+    expect(
+      matchesBlockedKeyword(['movie', 'ai', 'enhanced'], ['  ai   enhanced  '])
+    ).toBe(true);
+  });
+
+  it('returns false for empty keyword lists or blank keywords', () => {
+    expect(matchesBlockedKeyword(['movie', '2020'], [])).toBe(false);
+    expect(matchesBlockedKeyword(['movie', '2020'], ['', '   '])).toBe(false);
   });
 });
 

@@ -10,6 +10,8 @@
 - database schema is now managed by migrations instead of synchronize.
   existing installs are detected and updated automatically.
 - manual search season pack (https://github.com/iam4x/bobarr/pull/172)
+- block torrent results whose release name contains configured keywords via the
+  `blocked_torrent_keywords` setting (ex: `ai upscaled, ai enhanced`)
 
 ### Added
 

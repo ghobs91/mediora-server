@@ -174,6 +174,10 @@ exit / restart loop on boot means `TS_AUTHKEY` was rejected.
 * Copy the generated **Mediora client** API key from http://localhost:3000/settings and paste it into the Mediora client's Mediora Server settings
 * Create and order your preferred tags found in torrent file (ex: vost, multi, english...)
 * Order your preferred qualities to download
+* Block releases whose name contains keywords, using the `blocked_torrent_keywords`
+  setting (comma separated, ex: `ai upscaled, ai enhanced`). Matching is
+  case-insensitive and whole-word, and blocked releases are hidden everywhere
+  including manual search.
 
 ### Accessing Mediora Server remotely over HTTPS
 

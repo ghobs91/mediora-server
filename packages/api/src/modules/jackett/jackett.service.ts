@@ -13,6 +13,7 @@ import { sanitize } from "src/utils/sanitize";
 import {
   formatSearchResult,
   isDownloadable,
+  matchesBlockedKeyword,
   pickBest,
   pickMostSeeded,
   RankedResult,
@@ -278,6 +279,9 @@ export class JackettService {
   }) {
     const qualityParams = await this.paramsService.getQualities(type);
     const preferredTags = await this.paramsService.getTags();
+    const blockedKeywords = await this.paramsService.getList(
+      ParameterKey.BLOCKED_TORRENT_KEYWORDS,
+    );
 
     const rawResults = await mapSeries(uniq(queries), async (query) => {
       const normalizedQuery = sanitize(query);
@@ -313,6 +317,12 @@ export class JackettService {
       .filter((result) => result.Link || result.MagnetUri)
       .map((result) =>
         formatSearchResult({ result, qualityParams, preferredTags }),
+      )
+      // Blocked keywords are a hard exclusion: they apply even to manual
+      // searches that bypass the size/seeder/tag filters below.
+      .filter(
+        (result) =>
+          !matchesBlockedKeyword(result.normalizedTitleParts, blockedKeywords),
       )
       .filter((result) =>
         isDownloadable({ result, maxSize, episodeCount, isSeason, withoutFilter }),
