@@ -19,9 +19,22 @@
 - update jobs ui
 - update nodejs to v14
 - track downloaded files path in database (https://github.com/iam4x/bobarr/issues/96)
+- `reorganizeTVShow(tvShowId)` and `reorganizeLibrary` GraphQL mutations:
+  re-run the organize job for every season/episode/movie that still has a
+  torrent, so entries created by older organize behaviour (e.g. symlinks) can
+  be repaired without re-downloading. Exposed as a "Library repair" button in
+  Settings > Actions (web UI).
 
 ### Fixes
 
+- organize: hardlink downloaded files into the library and fall back to
+  copying when the download and library folders are on different filesystems.
+  symbolic links are no longer used because their target was a container-only
+  path (`/downloads/...`) that media servers like Jellyfin could not resolve.
+- sonarr/radarr compatibility: only report `hasFile`/`isAvailable` once the
+  file has been organized (PROCESSED), instead of while the torrent is merely
+  downloaded, so the client no longer advertises files that are not in the
+  library yet.
 - update strategy for scannig library
 - handle multi part episodes when downloading a season pack
 - wrap organize library jobs into transactions (better error handling if something fails)
