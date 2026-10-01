@@ -23,11 +23,12 @@ function imageUrl(path?: string | null): string | null {
   return path ? TMDB_IMG_BASE + path : null;
 }
 
+// A media is only "available" once organize has placed it in the library
+// (PROCESSED). DOWNLOADED just means the torrent finished: the file may still
+// be sitting in /downloads, invisible to the media server, so reporting it as
+// available made the client advertise files that could not be played yet.
 export function isAvailable(state: DownloadableMediaState): boolean {
-  return (
-    state === DownloadableMediaState.DOWNLOADED ||
-    state === DownloadableMediaState.PROCESSED
-  );
+  return state === DownloadableMediaState.PROCESSED;
 }
 
 export async function getFreeSpace(path: string): Promise<number> {
