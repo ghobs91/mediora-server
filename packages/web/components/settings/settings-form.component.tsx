@@ -27,11 +27,12 @@ import {
 const organizeLibraryStrategies = [
   {
     value: 'link',
-    label: 'Link',
+    label: 'Hardlink',
     description: (
       <>
-        It will create a symbolic link between the downloaded file and your
-        library folder.
+        It will hardlink the downloaded file into your library folder, and fall
+        back to copying when the download and library folders are on different
+        filesystems.
         <br />
         This keeps the torrent seeding and deleting the file in your library
         wont delete the original file.

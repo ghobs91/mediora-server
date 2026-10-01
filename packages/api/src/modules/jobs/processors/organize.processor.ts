@@ -90,18 +90,30 @@ export class OrganizeProcessor extends WorkerHost {
 
     await fs.mkdir(path.dirname(normalizedDest), { recursive: true });
 
-    // Idempotent re-run: if dest already exists with non-zero size, keep it.
-    const destStat = await fs.stat(normalizedDest).catch(() => null);
-    if (destStat && destStat.size > 0) {
-      return;
-    }
-    // Remove stale empty dest / previous symlink so LINK acts like ln -sf.
-    if (destStat) {
+    // Inspect the destination without following symlinks: a stale symlink from
+    // the previous LINK behaviour, or a broken one, must be replaced. fs.stat()
+    // would follow the link and return null for a broken one, letting a re-run
+    // keep a link that no longer resolves.
+    const destStat = await fs.lstat(normalizedDest).catch(() => null);
+    if (destStat && !destStat.isDirectory()) {
+      // Every strategy now places a real, non-empty file; anything else (empty
+      // file, symlink) is removed and re-placed so switching strategy repairs
+      // existing entries.
+      if (destStat.isFile() && destStat.size > 0) {
+        return;
+      }
       await fs.unlink(normalizedDest).catch(() => undefined);
     }
 
     if (strategy === OrganizeLibraryStrategy.LINK) {
-      await fs.symlink(normalizedSrc, normalizedDest);
+      // Hardlink first so the media server sees a real file with no duplicated
+      // data. Hardlinks cannot cross filesystems (or work on some network
+      // mounts), so fall back to copying.
+      try {
+        await fs.link(normalizedSrc, normalizedDest);
+      } catch {
+        await fs.copyFile(normalizedSrc, normalizedDest);
+      }
     } else if (strategy === OrganizeLibraryStrategy.COPY) {
       await fs.copyFile(normalizedSrc, normalizedDest);
     } else {
