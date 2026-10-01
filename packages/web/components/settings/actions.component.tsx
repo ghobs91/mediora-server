@@ -6,6 +6,7 @@ import {
   useStartScanLibraryMutation,
   useStartFindNewEpisodesMutation,
   useStartDownloadMissingMutation,
+  useReorganizeLibraryMutation,
   useResetLibraryMutation,
   useClearCacheMutation,
 } from '../../utils/graphql';
@@ -52,6 +53,13 @@ export function ActionsComponents() {
     onCompleted: () => toast.success('Download missing files started'),
   });
 
+  const [
+    reorganizeLibrary,
+    { loading: loading5 },
+  ] = useReorganizeLibraryMutation({
+    onCompleted: () => toast.success('Library repair started'),
+  });
+
   const [resetLibrary] = useResetLibraryMutation({
     onCompleted: () => setResetInfoOpen(true),
   });
@@ -60,7 +68,7 @@ export function ActionsComponents() {
     onCompleted: () => setCacheInfoOpen(true),
   });
 
-  const jobLoading = loading1 || loading2 || loading3;
+  const jobLoading = loading1 || loading2 || loading3 || loading5;
 
   function handleResetClick() {
     setDeleteFiles(false);
@@ -99,6 +107,14 @@ export function ActionsComponents() {
           >
             {jobLoading && <Loader2 className="animate-spin" />}
             Download missing files
+          </Button>
+          <Button
+            size="lg"
+            onClick={() => reorganizeLibrary()}
+            disabled={jobLoading}
+          >
+            {jobLoading && <Loader2 className="animate-spin" />}
+            Library repair
           </Button>
           <Button size="lg" onClick={() => clearCache()} disabled={loading4}>
             {loading4 && <Loader2 className="animate-spin" />}

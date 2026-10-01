@@ -18,3 +18,10 @@ mutation startDownloadMissing {
     message
   }
 }
+
+mutation reorganizeLibrary {
+  result: reorganizeLibrary {
+    success
+    message
+  }
+}

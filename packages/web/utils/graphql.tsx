@@ -248,6 +248,7 @@ export type Mutation = {
   removeTorrents: GraphQlCommonResponse;
   removeTorrentsAndFiles: GraphQlCommonResponse;
   removeTransmissionTorrents: GraphQlCommonResponse;
+  reorganizeLibrary: GraphQlCommonResponse;
   resetLibrary: GraphQlCommonResponse;
   resumeAllTransmissionTorrents: GraphQlCommonResponse;
   resumeTorrents: GraphQlCommonResponse;
@@ -770,6 +771,11 @@ export type RemoveTorrentsAndFilesMutationVariables = Exact<{
 
 export type RemoveTorrentsAndFilesMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
 
+export type ReorganizeLibraryMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ReorganizeLibraryMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
 export type StartScanLibraryMutationVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -1214,6 +1220,21 @@ export function useRemoveTorrentsAndFilesMutation(baseOptions?: Apollo.MutationH
 export type RemoveTorrentsAndFilesMutationHookResult = ReturnType<typeof useRemoveTorrentsAndFilesMutation>;
 export type RemoveTorrentsAndFilesMutationResult = Apollo.MutationResult<RemoveTorrentsAndFilesMutation>;
 export type RemoveTorrentsAndFilesMutationOptions = Apollo.BaseMutationOptions<RemoveTorrentsAndFilesMutation, RemoveTorrentsAndFilesMutationVariables>;
+export const ReorganizeLibraryDocument = gql`
+    mutation reorganizeLibrary {
+  result: reorganizeLibrary {
+    success
+    message
+  }
+}
+    `;
+export function useReorganizeLibraryMutation(baseOptions?: Apollo.MutationHookOptions<ReorganizeLibraryMutation, ReorganizeLibraryMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<ReorganizeLibraryMutation, ReorganizeLibraryMutationVariables>(ReorganizeLibraryDocument, options);
+      }
+export type ReorganizeLibraryMutationHookResult = ReturnType<typeof useReorganizeLibraryMutation>;
+export type ReorganizeLibraryMutationResult = Apollo.MutationResult<ReorganizeLibraryMutation>;
+export type ReorganizeLibraryMutationOptions = Apollo.BaseMutationOptions<ReorganizeLibraryMutation, ReorganizeLibraryMutationVariables>;
 export const StartScanLibraryDocument = gql`
     mutation startScanLibrary {
   result: startScanLibraryJob {
