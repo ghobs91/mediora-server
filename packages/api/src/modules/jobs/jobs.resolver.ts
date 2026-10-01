@@ -19,6 +19,28 @@ export class JobsResolver {
   }
 
   @Mutation((_returns) => GraphQLCommonResponse)
+  public async reorganizeTVShow(
+    @Args('tvShowId', { type: () => Int }) tvShowId: number,
+  ) {
+    const { seasons, episodes } =
+      await this.jobsService.startReorganizeTVShow(tvShowId);
+    return {
+      success: true,
+      message: `TVSHOW_REORGANIZE_STARTED seasons=${seasons} episodes=${episodes}`,
+    };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async reorganizeLibrary() {
+    const { movies, seasons, episodes } =
+      await this.jobsService.startReorganizeLibrary();
+    return {
+      success: true,
+      message: `LIBRARY_REORGANIZE_STARTED movies=${movies} seasons=${seasons} episodes=${episodes}`,
+    };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
   public async startFindNewEpisodesJob() {
     await this.jobsService.startFindNewEpisodes();
     return { success: true, message: 'FIND_NEW_EPISODES_STARTED' };
