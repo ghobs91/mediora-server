@@ -172,7 +172,7 @@ export class OrganizeProcessor extends WorkerHost {
       resourceType: FileType.MOVIE,
     });
 
-    if (!torrent) {
+    if (!torrent || !torrent.transmissionTorrent) {
       throw new Error(`No torrent found for movie ${movieId}`);
     }
 
@@ -231,7 +231,7 @@ export class OrganizeProcessor extends WorkerHost {
       const destPath = path.join(newFolder, torrentFile.next);
       await this.placeFile(organizeStrategy, downloadPath, destPath);
 
-      await fileDAO.save({
+      await fileDAO.upsertByPath({
         movieId,
         path: destPath,
       });
@@ -286,7 +286,7 @@ export class OrganizeProcessor extends WorkerHost {
       resourceType: FileType.EPISODE,
     });
 
-    if (!torrent) {
+    if (!torrent || !torrent.transmissionTorrent) {
       throw new Error(`No torrent found for episode ${episodeId}`);
     }
 
@@ -318,8 +318,8 @@ export class OrganizeProcessor extends WorkerHost {
       const destPath = path.join(seasonFolder, torrentFile.next);
       await this.placeFile(organizeStrategy, downloadPath, destPath);
 
-      await fileDAO.save({
-        episodeId,
+      await fileDAO.upsertByPath({
+        tvEpisodeId: episodeId,
         path: destPath,
       });
     });
@@ -373,7 +373,7 @@ export class OrganizeProcessor extends WorkerHost {
       resourceType: FileType.SEASON,
     });
 
-    if (!torrent) {
+    if (!torrent || !torrent.transmissionTorrent) {
       throw new Error(`No torrent found for season ${seasonId}`);
     }
 
@@ -470,8 +470,8 @@ export class OrganizeProcessor extends WorkerHost {
         );
 
         if (episode) {
-          await fileDAO.save({
-            episodeId: episode.id,
+          await fileDAO.upsertByPath({
+            tvEpisodeId: episode.id,
             path: destPath,
           });
         }
