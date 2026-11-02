@@ -45,9 +45,14 @@ export class HealthController {
 
     try {
       await axios.get('https://www.themoviedb.org/', { timeout: 5000 });
-      return indicator.up();
+      return indicator.up({ reachable: true });
     } catch (_error) {
-      return indicator.down({ message: 'unable to reach themoviedb.org' });
+      // TMDB only supplies metadata; the API keeps serving local library
+      // data without it, so an outage must not mark the whole service down.
+      return indicator.up({
+        reachable: false,
+        message: 'unable to reach themoviedb.org, serving cached metadata',
+      });
     }
   }
 }

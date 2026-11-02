@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { Injectable, Inject } from '@nestjs/common';
 import { map, reduce } from 'p-iteration';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -26,12 +26,83 @@ import {
   TMDBRequestParams,
 } from './tmdb.dto';
 
+import { CircuitBreaker } from 'src/utils/circuit-breaker';
+
 import { CacheMethod } from '../redis/cache.interceptor';
 import { CacheKeys } from '../redis/cache.dto';
 import { RedisService } from '../redis/redis.service';
 
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3/';
+const REQUEST_TIMEOUT_MS = 8000;
+const MAX_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 400;
+const MAX_CONCURRENT_REQUESTS = 8;
+const CIRCUIT_FAILURE_THRESHOLD = 5;
+const CIRCUIT_COOLDOWN_MS = 30000;
+
+/** TMDB could not be reached (network error, timeout, 5xx, rate limit). */
+export class TMDBUnavailableError extends Error {
+  public constructor(
+    public readonly path: string,
+    public readonly reason?: unknown
+  ) {
+    super(`TMDB is unavailable (${path}): ${describeError(reason)}`);
+    this.name = 'TMDBUnavailableError';
+  }
+}
+
+/** TMDB answered, but with a non-retryable error (bad id, bad api key, ...). */
+export class TMDBRequestError extends Error {
+  public constructor(
+    public readonly path: string,
+    public readonly status: number | undefined,
+    public readonly reason?: unknown
+  ) {
+    super(
+      `TMDB request failed (${path}${
+        status ? `, HTTP ${status}` : ''
+      }): ${describeError(reason)}`
+    );
+    this.name = 'TMDBRequestError';
+  }
+}
+
+function describeError(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    const data = error.response?.data as unknown;
+    const detail =
+      typeof data === 'string'
+        ? data
+        : data
+        ? JSON.stringify(data)
+        : error.code ?? error.message;
+    return status ? `HTTP ${status} ${detail}` : detail;
+  }
+
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isRetryable(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+
+  // No response means DNS/connect/timeout/reset: worth one retry.
+  if (!error.response) return true;
+
+  const { status } = error.response;
+  return status === 429 || status >= 500;
+}
+
 @Injectable()
 export class TMDBService {
+  private readonly http: AxiosInstance;
+  private readonly breaker = new CircuitBreaker(
+    CIRCUIT_FAILURE_THRESHOLD,
+    CIRCUIT_COOLDOWN_MS
+  );
+  private activeRequests = 0;
+  private readonly waiting: Array<() => void> = [];
+
   public constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     private readonly paramsService: ParamsService,
@@ -42,41 +113,99 @@ export class TMDBService {
     private readonly redisService: RedisService // required for @CacheMethod
   ) {
     this.logger = logger.child({ context: 'TMDBService' });
+    this.http = axios.create({
+      baseURL: TMDB_BASE_URL,
+      timeout: REQUEST_TIMEOUT_MS,
+    });
   }
 
-  private async request<TData>(path: string, params: TMDBRequestParams = {}) {
+  private async request<TData>(
+    path: string,
+    params: TMDBRequestParams = {}
+  ): Promise<TData> {
     const apiKey = await this.paramsService.get(ParameterKey.TMDB_API_KEY);
     const language = await this.paramsService.get(ParameterKey.LANGUAGE);
 
-    const client = axios.create({
-      params: { api_key: apiKey, language },
-      baseURL: 'https://api.themoviedb.org/3/',
-    });
+    return this.breaker.run(
+      () =>
+        this.withConcurrency(() =>
+          this.requestWithRetry<TData>(path, {
+            api_key: apiKey,
+            language,
+            ...params,
+          })
+        ),
+      (error) => error instanceof TMDBUnavailableError
+    );
+  }
 
-    client.interceptors.response.use(
-      (response) => response,
-      (error) => {
+  private async requestWithRetry<TData>(
+    path: string,
+    params: TMDBRequestParams
+  ): Promise<TData> {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        const { data } = await this.http.get<TData>(path, { params });
+        return data;
+      } catch (error) {
+        const status = axios.isAxiosError(error)
+          ? error.response?.status
+          : undefined;
+        const retryable = isRetryable(error);
+
         this.logger.error('request error', {
-          error: error?.response?.data || error,
+          error: axios.isAxiosError(error)
+            ? error.response?.data ?? error.message
+            : error,
           path,
-          params,
+          attempt,
+          retryable,
         });
 
-        return Promise.reject(
-          new Error(
-            JSON.stringify(
-              error.response && error.response.data
-                ? error.response.data
-                : error.response
-            )
-          )
+        if (!retryable) throw new TMDBRequestError(path, status, error);
+        if (attempt >= MAX_ATTEMPTS) throw new TMDBUnavailableError(path, error);
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAY_MS * attempt)
         );
       }
-    );
+    }
+  }
 
-    return client
-      .get<TData>(path, { params })
-      .then(({ data }) => data);
+  /** Caps in-flight TMDB requests so an outage cannot exhaust sockets. */
+  private async withConcurrency<T>(task: () => Promise<T>): Promise<T> {
+    while (this.activeRequests >= MAX_CONCURRENT_REQUESTS) {
+      await new Promise<void>((resolve) => this.waiting.push(resolve));
+    }
+    this.activeRequests += 1;
+
+    try {
+      return await task();
+    } finally {
+      this.activeRequests -= 1;
+      this.waiting.shift()?.();
+    }
+  }
+
+  /**
+   * Metadata lookups must never take the caller down: when TMDB cannot be
+   * reached the caller keeps rendering whatever it already has.
+   */
+  private async withFallback<T>(
+    resource: string,
+    id: number,
+    load: () => Promise<T>
+  ): Promise<T | null> {
+    try {
+      return await load();
+    } catch (error) {
+      this.logger.warn('tmdb lookup failed, continuing with local data', {
+        resource,
+        id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
 
   @CacheMethod({
@@ -117,6 +246,39 @@ export class TMDBService {
   ) {
     return this.request<TMDBTVEpisode>(
       `/tv/${tvShowTMDBId}/season/${seasonNumber}/episode/${episodeNumber}`
+    );
+  }
+
+  /**
+   * Safe variants for read paths: they resolve to `null` when TMDB is
+   * unreachable so lists/detail pages can fall back to local data instead of
+   * failing the whole request.
+   */
+  public getMovieSafe(movieTMDBId: number) {
+    return this.withFallback('movie', movieTMDBId, () =>
+      this.getMovie(movieTMDBId)
+    );
+  }
+
+  public getTVShowSafe(tvShowTMDBId: number, params?: { language: string }) {
+    return this.withFallback('tvshow', tvShowTMDBId, () =>
+      this.getTVShow(tvShowTMDBId, params)
+    );
+  }
+
+  public getTVShowExternalIdsSafe(tvShowTMDBId: number) {
+    return this.withFallback('tvshow-external-ids', tvShowTMDBId, () =>
+      this.getTVShowExternalIds(tvShowTMDBId)
+    );
+  }
+
+  public getTVEpisodeSafe(
+    tvShowTMDBId: number,
+    seasonNumber: number,
+    episodeNumber: number
+  ) {
+    return this.withFallback('tvepisode', tvShowTMDBId, () =>
+      this.getTVEpisode(tvShowTMDBId, seasonNumber, episodeNumber)
     );
   }
 

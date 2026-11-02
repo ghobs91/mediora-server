@@ -62,13 +62,13 @@ export class MediaMapper {
     enriched: EnrichedMovie,
     rootFolders: MediaMount[]
   ): Promise<RadarrMovie> {
-    const full = await this.tmdbService.getMovie(enriched.tmdbId);
+    const full = await this.tmdbService.getMovieSafe(enriched.tmdbId);
 
     return {
       id: String(enriched.id),
       isAvailable: isAvailable(enriched.state),
       tmdbId: String(enriched.tmdbId),
-      imdbId: full.imdb_id ? String(full.imdb_id) : '',
+      imdbId: full?.imdb_id ? String(full.imdb_id) : '',
       title: enriched.title,
       originalTitle: enriched.originalTitle ?? null,
       originalFileNamePrefix: `${enriched.title} (${this.year(enriched)})`,
@@ -84,7 +84,7 @@ export class MediaMapper {
       rating: enriched.voteAverage,
       hasFile: isAvailable(enriched.state),
       isMovieAvailable: isAvailable(enriched.state),
-      genres: full.genres?.map((genre) => ({
+      genres: (full?.genres ?? []).map((genre) => ({
         id: genre.id,
         name: genre.name,
       })),
@@ -106,7 +106,7 @@ export class MediaMapper {
     rootFolders: MediaMount[],
     seasons: SonarrSeason[] = [],
   ): Promise<SonarrSeries> {
-    const full = await this.tmdbService.getTVShow(enriched.tmdbId);
+    const full = await this.tmdbService.getTVShowSafe(enriched.tmdbId);
 
     const monitoredSeasons = seasons.filter((season) => season.isMonitored);
     const hasAllEpisodesAvailable =
@@ -117,12 +117,12 @@ export class MediaMapper {
     return {
       id: String(enriched.id),
       isAvailable: hasAllEpisodesAvailable,
-      tvdbId: String(full.id),
+      tvdbId: String(full?.id ?? enriched.tmdbId),
       imdbId: null,
       title: enriched.title,
       originalTitle: enriched.originalTitle ?? null,
       summary: enriched.overview,
-      network: full.origin_country?.[0] ?? null,
+      network: full?.origin_country?.[0] ?? null,
       year: this.year(enriched),
       path: rootFolders[0]?.path ?? '',
       runtime: null,
@@ -134,7 +134,7 @@ export class MediaMapper {
       rating: enriched.voteAverage,
       hasFile,
       isMovieAvailable: hasFile,
-      genres: full.genres?.map((genre) => ({
+      genres: (full?.genres ?? []).map((genre) => ({
         id: genre.id,
         name: genre.name,
       })),
@@ -205,7 +205,7 @@ export class MediaMapper {
       movieTmdbId: info.movieTmdbId ? String(info.movieTmdbId) : '',
       title: info.title,
       size: `${(totalSize / 1e9).toFixed(2)} GB`,
-      sizeleft: `${((transmissionTorrent.leftUntilDone || totalSize) / 1e9).toFixed(2)} GB`,
+      sizeleft: `${((transmissionTorrent.leftUntilDone ?? totalSize) / 1e9).toFixed(2)} GB`,
       status: completed ? 'completed' : 'downloading',
       statusMessages: '',
       downloadId: transmissionTorrent.hashString,
@@ -261,7 +261,7 @@ export class MediaMapper {
       seasonNumber: info.seasonNumber,
       episodeNumber: info.episodeNumber,
       size: `${(transmissionTorrent.totalSize / 1e9).toFixed(2)} GB`,
-      sizeleft: `${((transmissionTorrent.leftUntilDone || transmissionTorrent.totalSize) / 1e9).toFixed(2)} GB`,
+      sizeleft: `${((transmissionTorrent.leftUntilDone ?? transmissionTorrent.totalSize) / 1e9).toFixed(2)} GB`,
       status: completed ? 'completed' : 'downloading',
       statusMessages: '',
       downloadId: transmissionTorrent.hashString,

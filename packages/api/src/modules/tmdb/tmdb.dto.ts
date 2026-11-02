@@ -1,5 +1,6 @@
 import { ObjectType, Field, ArgsType, registerEnumType } from '@nestjs/graphql';
 export interface TMDBRequestParams {
+  api_key?: string;
   query?: string;
   language?: string;
   region?: string;

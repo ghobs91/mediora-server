@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { promises as fs } from 'fs';
 
 import { FileType, DownloadableMediaState } from 'src/app.dto';
-import { TMDBService } from 'src/modules/tmdb/tmdb.service';
+import {
+  TMDBService,
+  TMDBUnavailableError,
+} from 'src/modules/tmdb/tmdb.service';
 import { Entertainment } from 'src/modules/tmdb/tmdb.dto';
 import { ParamsService } from 'src/modules/params/params.service';
 import { TransmissionService } from 'src/modules/transmission/transmission.service';
@@ -552,27 +559,50 @@ export class SonarrRadarrService {
     });
   }
 
+  /**
+   * Lookups (adding new media) genuinely need TMDB. Fail with an actionable
+   * message instead of an opaque error when it is unreachable.
+   */
+  private async withTMDB<T>(load: () => Promise<T>): Promise<T> {
+    try {
+      return await load();
+    } catch (error) {
+      if (error instanceof TMDBUnavailableError) {
+        throw new ServiceUnavailableException(
+          'TMDB is unreachable right now. Try again in a moment.',
+        );
+      }
+      throw error;
+    }
+  }
+
   private async buildV3Series(
     show: Omit<EnrichedTVShow, 'runtime'>,
     tvShowId: number,
   ): Promise<SonarrV3Series> {
-    const tmdb = await this.tmdbService.getTVShow(show.tmdbId);
-    const externalIds = await this.tmdbService.getTVShowExternalIds(show.tmdbId);
+    const tmdb = await this.tmdbService.getTVShowSafe(show.tmdbId);
+    const externalIds = await this.tmdbService.getTVShowExternalIdsSafe(
+      show.tmdbId,
+    );
     const seasons = await this.buildV3Seasons(tvShowId);
     const rootFolders = await this.getRootFoldersV3();
-    const poster = tmdb.poster_path ? `${TMDB_IMG_BASE}${tmdb.poster_path}` : null;
-    const year = Number(String(tmdb.first_air_date ?? '').slice(0, 4)) || 0;
+    const posterPath = tmdb?.poster_path ?? show.posterPath ?? null;
+    const poster = posterPath ? `${TMDB_IMG_BASE}${posterPath}` : null;
+    const year =
+      Number(
+        String(tmdb?.first_air_date ?? show.releaseDate ?? '').slice(0, 4),
+      ) || 0;
 
     return {
       id: tvShowId,
       title: show.title,
       sortTitle: this.v3SortTitle(show.title),
-      status: tmdb.status ?? 'Unknown',
+      status: tmdb?.status ?? 'Unknown',
       overview: show.overview,
-      network: tmdb.origin_country?.[0] ?? null,
+      network: tmdb?.origin_country?.[0] ?? null,
       airTime: '',
       images: poster
-        ? [{ coverType: 'poster', url: `${TMDB_IMG_BASE}${tmdb.poster_path}`, remoteUrl: poster }]
+        ? [{ coverType: 'poster', url: poster, remoteUrl: poster }]
         : [],
       remotePoster: poster,
       seasons,
@@ -582,36 +612,39 @@ export class SonarrRadarrService {
       seasonFolder: true,
       monitored: seasons.length > 0 && seasons.every((season) => season.monitored),
       useSceneNumbering: false,
-      runtime: tmdb.episode_run_time?.[0] ?? 0,
-      tvdbId: externalIds.tvdb_id ?? tmdb.id,
-      firstAired: tmdb.first_air_date ?? '',
+      runtime: tmdb?.episode_run_time?.[0] ?? 0,
+      tvdbId: externalIds?.tvdb_id ?? tmdb?.id ?? 0,
+      firstAired: tmdb?.first_air_date ?? show.releaseDate ?? '',
       seriesType: 'standard',
       cleanTitle: this.v3TitleSlug(show.title),
       titleSlug: this.v3TitleSlug(show.title),
       rootFolderPath: rootFolders[0]?.path ?? '',
-      genres: tmdb.genres?.map((genre) => genre.name) ?? [],
+      genres: tmdb?.genres?.map((genre) => genre.name) ?? [],
       tags: [],
-      ratings: { votes: 0, value: tmdb.vote_average ?? 0 },
+      ratings: { votes: 0, value: tmdb?.vote_average ?? show.voteAverage ?? 0 },
     };
   }
 
   private async buildV3Movie(
     movie: EnrichedMovie,
   ): Promise<RadarrV3Movie> {
-    const tmdb = await this.tmdbService.getMovie(movie.tmdbId);
+    const tmdb = await this.tmdbService.getMovieSafe(movie.tmdbId);
     const rootFolders = await this.getRootFoldersV3();
-    const poster = tmdb.poster_path ? `${TMDB_IMG_BASE}${tmdb.poster_path}` : null;
-    const year = Number(String(tmdb.release_date ?? '').slice(0, 4)) || 0;
+    const posterPath = tmdb?.poster_path ?? movie.posterPath ?? null;
+    const poster = posterPath ? `${TMDB_IMG_BASE}${posterPath}` : null;
+    const year =
+      Number(String(tmdb?.release_date ?? movie.releaseDate ?? '').slice(0, 4)) ||
+      0;
 
     return {
       id: movie.id,
       title: movie.title,
-      originalTitle: tmdb.original_title ?? '',
+      originalTitle: tmdb?.original_title ?? movie.originalTitle ?? '',
       sortTitle: this.v3SortTitle(movie.title),
-      status: tmdb.status ?? 'Unknown',
+      status: tmdb?.status ?? 'Unknown',
       overview: movie.overview,
       images: poster
-        ? [{ coverType: 'poster', url: `${TMDB_IMG_BASE}${tmdb.poster_path}`, remoteUrl: poster }]
+        ? [{ coverType: 'poster', url: poster, remoteUrl: poster }]
         : [],
       remotePoster: poster,
       year,
@@ -620,15 +653,15 @@ export class SonarrRadarrService {
       monitored: true,
       minimumAvailability: 'released',
       isAvailable: isAvailable(movie.state),
-      runtime: tmdb.runtime ?? 0,
+      runtime: tmdb?.runtime ?? movie.runtime ?? 0,
       cleanTitle: this.v3TitleSlug(movie.title),
-      imdbId: tmdb.imdb_id ? String(tmdb.imdb_id) : null,
+      imdbId: tmdb?.imdb_id ? String(tmdb.imdb_id) : null,
       tmdbId: movie.tmdbId,
       titleSlug: this.v3TitleSlug(movie.title),
       rootFolderPath: rootFolders[0]?.path ?? '',
-      genres: tmdb.genres?.map((genre) => genre.name) ?? [],
+      genres: tmdb?.genres?.map((genre) => genre.name) ?? [],
       tags: [],
-      ratings: { votes: 0, value: tmdb.vote_average ?? 0 },
+      ratings: { votes: 0, value: tmdb?.vote_average ?? movie.voteAverage ?? 0 },
       hasFile: isAvailable(movie.state),
       sizeOnDisk: 0,
     };
@@ -645,13 +678,17 @@ export class SonarrRadarrService {
   }
 
   public async getV3SeriesByTvdbId(tvdbId: number): Promise<SonarrV3Series> {
-    const resolved = await this.tmdbService.searchTVShowByTvdbId(tvdbId);
+    const resolved = await this.withTMDB(() =>
+      this.tmdbService.searchTVShowByTvdbId(tvdbId),
+    );
 
     if (!resolved) {
       throw new NotFoundException('TV show not found');
     }
 
-    const tmdb = await this.tmdbService.getTVShow(resolved.id);
+    const tmdb = await this.withTMDB(() =>
+      this.tmdbService.getTVShow(resolved.id),
+    );
     const poster = tmdb.poster_path ? `${TMDB_IMG_BASE}${tmdb.poster_path}` : null;
     const year = Number(String(tmdb.first_air_date ?? '').slice(0, 4)) || 0;
 
@@ -931,7 +968,7 @@ export class SonarrRadarrService {
   }
 
   public async getV3MovieByTmdbId(tmdbId: number): Promise<RadarrV3Movie> {
-    const tmdb = await this.tmdbService.getMovie(tmdbId);
+    const tmdb = await this.withTMDB(() => this.tmdbService.getMovie(tmdbId));
     const rootFolders = await this.getRootFoldersV3();
     const poster = tmdb.poster_path ? `${TMDB_IMG_BASE}${tmdb.poster_path}` : null;
     const year = Number(String(tmdb.release_date ?? '').slice(0, 4)) || 0;
@@ -1002,7 +1039,7 @@ export class SonarrRadarrService {
     },
   ): Promise<SonarrV3QueueItem> {
     const size = transmission.totalSize;
-    const sizeleft = transmission.leftUntilDone || size;
+    const sizeleft = transmission.leftUntilDone ?? size;
 
     return {
       id: torrent.id,
@@ -1039,7 +1076,7 @@ export class SonarrRadarrService {
     info: { movieId: number; title: string },
   ): Promise<RadarrV3QueueItem> {
     const size = transmission.totalSize;
-    const sizeleft = transmission.leftUntilDone || size;
+    const sizeleft = transmission.leftUntilDone ?? size;
 
     return {
       id: torrent.id,
@@ -1102,6 +1139,13 @@ export class SonarrRadarrService {
       const transmission = await this.getTransmissionTorrent(torrent);
 
       if (!transmission || transmission.totalSize === 0) {
+        continue;
+      }
+
+      // A Sonarr queue only holds in-flight downloads. Finished torrents
+      // linger in Transmission while seeding and would otherwise surface as
+      // a "Downloading 0%" (or 100%) entry in API clients.
+      if (transmission.percentDone >= 1) {
         continue;
       }
 
@@ -1172,6 +1216,11 @@ export class SonarrRadarrService {
       const transmission = await this.getTransmissionTorrent(torrent);
 
       if (!transmission || transmission.totalSize === 0) {
+        continue;
+      }
+
+      // Only in-flight downloads belong in the queue (see getV3SonarrQueue).
+      if (transmission.percentDone >= 1) {
         continue;
       }
 

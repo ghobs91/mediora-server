@@ -16,6 +16,17 @@ import { TVShow } from "src/entities/tvshow.entity";
 import { TVEpisode } from "src/entities/tvepisode.entity";
 import { TMDBService } from "src/modules/tmdb/tmdb.service";
 import { TransmissionService } from "src/modules/transmission/transmission.service";
+import { mapConcurrent } from "src/utils/map-concurrent";
+
+const ENRICH_CONCURRENCY = 8;
+
+type EnrichedMovieRow = ReturnType<TMDBService["mapMovie"]> & Movie;
+type EnrichedTVShowRow = ReturnType<TMDBService["mapTVShow"]> &
+  TVShow & {
+    runtime?: number;
+    episodesDownloaded: number;
+    episodesTotal: number;
+  };
 
 @Injectable()
 export class LibraryQueryService {
@@ -83,10 +94,8 @@ export class LibraryQueryService {
   }
 
   public async getMovies() {
-    return map(
-      await this.movieDAO.find({ order: { createdAt: "DESC" } }),
-      this.enrichMovie,
-    );
+    const movies = await this.movieDAO.find({ order: { createdAt: "DESC" } });
+    return mapConcurrent(movies, ENRICH_CONCURRENCY, this.enrichMovie);
   }
 
   public async getMovie(movieId: number) {
@@ -96,9 +105,9 @@ export class LibraryQueryService {
   }
 
   public async getTVShows() {
-    return map(
-      await this.tvShowDAO.find({ order: { createdAt: "ASC" } }),
-      (tvShow) => this.enrichTVShow(tvShow),
+    const tvShows = await this.tvShowDAO.find({ order: { createdAt: "ASC" } });
+    return mapConcurrent(tvShows, ENRICH_CONCURRENCY, (tvShow) =>
+      this.enrichTVShow(tvShow),
     );
   }
 
@@ -110,17 +119,15 @@ export class LibraryQueryService {
   }
 
   public async findMissingTVEpisodes() {
-    return (await this.tvEpisodeDAO.findMissingFromLibrary()).map(
-      this.enrichTVEpisode,
-    );
+    const episodes = await this.tvEpisodeDAO.findMissingFromLibrary();
+    return mapConcurrent(episodes, ENRICH_CONCURRENCY, this.enrichTVEpisode);
   }
 
   public async findMissingMovies() {
-    return (
-      await this.movieDAO.find({
-        where: { state: DownloadableMediaState.MISSING },
-      })
-    ).map(this.enrichMovie);
+    const movies = await this.movieDAO.find({
+      where: { state: DownloadableMediaState.MISSING },
+    });
+    return mapConcurrent(movies, ENRICH_CONCURRENCY, this.enrichMovie);
   }
 
   public async calendar() {
@@ -172,23 +179,46 @@ export class LibraryQueryService {
       .where("episode.seasonNumber = :seasonNumber", { seasonNumber })
       .orderBy("episode.episodeNumber")
       .getMany();
-    return map(episodes, this.enrichTVEpisode);
+    return mapConcurrent(episodes, ENRICH_CONCURRENCY, this.enrichTVEpisode);
   }
 
-  private enrichMovie = async (movie: Movie) => {
-    const tmdbResult = await this.tmdbService
-      .getMovie(movie.tmdbId)
-      .then(this.tmdbService.mapMovie);
-    return { ...tmdbResult, ...movie, title: tmdbResult.title };
+  /**
+   * Enrichment is a best-effort overlay on top of the local database: if TMDB
+   * is unreachable the row is still returned with empty metadata, so library
+   * and detail queries keep working.
+   */
+  private enrichMovie = async (movie: Movie): Promise<EnrichedMovieRow> => {
+    const tmdb = await this.tmdbService.getMovieSafe(movie.tmdbId);
+
+    if (!tmdb) {
+      return {
+        ...movie,
+        overview: "",
+        voteAverage: 0,
+        releaseDate: "",
+        runtime: 0,
+        originalTitle: movie.title,
+        originCountry: [],
+        posterPath: "",
+      };
+    }
+
+    const tmdbResult = this.tmdbService.mapMovie(tmdb);
+    return {
+      ...tmdbResult,
+      ...movie,
+      title: tmdbResult.title || movie.title,
+      overview: tmdbResult.overview ?? "",
+      voteAverage: tmdbResult.voteAverage ?? 0,
+      releaseDate: tmdbResult.releaseDate ?? "",
+    };
   };
 
   private enrichTVShow = async (
     tvShow: TVShow,
     params?: { language: string },
-  ) => {
-    const tmdbResult = await this.tmdbService
-      .getTVShow(tvShow.tmdbId, params)
-      .then(this.tmdbService.mapTVShow);
+  ): Promise<EnrichedTVShowRow> => {
+    const tmdb = await this.tmdbService.getTVShowSafe(tvShow.tmdbId, params);
 
     const episodes = await this.tvEpisodeDAO.find({
       where: { tvShowId: tvShow.id },
@@ -200,21 +230,40 @@ export class LibraryQueryService {
         episode.state === DownloadableMediaState.PROCESSED,
     ).length;
 
+    if (!tmdb) {
+      return {
+        ...tvShow,
+        overview: "",
+        voteAverage: 0,
+        releaseDate: "",
+        runtime: 0,
+        originalTitle: tvShow.title,
+        originCountry: [],
+        posterPath: "",
+        episodesDownloaded,
+        episodesTotal,
+      };
+    }
+
+    const tmdbResult = this.tmdbService.mapTVShow(tmdb);
     return {
       ...tmdbResult,
       ...tvShow,
-      title: tmdbResult.title,
+      title: tmdbResult.title || tvShow.title,
+      overview: tmdbResult.overview ?? "",
+      voteAverage: tmdbResult.voteAverage ?? 0,
+      releaseDate: tmdbResult.releaseDate ?? "",
       episodesDownloaded,
       episodesTotal,
     };
   };
 
   private enrichTVEpisode = async (tvEpisode: TVEpisode) => {
-    const tmdbResult = await this.tmdbService.getTVEpisode(
+    const tmdb = await this.tmdbService.getTVEpisodeSafe(
       tvEpisode.tvShow.tmdbId,
       tvEpisode.seasonNumber,
       tvEpisode.episodeNumber,
     );
-    return { ...tvEpisode, releaseDate: tmdbResult.air_date };
+    return { ...tvEpisode, releaseDate: tmdb?.air_date ?? "" };
   };
 }
