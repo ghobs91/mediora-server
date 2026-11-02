@@ -9,6 +9,9 @@ import {
   useReorganizeLibraryMutation,
   useResetLibraryMutation,
   useClearCacheMutation,
+  useGetParamsQuery,
+  useStartReplaceH264JobMutation,
+  useStartReplaceForeignAudioJobMutation,
 } from '../../utils/graphql';
 
 import { Button } from '@/components/ui/button';
@@ -35,6 +38,13 @@ export function ActionsComponents() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resetInfoOpen, setResetInfoOpen] = useState(false);
   const [cacheInfoOpen, setCacheInfoOpen] = useState(false);
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  const [foreignOpen, setForeignOpen] = useState(false);
+
+  const { data: paramsData } = useGetParamsQuery();
+  const ignoreH264 = paramsData?.params?.ignore_h264_releases === 'true';
+  const requireEnglishAudio =
+    paramsData?.params?.require_english_audio === 'true';
 
   const [findEpisodes, { loading: loading1 }] = useStartFindNewEpisodesMutation(
     {
@@ -68,7 +78,22 @@ export function ActionsComponents() {
     onCompleted: () => setCacheInfoOpen(true),
   });
 
-  const jobLoading = loading1 || loading2 || loading3 || loading5;
+  const [
+    replaceH264,
+    { loading: loading6 },
+  ] = useStartReplaceH264JobMutation({
+    onCompleted: () => toast.success('Replace h/x264 media job started'),
+  });
+
+  const [
+    replaceForeignAudio,
+    { loading: loading7 },
+  ] = useStartReplaceForeignAudioJobMutation({
+    onCompleted: () => toast.success('Replace foreign-audio media job started'),
+  });
+
+  const jobLoading =
+    loading1 || loading2 || loading3 || loading5 || loading6 || loading7;
 
   function handleResetClick() {
     setDeleteFiles(false);
@@ -108,6 +133,28 @@ export function ActionsComponents() {
             {jobLoading && <Loader2 className="animate-spin" />}
             Download missing files
           </Button>
+          {ignoreH264 && (
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setReplaceOpen(true)}
+              disabled={jobLoading}
+            >
+              {loading6 && <Loader2 className="animate-spin" />}
+              Replace h/x264 media
+            </Button>
+          )}
+          {requireEnglishAudio && (
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setForeignOpen(true)}
+              disabled={jobLoading}
+            >
+              {loading7 && <Loader2 className="animate-spin" />}
+              Replace foreign-audio media
+            </Button>
+          )}
           <Button
             size="lg"
             onClick={() => reorganizeLibrary()}
@@ -125,6 +172,62 @@ export function ActionsComponents() {
           </Button>
         </CardContent>
       </Card>
+
+      <Dialog open={replaceOpen} onOpenChange={setReplaceOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Replace h/x264 media?</DialogTitle>
+            <DialogDescription>
+              Scans processed movies and episodes for H.264 files. A file is
+              only replaced when a smaller x265/HEVC release is available; the
+              old file is removed when that replacement download starts. Media
+              without a smaller x265 release is left untouched. Up to 25 items
+              are processed per run — run it again for the next batch.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplaceOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setReplaceOpen(false);
+                replaceH264();
+              }}
+            >
+              Start
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={foreignOpen} onOpenChange={setForeignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Replace foreign-audio media?</DialogTitle>
+            <DialogDescription>
+              Scans processed movies and episodes, reading audio stream tags and
+              the embedded release title. Only positively foreign-audio files
+              are replaced; untagged or unknown audio is left untouched. The old
+              file is removed when an English replacement download starts. Up to
+              25 items are processed per run.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForeignOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setForeignOpen(false);
+                replaceForeignAudio();
+              }}
+            >
+              Start
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

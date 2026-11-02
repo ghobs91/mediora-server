@@ -9,6 +9,7 @@ import { TVEpisodeDAO } from 'src/entities/dao/tvepisode.dao';
 
 import { ParamsModule } from 'src/modules/params/params.module';
 import { LibraryModule } from 'src/modules/library/library.module';
+import { RedisModule } from 'src/modules/redis/redis.module';
 
 import { JackettService } from './jackett.service';
 import { JackettResolver } from './jackett.resolver';
@@ -18,6 +19,7 @@ import { JackettResolver } from './jackett.resolver';
     TypeOrmModule.forFeature([TVSeason, TVEpisode]),
     ParamsModule,
     forwardRef(() => LibraryModule),
+    RedisModule,
   ],
   providers: [JackettService, JackettResolver, TVSeasonDAO, TVEpisodeDAO],
   exports: [JackettService],

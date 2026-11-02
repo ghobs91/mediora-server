@@ -72,6 +72,18 @@ export class LibraryOrganizationService {
     await fs.rm(normalized, { recursive: true, force: true });
   }
 
+  // Guarded single-file delete for episode replacements: the parent folder is
+  // shared with the rest of the season, so it must never be removed here.
+  private async safeRemoveFile(file: string) {
+    const normalized = path.normalize(file);
+    const insideLibrary =
+      normalized.startsWith("/usr/") || normalized.startsWith("/downloads/");
+    if (!insideLibrary || normalized.includes("..")) {
+      throw new Error(`refusing to delete outside library: ${file}`);
+    }
+    await fs.rm(normalized, { force: true });
+  }
+
   public async trackTVShow({
     tmdbId,
     seasonNumbers,
@@ -325,8 +337,10 @@ export class LibraryOrganizationService {
   public async replaceTVEpisode(episodeId: number, manager: EntityManager) {
     const tvEpisodeDAO = TVEpisodeDAO.fromManager(manager);
     const torrentDAO = TorrentDAO.fromManager(manager);
+    const fileDAO = FileDAO.fromManager(manager);
     const episode = await tvEpisodeDAO.findOneOrFail({
       where: { id: episodeId },
+      relations: ["files"],
     });
     if (episode.state !== DownloadableMediaState.MISSING) {
       const torrents = await torrentDAO.find({
@@ -336,6 +350,10 @@ export class LibraryOrganizationService {
         this.transmissionService.removeTorrentAndFiles(torrent.torrentHash),
       );
       await torrentDAO.remove(torrents);
+      await forEachSeries(episode.files ?? [], (file) =>
+        this.safeRemoveFile(file.path),
+      );
+      await fileDAO.remove(episode.files ?? []);
     }
     await tvEpisodeDAO.save({
       id: episodeId,

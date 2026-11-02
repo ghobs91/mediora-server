@@ -8,7 +8,7 @@ RUN yarn build
 
 FROM node:22-alpine AS runtime
 
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl ffmpeg
 
 ENV NODE_ENV=production \
     PORT=4000

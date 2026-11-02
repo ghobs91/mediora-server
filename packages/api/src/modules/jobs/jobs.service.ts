@@ -170,6 +170,38 @@ export class JobsService {
     );
   }
 
+  public startReplaceH264(options?: JobsOptions) {
+    this.logger.info('start replace h264 media');
+    return this.scanLibraryQueue
+      .add(
+        ScanLibraryQueueProcessors.REPLACE_H264_MEDIA,
+        {},
+        { ...options, deduplication: { id: 'replace-h264-media' } }
+      )
+      .catch((error: unknown) => {
+        this.logger.warn('replace h264 job already queued', {
+          error: error instanceof Error ? error.message : error,
+        });
+        return undefined;
+      });
+  }
+
+  public startReplaceForeignAudio(options?: JobsOptions) {
+    this.logger.info('start replace foreign audio media');
+    return this.scanLibraryQueue
+      .add(
+        ScanLibraryQueueProcessors.REPLACE_FOREIGN_AUDIO,
+        {},
+        { ...options, deduplication: { id: 'replace-foreign-audio' } }
+      )
+      .catch((error: unknown) => {
+        this.logger.warn('replace foreign audio job already queued', {
+          error: error instanceof Error ? error.message : error,
+        });
+        return undefined;
+      });
+  }
+
   /**
    * Re-run organize for every season/episode of a show that still has a torrent
    * row, so library entries created by older organize behaviour (e.g. symlinks

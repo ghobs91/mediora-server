@@ -3,14 +3,20 @@ import fc from 'fast-check';
 import {
   formatSearchResult,
   isDownloadable,
+  isForeignAudioOnly,
+  getMagnetInfoHash,
+  isH264Release,
+  isH265Release,
   matchesBlockedKeyword,
   parseQuality,
   parseTag,
   pickBest,
   pickMostSeeded,
+  pickSmallestH265Upgrade,
   sortByBest,
   RankedResult,
 } from './torrent-ranking';
+import { sanitize } from './sanitize';
 
 import { JackettResult } from 'src/modules/jackett/jackett.dto';
 import { Quality } from 'src/entities/quality.entity';
@@ -535,5 +541,143 @@ describe('torrent-ranking properties', () => {
         }
       )
     );
+  });
+});
+
+describe('codec detection', () => {
+  const parts = (title: string) => sanitize(title).split(' ').filter(Boolean);
+
+  it('detects x264, h264 and avc releases', () => {
+    expect(isH264Release(parts('Movie.2020.1080p.x264-GRP'))).toBe(true);
+    expect(isH264Release(parts('Movie.2020.1080p.H264-GRP'))).toBe(true);
+    expect(isH264Release(parts('Movie.2020.1080p.H.264-GRP'))).toBe(true);
+    expect(isH264Release(parts('Movie.2020.1080p.AVC-GRP'))).toBe(true);
+    expect(isH264Release(parts('Movie.2020.1080p.x.264-GRP'))).toBe(true);
+  });
+
+  it('does not treat x265/hevc as h264', () => {
+    expect(isH264Release(parts('Movie.2020.1080p.x265-GRP'))).toBe(false);
+    expect(isH264Release(parts('Movie.2020.1080p.HEVC-GRP'))).toBe(false);
+    expect(isH264Release(parts('Movie.2020.2160p-GRP'))).toBe(false);
+  });
+
+  it('detects x265, h265 and hevc releases', () => {
+    expect(isH265Release(parts('Show.S01E01.1080p.x265-GRP'))).toBe(true);
+    expect(isH265Release(parts('Show.S01E01.1080p.HEVC-GRP'))).toBe(true);
+    expect(isH265Release(parts('Show.S01E01.1080p.H.265-GRP'))).toBe(true);
+    expect(isH265Release(parts('Show.S01E01.1080p.x264-GRP'))).toBe(false);
+  });
+});
+
+describe('pickSmallestH265Upgrade', () => {
+  const makeRanked = (
+    title: string,
+    size: number,
+    seeders = 20,
+    peers = 1
+  ): RankedResult => ({
+    normalizedTitle: title,
+    normalizedTitleParts: sanitize(title).split(' ').filter(Boolean),
+    id: title,
+    title,
+    quality: { label: '1080p', score: 5, maxSize: null },
+    size,
+    seeders,
+    peers,
+    link: 'link',
+    downloadLink: 'link',
+    tag: { label: 'unknown', score: 1 },
+    publishDate: '2024-01-01',
+  });
+
+  it('picks the smallest healthy x265 release that saves space', () => {
+    const existing = 10_000;
+    const results = [
+      makeRanked('Show.S01E01.1080p.x264-GRP', 4_000),
+      makeRanked('Show.S01E01.1080p.x265-BIG', 9_000),
+      makeRanked('Show.S01E01.1080p.x265-SMALL', 3_000),
+      makeRanked('Show.S01E01.1080p.HEVC-MID', 5_000),
+    ];
+
+    expect(pickSmallestH265Upgrade(results, existing)?.title).toBe(
+      'Show.S01E01.1080p.x265-SMALL'
+    );
+  });
+
+  it('never picks a release that is not smaller than the existing file', () => {
+    const results = [makeRanked('Show.S01E01.1080p.x265-GRP', 12_000)];
+    expect(pickSmallestH265Upgrade(results, 10_000)).toBeUndefined();
+  });
+
+  it('ignores dead x265 releases', () => {
+    const results = [
+      makeRanked('Show.S01E01.1080p.x265-DEAD', 2_000, 1, 0),
+      makeRanked('Show.S01E01.1080p.x265-LEECH', 2_000, 4, 8),
+      makeRanked('Show.S01E01.1080p.x264-GRP', 1_000),
+    ];
+    expect(pickSmallestH265Upgrade(results, 10_000)).toBeUndefined();
+  });
+});
+
+describe('isForeignAudioOnly', () => {
+  const parts = (title: string) => sanitize(title).split(' ').filter(Boolean);
+
+  it('flags releases with only a foreign audio marker', () => {
+    expect(isForeignAudioOnly(parts('Ozark.S04.1080p.ITA.WEB-DL'))).toBe(true);
+    expect(isForeignAudioOnly(parts('Ozark.S04.1080p.RUSSIAN.WEB-DL'))).toBe(
+      true
+    );
+    expect(isForeignAudioOnly(parts('Movie.2020.TRUEFRENCH.1080p'))).toBe(true);
+  });
+
+  it('allows English, dual and multi audio markers', () => {
+    expect(isForeignAudioOnly(parts('Ozark.S04.ITA.ENG.1080p'))).toBe(false);
+    expect(isForeignAudioOnly(parts('Ozark.S04.MULTI.1080p'))).toBe(false);
+    expect(isForeignAudioOnly(parts('Movie.2020.DUAL.1080p'))).toBe(false);
+    expect(isForeignAudioOnly(parts('Movie.2020.ENG.1080p'))).toBe(false);
+  });
+
+  it('does not judge releases without a language marker', () => {
+    expect(isForeignAudioOnly(parts('Ozark.S04.1080p.WEB-DL'))).toBe(false);
+  });
+});
+
+describe('magnet display name detection', () => {
+  it('includes the magnet dn in codec filtering', () => {
+    const ranked = formatSearchResult({
+      result: makeResult('SpongeBob SquarePants S01E08 1080p SKST WEB-DL', {
+        MagnetUri:
+          'magnet:?xt=urn:btih:abc&dn=SpongeBob.SquarePants.S01E08.1080p.SKST.WEB-DL.DD+2.0.H+264-playWEB',
+      }),
+      qualityParams: [],
+      preferredTags: [],
+    });
+
+    expect(isH264Release(ranked.normalizedTitleParts)).toBe(true);
+  });
+
+  it('includes the magnet dn in audio filtering', () => {
+    const ranked = formatSearchResult({
+      result: makeResult('Ozark S04 1080p WEB-DL', {
+        MagnetUri:
+          'magnet:?xt=urn:btih:abc&dn=Ozark.S04.1080p.WEB-DL.RUS',
+      }),
+      qualityParams: [],
+      preferredTags: [],
+    });
+
+    expect(isForeignAudioOnly(ranked.normalizedTitleParts)).toBe(true);
+  });
+});
+
+describe('getMagnetInfoHash', () => {
+  it('extracts and normalizes the btih infohash', () => {
+    expect(
+      getMagnetInfoHash(
+        'magnet:?xt=urn:btih:FCEAF161FA22A0089C3D720A276B4B4CCCB84827&dn=x'
+      )
+    ).toBe('fceaf161fa22a0089c3d720a276b4b4cccb84827');
+    expect(getMagnetInfoHash('http://example.com/file.torrent')).toBeUndefined();
+    expect(getMagnetInfoHash(undefined)).toBeUndefined();
   });
 });

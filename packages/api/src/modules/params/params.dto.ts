@@ -10,6 +10,8 @@ export class ParamsHash {
   @Field() public max_movie_download_size!: string;
   @Field() public max_tvshow_episode_download_size!: string;
   @Field() public blocked_torrent_keywords!: string;
+  @Field() public ignore_h264_releases!: string;
+  @Field() public require_english_audio!: string;
   @Field() public organize_library_strategy!: string;
 }
 

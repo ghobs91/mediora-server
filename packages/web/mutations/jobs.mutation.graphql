@@ -25,3 +25,17 @@ mutation reorganizeLibrary {
     message
   }
 }
+
+mutation startReplaceH264Job {
+  result: startReplaceH264Job {
+    success
+    message
+  }
+}
+
+mutation startReplaceForeignAudioJob {
+  result: startReplaceForeignAudioJob {
+    success
+    message
+  }
+}

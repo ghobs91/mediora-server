@@ -8,6 +8,8 @@ query getParams {
     max_movie_download_size
     max_tvshow_episode_download_size
     blocked_torrent_keywords
+    ignore_h264_releases
+    require_english_audio
     organize_library_strategy
   }
 }

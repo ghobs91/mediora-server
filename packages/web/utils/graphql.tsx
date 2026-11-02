@@ -436,6 +436,8 @@ export type OmdbInfo = {
 export type ParamsHash = {
   __typename?: 'ParamsHash';
   blocked_torrent_keywords: Scalars['String']['output'];
+  ignore_h264_releases: Scalars['String']['output'];
+  require_english_audio: Scalars['String']['output'];
   jackett_api_key: Scalars['String']['output'];
   language: Scalars['String']['output'];
   max_movie_download_size: Scalars['String']['output'];
@@ -791,6 +793,16 @@ export type StartDownloadMissingMutationVariables = Exact<{ [key: string]: never
 
 export type StartDownloadMissingMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
 
+export type StartReplaceH264JobMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type StartReplaceH264JobMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
+export type StartReplaceForeignAudioJobMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type StartReplaceForeignAudioJobMutation = { __typename?: 'Mutation', result: { __typename?: 'GraphQLCommonResponse', success: boolean, message?: string | null } };
+
 export type DownloadMovieMutationVariables = Exact<{
   movieId: Scalars['Int']['input'];
   jackettResult: JackettInput;
@@ -984,7 +996,7 @@ export type GetMovieFileDetailsQuery = { __typename?: 'Query', details: { __type
 export type GetParamsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetParamsQuery = { __typename?: 'Query', params: { __typename?: 'ParamsHash', region: string, language: string, tmdb_api_key: string, jackett_api_key: string, sonarr_radarr_api_key: string, max_movie_download_size: string, max_tvshow_episode_download_size: string, blocked_torrent_keywords: string, organize_library_strategy: string } };
+export type GetParamsQuery = { __typename?: 'Query', params: { __typename?: 'ParamsHash', region: string, language: string, tmdb_api_key: string, jackett_api_key: string, sonarr_radarr_api_key: string, max_movie_download_size: string, max_tvshow_episode_download_size: string, blocked_torrent_keywords: string, ignore_h264_releases: string, require_english_audio: string, organize_library_strategy: string } };
 
 export type GetPopularQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1280,6 +1292,36 @@ export function useStartDownloadMissingMutation(baseOptions?: Apollo.MutationHoo
 export type StartDownloadMissingMutationHookResult = ReturnType<typeof useStartDownloadMissingMutation>;
 export type StartDownloadMissingMutationResult = Apollo.MutationResult<StartDownloadMissingMutation>;
 export type StartDownloadMissingMutationOptions = Apollo.BaseMutationOptions<StartDownloadMissingMutation, StartDownloadMissingMutationVariables>;
+export const StartReplaceH264JobDocument = gql`
+    mutation startReplaceH264Job {
+  result: startReplaceH264Job {
+    success
+    message
+  }
+}
+    `;
+export function useStartReplaceH264JobMutation(baseOptions?: Apollo.MutationHookOptions<StartReplaceH264JobMutation, StartReplaceH264JobMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<StartReplaceH264JobMutation, StartReplaceH264JobMutationVariables>(StartReplaceH264JobDocument, options);
+      }
+export type StartReplaceH264JobMutationHookResult = ReturnType<typeof useStartReplaceH264JobMutation>;
+export type StartReplaceH264JobMutationResult = Apollo.MutationResult<StartReplaceH264JobMutation>;
+export type StartReplaceH264JobMutationOptions = Apollo.BaseMutationOptions<StartReplaceH264JobMutation, StartReplaceH264JobMutationVariables>;
+export const StartReplaceForeignAudioJobDocument = gql`
+    mutation startReplaceForeignAudioJob {
+  result: startReplaceForeignAudioJob {
+    success
+    message
+  }
+}
+    `;
+export function useStartReplaceForeignAudioJobMutation(baseOptions?: Apollo.MutationHookOptions<StartReplaceForeignAudioJobMutation, StartReplaceForeignAudioJobMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<StartReplaceForeignAudioJobMutation, StartReplaceForeignAudioJobMutationVariables>(StartReplaceForeignAudioJobDocument, options);
+      }
+export type StartReplaceForeignAudioJobMutationHookResult = ReturnType<typeof useStartReplaceForeignAudioJobMutation>;
+export type StartReplaceForeignAudioJobMutationResult = Apollo.MutationResult<StartReplaceForeignAudioJobMutation>;
+export type StartReplaceForeignAudioJobMutationOptions = Apollo.BaseMutationOptions<StartReplaceForeignAudioJobMutation, StartReplaceForeignAudioJobMutationVariables>;
 export const DownloadMovieDocument = gql`
     mutation downloadMovie($movieId: Int!, $jackettResult: JackettInput!) {
   result: downloadMovie(movieId: $movieId, jackettResult: $jackettResult) {
@@ -1973,6 +2015,8 @@ export const GetParamsDocument = gql`
     max_movie_download_size
     max_tvshow_episode_download_size
     blocked_torrent_keywords
+    ignore_h264_releases
+    require_english_audio
     organize_library_strategy
   }
 }

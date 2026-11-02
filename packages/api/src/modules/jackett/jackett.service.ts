@@ -13,7 +13,10 @@ import { sanitize } from "src/utils/sanitize";
 import {
   formatSearchResult,
   isDownloadable,
+  isForeignAudioOnly,
+  isH265Release,
   matchesBlockedKeyword,
+  normalizeReleaseTitle,
   pickBest,
   pickMostSeeded,
   RankedResult,
@@ -22,6 +25,7 @@ import {
 
 import { ParamsService } from "src/modules/params/params.service";
 import { LibraryQueryService } from "src/modules/library/library-query.service";
+import { RedisService } from "src/modules/redis/redis.service";
 
 import { TVSeasonDAO } from "src/entities/dao/tvseason.dao";
 import { TVEpisodeDAO } from "src/entities/dao/tvepisode.dao";
@@ -43,6 +47,7 @@ export class JackettService {
     private readonly libraryService: LibraryQueryService,
     private readonly tvSeasonDAO: TVSeasonDAO,
     private readonly tvEpisodeDAO: TVEpisodeDAO,
+    private readonly redisService: RedisService,
   ) {
     this.logger = logger.child({ context: "JackettService" });
   }
@@ -97,8 +102,12 @@ export class JackettService {
     }
   }
 
-  public async searchMovie(movieId: number, quality?: string) {
-    this.logger.info("search movie", { movieId, quality });
+  public async searchMovie(
+    movieId: number,
+    quality?: string,
+    upgrade = false,
+  ) {
+    this.logger.info("search movie", { movieId, quality, upgrade });
 
     const maxSize = await this.paramsService.getNumber(
       ParameterKey.MAX_MOVIE_DOWNLOAD_SIZE,
@@ -110,7 +119,12 @@ export class JackettService {
       `${movie.originalTitle} ${dayjs(movie.releaseDate).format("YYYY")}`,
     ];
 
-    return this.search(queries, { maxSize, type: Entertainment.Movie, quality });
+    return this.search(queries, {
+      maxSize,
+      type: Entertainment.Movie,
+      quality,
+      withoutFilter: upgrade,
+    });
   }
 
   public async searchSeason(seasonId: number, quality?: string) {
@@ -154,8 +168,12 @@ export class JackettService {
     });
   }
 
-  public async searchEpisode(episodeId: number, quality?: string) {
-    this.logger.info("search tv episode", { episodeId, quality });
+  public async searchEpisode(
+    episodeId: number,
+    quality?: string,
+    upgrade = false,
+  ) {
+    this.logger.info("search tv episode", { episodeId, quality, upgrade });
 
     const maxSize = await this.paramsService.getNumber(
       ParameterKey.MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE,
@@ -187,7 +205,12 @@ export class JackettService {
       ])
       .flat();
 
-    return this.search(queries, { maxSize, type: Entertainment.TvShow, quality });
+    return this.search(queries, {
+      maxSize,
+      type: Entertainment.TvShow,
+      quality,
+      withoutFilter: upgrade,
+    });
   }
 
   public async search(
@@ -282,6 +305,20 @@ export class JackettService {
     const blockedKeywords = await this.paramsService.getList(
       ParameterKey.BLOCKED_TORRENT_KEYWORDS,
     );
+    const ignoreH264Releases =
+      (await this.paramsService.get(
+        ParameterKey.IGNORE_H264_RELEASES,
+      )) === "true";
+    const requireEnglishAudio =
+      (await this.paramsService.get(
+        ParameterKey.REQUIRE_ENGLISH_AUDIO,
+      )) === "true";
+    const rejectedAudioTitles = new Set(
+      await this.redisService.getRejectedTitles(),
+    );
+    const rejectedInfoHashes = new Set(
+      await this.redisService.getRejectedHashes(),
+    );
 
     const rawResults = await mapSeries(uniq(queries), async (query) => {
       const normalizedQuery = sanitize(query);
@@ -323,6 +360,27 @@ export class JackettService {
       .filter(
         (result) =>
           !matchesBlockedKeyword(result.normalizedTitleParts, blockedKeywords),
+      )
+      // Codec preference is a hard allowlist when enabled: keep only releases
+      // that positively identify as HEVC/x265. Jackett sometimes truncates the
+      // title and magnet name before the codec ("... DDP2 0"), so treating
+      // "not detected as H.264" as acceptable lets those through and forces
+      // the post-download guard to reject them again. This deliberately
+      // applies to manual searches too.
+      .filter(
+        (result) =>
+          !ignoreH264Releases ||
+          isH265Release(result.normalizedTitleParts),
+      )
+      .filter(
+        (result) =>
+          !requireEnglishAudio ||
+          (!isForeignAudioOnly(result.normalizedTitleParts) &&
+            !rejectedAudioTitles.has(normalizeReleaseTitle(result.title))),
+      )
+      .filter(
+        (result) =>
+          !result.infoHash || !rejectedInfoHashes.has(result.infoHash),
       )
       .filter((result) =>
         isDownloadable({ result, maxSize, episodeCount, isSeason, withoutFilter }),

@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import {
   Tooltip,
   TooltipContent,
@@ -162,6 +163,51 @@ interface ParamsInputProps {
 }
 
 function ParamsInput({ inputName, value, onChange }: ParamsInputProps) {
+  if (inputName === 'require_english_audio') {
+    return (
+      <div className="flex items-start justify-between gap-4 rounded-md border border-border p-3">
+        <div className="space-y-1">
+          <Label htmlFor="require-english-audio" className="font-medium">
+            Require English audio track
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Skips releases that are explicitly foreign-audio only (ITA, RUS,
+            FRENCH, …) and verifies the downloaded audio tracks with ffprobe.
+            Downloads without an English track are rejected and the next
+            release is tried. Untagged audio is treated as unknown.
+          </p>
+        </div>
+        <Switch
+          id="require-english-audio"
+          checked={value === 'true'}
+          onCheckedChange={(checked) => onChange(checked ? 'true' : 'false')}
+        />
+      </div>
+    );
+  }
+
+  if (inputName === 'ignore_h264_releases') {
+    return (
+      <div className="flex items-start justify-between gap-4 rounded-md border border-border p-3">
+        <div className="space-y-1">
+          <Label htmlFor="ignore-h264-releases" className="font-medium">
+            Ignore x264/H.264 releases
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Excludes AVC/H.264 torrents from automatic and manual searches so
+            only more space-efficient x265/HEVC releases are picked for movies,
+            episodes and seasons.
+          </p>
+        </div>
+        <Switch
+          id="ignore-h264-releases"
+          checked={value === 'true'}
+          onCheckedChange={(checked) => onChange(checked ? 'true' : 'false')}
+        />
+      </div>
+    );
+  }
+
   if (inputName === 'organize_library_strategy') {
     return (
       <div className="flex flex-col gap-2">

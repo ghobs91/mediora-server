@@ -22,6 +22,7 @@ import { LibraryModule } from 'src/modules/library/library.module';
 import { TransmissionModule } from 'src/modules/transmission/transmission.module';
 import { TMDBModule } from 'src/modules/tmdb/tmdb.module';
 import { ParamsModule } from 'src/modules/params/params.module';
+import { RedisModule } from 'src/modules/redis/redis.module';
 
 import { DownloadProcessor } from './processors/download.processor';
 import { RefreshTorrentProcessor } from './processors/refresh-torrent.processor';
@@ -85,6 +86,7 @@ import { JobsResolver } from './jobs.resolver';
     TransmissionModule,
     TMDBModule,
     ParamsModule,
+    RedisModule,
     forwardRef(() => LibraryModule),
   ],
   providers: [

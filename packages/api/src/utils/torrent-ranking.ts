@@ -18,6 +18,8 @@ export interface RankedResult {
   downloadLink: string;
   tag: { label: string; score: number };
   publishDate: string;
+  infoHash?: string;
+  codecScore?: number;
 }
 
 export function parseTag(normalizedTitle: string[], preferredTags: Tag[]) {
@@ -70,7 +72,11 @@ export function formatSearchResult({
   qualityParams: Quality[];
   preferredTags: Tag[];
 }): RankedResult {
-  const normalizedTitle = sanitize(result.Title);
+  // Jackett titles sometimes omit the codec/language while the magnet display
+  // name carries the full release name (e.g. "... DD 2.0 H 264-playWEB").
+  // Include it in the normalized text used for codec/audio filtering.
+  const magnetName = getMagnetDisplayName(result.MagnetUri);
+  const normalizedTitle = sanitize(`${result.Title} ${magnetName}`.trim());
   const normalizedTitleParts = normalizedTitle
     .split(' ')
     .filter((str) => str && str.trim());
@@ -90,14 +96,28 @@ export function formatSearchResult({
     downloadLink: (result.MagnetUri || result.Link) as string,
     tag: parseTag(normalizedTitleParts, preferredTags),
     publishDate: result.PublishDate,
+    infoHash:
+      getMagnetInfoHash(result.MagnetUri) ??
+      getMagnetInfoHash(result.Link) ??
+      undefined,
+    codecScore: isH265Release(normalizedTitleParts)
+      ? 2
+      : isH264Release(normalizedTitleParts)
+        ? 0
+        : 1,
   };
 }
 
 export function sortByBest(results: RankedResult[]) {
   return orderBy(
     results,
-    ['tag.score', 'quality.score', 'seeders'],
-    ['desc', 'desc', 'desc']
+    [
+      (result: RankedResult) => result.tag.score,
+      (result: RankedResult) => result.quality.score,
+      (result: RankedResult) => result.codecScore ?? 1,
+      'seeders',
+    ],
+    ['desc', 'desc', 'desc', 'desc']
   );
 }
 
@@ -109,8 +129,8 @@ export function pickMostSeeded(
   // so a healthy swarm beats a dead one with a marginally better label.
   return orderBy(
     results,
-    ['seeders', 'tag.score', 'quality.score'],
-    ['desc', 'desc', 'desc']
+    ['seeders', 'tag.score', 'quality.score', (result: RankedResult) => result.codecScore ?? 1],
+    ['desc', 'desc', 'desc', 'desc']
   )[0];
 }
 
@@ -122,9 +142,172 @@ export function pickBest(
   // the same quality. Per-quality size caps are enforced upstream.
   return orderBy(
     results,
-    ['quality.score', 'tag.score', 'seeders'],
-    ['desc', 'desc', 'desc']
+    [
+      (result: RankedResult) => result.quality.score,
+      (result: RankedResult) => result.tag.score,
+      (result: RankedResult) => result.codecScore ?? 1,
+      'seeders',
+    ],
+    ['desc', 'desc', 'desc', 'desc']
   )[0];
+}
+
+/**
+ * Codec detection for release titles. `sanitize` splits punctuation, so
+ * "H.264" becomes the tokens ["h", "264"] while "x264"/"HEVC" stay whole.
+ */
+export function isH264Release(normalizedTitleParts: string[]): boolean {
+  const has = (token: string) => normalizedTitleParts.includes(token);
+  return (
+    has('x264') ||
+    has('h264') ||
+    has('avc') ||
+    has('avc1') ||
+    (has('x') && has('264')) ||
+    (has('h') && has('264'))
+  );
+}
+
+export function isH265Release(normalizedTitleParts: string[]): boolean {
+  const has = (token: string) => normalizedTitleParts.includes(token);
+  return (
+    has('x265') ||
+    has('h265') ||
+    has('hevc') ||
+    (has('x') && has('265')) ||
+    (has('h') && has('265'))
+  );
+}
+
+/**
+ * Picks the smallest acceptable HEVC/x265 release that is strictly smaller
+ * than the media it would replace. Returns undefined when no release saves
+ * space, so a replacement never grows the library.
+ */
+export function pickSmallestH265Upgrade(
+  results: RankedResult[],
+  existingSize: number
+): RankedResult | undefined {
+  return orderBy(
+    results.filter(
+      (result) =>
+        isH265Release(result.normalizedTitleParts) &&
+        result.size > 0 &&
+        result.size < existingSize &&
+        result.seeders >= 5 &&
+        result.seeders > result.peers
+    ),
+    ['size'],
+    ['asc']
+  )[0];
+}
+
+const VIDEO_EXTENSION = /\.(mkv|mp4|avi|m4v|mov|ts)$/i;
+
+/**
+ * Normalizes a release title for comparisons. Video file extensions are
+ * stripped so a torrent named "Show.S01E01.mkv" matches the Jackett title
+ * "Show.S01E01".
+ */
+export function normalizeReleaseTitle(title: string) {
+  return sanitize(title.replace(VIDEO_EXTENSION, ''))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getMagnetDisplayName(uri?: string): string {
+  if (!uri) return '';
+  const match = /[?&]dn=([^&]+)/i.exec(uri);
+  if (!match) return '';
+  try {
+    return decodeURIComponent(match[1].replace(/\+/g, ' '));
+  } catch {
+    return match[1];
+  }
+}
+
+export function getMagnetInfoHash(uri?: string): string | undefined {
+  if (!uri) return undefined;
+  const match = /urn:btih:([a-z0-9]+)/i.exec(uri);
+  return match ? match[1].toLowerCase() : undefined;
+}
+
+const FOREIGN_AUDIO_TOKENS = new Set([
+  'ita',
+  'italian',
+  'rus',
+  'russian',
+  'fre',
+  'fra',
+  'french',
+  'truefrench',
+  'vff',
+  'ger',
+  'deu',
+  'german',
+  'spa',
+  'spanish',
+  'por',
+  'portuguese',
+  'jpn',
+  'japanese',
+  'kor',
+  'korean',
+  'hin',
+  'hindi',
+  'tur',
+  'turkish',
+  'pol',
+  'polish',
+  'dut',
+  'nld',
+  'dutch',
+  'swe',
+  'swedish',
+  'nor',
+  'norwegian',
+  'dan',
+  'danish',
+  'fin',
+  'finnish',
+  'cze',
+  'ces',
+  'czech',
+  'hun',
+  'hungarian',
+  'rum',
+  'ron',
+  'romanian',
+  'ukr',
+  'ukrainian',
+  'ara',
+  'arabic',
+]);
+
+const MULTI_AUDIO_TOKENS = new Set([
+  'eng',
+  'english',
+  'multi',
+  'dual',
+  'vostfr',
+]);
+
+/**
+ * True when a release advertises a foreign audio track and no English/multi
+ * marker. Releases without any language marker are not judged here: their
+ * audio is verified after download.
+ */
+export function isForeignAudioOnly(
+  normalizedTitleParts: string[]
+): boolean {
+  const hasForeign = normalizedTitleParts.some((part) =>
+    FOREIGN_AUDIO_TOKENS.has(part)
+  );
+  if (!hasForeign) return false;
+
+  return !normalizedTitleParts.some((part) =>
+    MULTI_AUDIO_TOKENS.has(part)
+  );
 }
 
 /**

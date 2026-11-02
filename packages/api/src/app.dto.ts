@@ -29,6 +29,8 @@ export enum ParameterKey {
   MAX_MOVIE_DOWNLOAD_SIZE = 'max_movie_download_size',
   MAX_TVSHOW_EPISODE_DOWNLOAD_SIZE = 'max_tvshow_episode_download_size',
   BLOCKED_TORRENT_KEYWORDS = 'blocked_torrent_keywords',
+  IGNORE_H264_RELEASES = 'ignore_h264_releases',
+  REQUIRE_ENGLISH_AUDIO = 'require_english_audio',
   ORGANIZE_LIBRARY_STRATEGY = 'organize_library_strategy',
   LIBRARY_MOVIES_FOLDER_NAME = 'library_movies_folder_name',
   LIBRARY_TV_SHOWS_FOLDER_NAME = 'library_tv_shows_folder_name',
@@ -71,6 +73,8 @@ export enum ScanLibraryQueueProcessors {
   SCAN_MOVIES_FOLDER = 'scan_movies_folder',
   PROCESS_MOVIE_FOLDER = 'process_movie_folder',
   PROCESS_TV_SHOW_FOLDER = 'process_tv_show_folder',
+  REPLACE_H264_MEDIA = 'replace_h264_media',
+  REPLACE_FOREIGN_AUDIO = 'replace_foreign_audio',
 }
 
 @ObjectType()

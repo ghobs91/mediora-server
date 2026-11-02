@@ -53,6 +53,18 @@ export class JobsResolver {
   }
 
   @Mutation((_returns) => GraphQLCommonResponse)
+  public async startReplaceH264Job() {
+    await this.jobsService.startReplaceH264();
+    return { success: true, message: 'REPLACE_H264_STARTED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
+  public async startReplaceForeignAudioJob() {
+    await this.jobsService.startReplaceForeignAudio();
+    return { success: true, message: 'REPLACE_FOREIGN_AUDIO_STARTED' };
+  }
+
+  @Mutation((_returns) => GraphQLCommonResponse)
   public async downloadMovieWithQuality(
     @Args('movieId', { type: () => Int }) movieId: number,
     @Args('quality', { type: () => String, nullable: true }) quality?: string,

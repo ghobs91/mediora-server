@@ -22,6 +22,7 @@ import {
 
 import allowedExtensions from 'src/utils/allowed-file-extensions.json';
 import { formatNumber } from 'src/utils/format-number';
+import { hasPathTraversal } from 'src/utils/path-safety';
 
 import { MovieDAO } from 'src/entities/dao/movie.dao';
 import { TVSeasonDAO } from 'src/entities/dao/tvseason.dao';
@@ -77,11 +78,11 @@ export class OrganizeProcessor extends WorkerHost {
     src: string,
     dest: string
   ): Promise<void> {
-    const normalizedSrc = path.normalize(src);
-    const normalizedDest = path.normalize(dest);
-    if (normalizedSrc.includes('..') || normalizedDest.includes('..')) {
+    if (hasPathTraversal(src) || hasPathTraversal(dest)) {
       throw new Error(`refusing path with traversal: ${src} -> ${dest}`);
     }
+    const normalizedSrc = path.normalize(src);
+    const normalizedDest = path.normalize(dest);
 
     const srcStat = await fs.stat(normalizedSrc).catch(() => null);
     if (!srcStat) {
