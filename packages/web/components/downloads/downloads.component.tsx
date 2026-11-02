@@ -1,5 +1,15 @@
-import React, { useMemo, useState } from 'react';
-import { Loader2, Pause, Play, Trash2, CircleCheck, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Loader2,
+  Pause,
+  Play,
+  Trash2,
+  CircleCheck,
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+} from 'lucide-react';
 
 import {
   TransmissionTorrent,
@@ -25,35 +35,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { formatBytes } from '@/utils/format-bytes';
+import {
+  TorrentSort,
+  TorrentSortKey,
+  TORRENT_SORT_DEFAULT_DIRECTION,
+  readStoredTorrentSort,
+  sortTorrents,
+  storeTorrentSort,
+  torrentState,
+} from '@/utils/torrents';
 
-type TorrentState =
-  | 'error'
-  | 'stopped'
-  | 'checking'
-  | 'queued'
-  | 'downloading'
-  | 'seeding'
-  | 'unknown';
-
-function torrentState(torrent: TransmissionTorrent): TorrentState {
-  if (torrent.error && torrent.error !== 0) return 'error';
-  switch (torrent.status) {
-    case 0:
-      return 'stopped';
-    case 1:
-    case 2:
-      return 'checking';
-    case 3:
-      return 'queued';
-    case 4:
-      return 'downloading';
-    case 5:
-    case 6:
-      return 'seeding';
-    default:
-      return 'unknown';
-  }
-}
+const COLUMNS: Array<{ key: TorrentSortKey; label: string }> = [
+  { key: 'name', label: 'Name' },
+  { key: 'status', label: 'Status' },
+  { key: 'progress', label: 'Progress' },
+  { key: 'download', label: 'Download' },
+  { key: 'upload', label: 'Upload' },
+  { key: 'ratio', label: 'Ratio' },
+  { key: 'size', label: 'Size' },
+  { key: 'eta', label: 'ETA' },
+];
 
 function StatusBadge({ torrent }: { torrent: TransmissionTorrent }) {
   const state = torrentState(torrent);
@@ -122,6 +123,27 @@ export function DownloadsComponent() {
   });
 
   const torrents = useMemo(() => data?.torrents ?? [], [data]);
+
+  const [sort, setSort] = useState<TorrentSort | null>(null);
+
+  // Load the persisted sort after mount so server and client render the same markup.
+  useEffect(() => {
+    setSort(readStoredTorrentSort());
+  }, []);
+
+  const sortedTorrents = useMemo(
+    () => sortTorrents(torrents, sort),
+    [torrents, sort]
+  );
+
+  const handleSort = (key: TorrentSortKey) => {
+    const next: TorrentSort =
+      sort?.key === key
+        ? { key, direction: sort.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: TORRENT_SORT_DEFAULT_DIRECTION[key] };
+    setSort(next);
+    storeTorrentSort(next);
+  };
 
   const refetchQueries = [GetTransmissionTorrentsDocument];
   const mutationOptions = {
@@ -243,23 +265,47 @@ export function DownloadsComponent() {
                   aria-label="Select all torrents"
                 />
               </th>
-              {['Name', 'Status', 'Progress', 'Download', 'Upload', 'Ratio', 'Size', 'ETA'].map(
-                (column) => (
+              {COLUMNS.map((column) => {
+                const isActive = sort?.key === column.key;
+                return (
                   <th
-                    key={column}
+                    key={column.key}
+                    aria-sort={
+                      isActive
+                        ? sort.direction === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
                     className="px-3 py-2 text-left text-xs font-medium uppercase text-muted-foreground"
                   >
-                    {column}
+                    <button
+                      type="button"
+                      onClick={() => handleSort(column.key)}
+                      title={`Sort by ${column.label}`}
+                      className="group inline-flex items-center gap-1 uppercase transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
+                    >
+                      {column.label}
+                      {isActive ? (
+                        sort.direction === 'asc' ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
+                      )}
+                    </button>
                   </th>
-                )
-              )}
+                );
+              })}
               <th className="px-3 py-2 text-right text-xs font-medium uppercase text-muted-foreground">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {torrents.map((torrent) => {
+            {sortedTorrents.map((torrent) => {
               const percent = Math.round(torrent.percentDone * 10000) / 100;
               const state = torrentState(torrent);
               const isSeeding = state === 'seeding';
