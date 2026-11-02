@@ -10,14 +10,47 @@ services:
     environment:
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_AUTHKEY=${TS_AUTHKEY:-}
-      - TS_ACCEPT_DNS=false
+      # DNS for the whole netns (Transmission included) goes over the tunnel
+      # instead of Docker's host-side proxy.
+      - TS_ACCEPT_DNS=true
+      # Mandatory: without an exit node the entrypoint fails closed and the
+      # Tailscale healthcheck below never passes.
       - TS_EXIT_NODE=${TS_EXIT_NODE:-}
+      # Kernel networking: with the default userspace mode tailscaled cannot
+      # create routes, so an exit node would never actually carry traffic.
+      - TS_USERSPACE=false
+      # Skip containerboot's `tailscale up` when the node key is already
+      # stored: the up command would otherwise conflict with flags applied
+      # later via `tailscale set` (e.g. the exit node).
+      - TS_AUTH_ONCE=true
+    devices:
+      # Required for TS_USERSPACE=false; without /dev/net/tun the WireGuard
+      # tunnel cannot be established at all.
+      - /dev/net/tun:/dev/net/tun
+    # Tailscale's MagicDNS stub must bind its IPv6 address (fd7a:115c:a1e0::53);
+    # disabling IPv6 in the netns kills the stub and leaves all DNS dead. IPv6
+    # egress is instead governed by the ip6tables kill-switch.
     entrypoint:
       - /bin/sh
       - /usr/local/bin/tailscale-entrypoint.sh
     volumes:
       - tailscale_state:/var/lib/tailscale
       - ./scripts/tailscale-entrypoint.sh:/usr/local/bin/tailscale-entrypoint.sh:ro
+    healthcheck:
+      # Healthy only when: an exit node is configured AND selected
+      # (transmission must be strictly behind it) AND the kill-switch firewall
+      # is actually installed in the netns.
+      test:
+        - CMD-SHELL
+        - >
+          [ -n "$${TS_EXIT_NODE}" ] &&
+          tailscale status --json | grep -q '"BackendState": "Running"' &&
+          tailscale debug prefs | grep -Eq '"ExitNodeID": "[^"]+"' &&
+          iptables -C OUTPUT -o eth0 -j REJECT
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 180s
     networks:
       - default
     restart: unless-stopped
@@ -25,7 +58,13 @@ services:
   transmission:
     network_mode: "service:tailscale"
     depends_on:
-      - tailscale
+      tailscale:
+        condition: service_healthy
+    volumes:
+      # Docker forbids `dns:` with `service:` network mode; bind-mount a
+      # static resolv.conf resolved via Tailscale MagicDNS inside the shared
+      # netns instead. Those queries traverse the tunnel, not the host proxy.
+      - ./packages/tailscale/resolv.conf:/etc/resolv.conf:ro
 
   api:
     links:
