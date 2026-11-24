@@ -26,6 +26,13 @@ export default ts.config(
     },
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      // Playwright scripts run in Node and evaluate snippets in the browser.
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
+  {
     files: ['packages/api/**/*.ts'],
     languageOptions: {
       globals: { ...globals.node },

@@ -3,7 +3,7 @@
 
 Mediora Server is a movies and tv shows collection manager for BitTorrent users. It uses [themoviedb.org](https://www.themoviedb.org/) to search movies and tv shows to add to your library. Then it searches into your favorites torrent trackers the best match and downloads it for you through a VPN.
 
-![Screenshot](./screenshot.png)
+![Mediora Server search page](./docs/screenshots/search.png)
 
 **This is a beta release!**
 
@@ -18,6 +18,18 @@ It's also built from scratch and it will try to solve long term problem like dow
 You can follow the [roadmap](https://github.com/iam4x/bobarr/projects/1) to check what next features are implemented.
 
 And to have something with a better UI, less configuration and faster 🚀
+
+### Screenshots
+
+| | |
+| --- | --- |
+| ![Movie library](docs/screenshots/library-movies.png) | ![TV shows library](docs/screenshots/library-tvshows.png) |
+| ![Movie details](docs/screenshots/movie-details.png) | ![TV show seasons](docs/screenshots/tvshow-details.png) |
+| ![Discover](docs/screenshots/discover.png) | ![Suggestions](docs/screenshots/suggestions.png) |
+| ![Settings](docs/screenshots/settings.png) | ![Calendar](docs/screenshots/calendar.png) |
+
+Images live in `docs/screenshots` and come from a running instance, see
+[Regenerating screenshots](#regenerating-screenshots).
 
 ## Setup
 
@@ -239,3 +251,27 @@ Check the [CHANGELOG](https://github.com/ghobs91/mediora-server/blob/master/CHAN
 Clone the repository and then you can run mediora-server API and Web UI in dev watch mode and display logs with:
 
 * `$ yarn dev`
+
+### Regenerating screenshots
+
+The README images are captured from a running stack with Playwright:
+
+```
+yarn install
+npx playwright install chromium
+SCREENSHOT_TOKEN=<jwt> yarn screenshots --base-url http://localhost:3000
+```
+
+`scripts/screenshots.mjs` loads `/search`, `/discover`, the movie and TV shows
+libraries with their detail dialogs, `/downloads`, `/suggestions`, `/calendar`
+and `/settings`, and writes them to `docs/screenshots`. Pass
+`--only search,downloads` to capture a subset. API keys are blanked before the
+settings page is captured.
+
+The token is the JWT the web UI stores in `localStorage` after logging in at
+`/login`. On a stack you control you can mint one:
+
+```
+docker exec mediora-server-api node -e \
+  "console.log(require('jsonwebtoken').sign({sub:'mediora-server'},process.env.JWT_SECRET,{expiresIn:'1d'}))"
+```

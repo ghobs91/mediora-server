@@ -11,7 +11,8 @@
     "stop": "./scripts/mediora-server.sh stop",
     "dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --force-recreate -d && docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 20 -f api web",
     "dev:vpn": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.vpn.yml up --force-recreate -d && docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 20 -f api web",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
@@ -19,6 +20,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "globals": "^15.0.0",
+    "playwright": "1.65.1",
     "prettier": "^3.0.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0"
